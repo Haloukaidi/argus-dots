@@ -180,6 +180,12 @@ python /assigned/runner/probe.py --id h1 \
 会保留为不完整观测。Python 子进程必须继承追踪上下文；不支持的测试应说明限制，
 不能为了得到结论绕过 guard。测试依赖仍复用现有环境，不声明它们在所有平台上可重现。
 
+CPython 的 `Popen` 使用 POSIX spawn 时，同一次启动可能触发两条审计通知。
+Guard 按实际 Popen 调用实例关联它们，只计数一次，但仍检查两条通知中的参数和环境。
+关联使用对象身份和弱引用，不调用子类的 `__hash__`／`__eq__`，也不延长对象存活时间。
+直接 `os.posix_spawn`、重复启动相同命令及其他线程的启动各自计数，不按命令内容或
+时间窗口合并；记录数量仍须与实际观测到的受控子进程一致。
+
 ## 一份报告里有什么
 
 当前报告格式为 `local-pr-regression/v2`，策略为 `local-staged-regression/v2`。

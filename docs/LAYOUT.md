@@ -112,8 +112,8 @@ that fixes it.
 
 ## Repository top level
 
-Eighteen tracked directories here (seventeen on public `main`: `technical_report/` is
-private-mirror only, see `PRIVATE_ONLY_PATTERNS` in
+Every tracked top-level directory has an entry below. `technical_report/` is
+private-mirror only (see `PRIVATE_ONLY_PATTERNS` in
 `argus/release_tools/repository_parity.py`). "Not built, not tested, not
 shipped" means no CI job, no test, and no wheel content comes from the directory
 (decision card 5 leaves them in place for now).
@@ -128,6 +128,7 @@ shipped" means no CI job, no test, and no wheel content comes from the directory
 - `deploy/` - systemd units and Dockerfiles for the hosted trial (`deploy/trial/`).
 - `desktop-tauri/` - the Tauri desktop shell and the PyInstaller spec (`argus_backend.spec`) for the frozen `argus-backend` binary (the spec's `name=`).
 - `docs/` - operator and developer documentation; `docs/audits/` holds dated audit reports and their data attachments.
+- `experiments/` - historical PR regression-study forwarding entry points and documentation (`pr_regression_50/`). The maintained implementation and offline tests live in `argus/release_tools/pr_gate/regression/` and `tests/tools/`; model/Docker studies are opt-in, not CI runs. This directory is not built or shipped in the wheel or sdist.
 - `frontend/` - `core` (shared TypeScript), `tui` (Ink terminal cockpit), `web` (React web cockpit). `frontend/web/dist` is committed on purpose and force-included into the wheel.
 - `integrations/` - the `agent-skills` package for external agent hosts (`SKILL.md` plus per-host adapters). Not the Python package `argus/integrations/`.
 - `plugins/` - the installable `argus` host plugin for Claude Code and Codex: MCP config, bundled Skills, install scripts.

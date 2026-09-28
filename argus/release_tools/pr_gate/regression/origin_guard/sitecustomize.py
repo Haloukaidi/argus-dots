@@ -9,7 +9,10 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
+import threading
+import weakref
 from pathlib import Path
 
 
@@ -25,7 +28,10 @@ def _install():
     )
     controlled = {key: os.environ[key] for key in controlled_keys}
     seen, issues = {}, set()
-    busy = False
+    state = threading.local()
+    popen_launches = {}
+    popen_execute_code = subprocess.Popen._execute_child.__code__
+    popen_spawn_code = getattr(getattr(subprocess.Popen, "_posix_spawn", None), "__code__", None)
 
     def trace(event, **fields):
         record = dict(event=event, pid=os.getpid(), context_id=context, **fields)
@@ -141,10 +147,9 @@ def _install():
 
     class GuardFinder:
         def find_spec(self, fullname, path=None, target=None):
-            nonlocal busy
-            if busy or not product_name(fullname):
+            if getattr(state, "busy", False) or not product_name(fullname):
                 return None
-            busy = True
+            state.busy = True
             try:
                 for finder in list(sys.meta_path):
                     if finder is self:
@@ -159,11 +164,11 @@ def _install():
                         return spec
                 return None
             finally:
-                busy = False
+                state.busy = False
 
     sys.meta_path.insert(0, GuardFinder())
 
-    def audit_child(executable, argv, environment):
+    def audit_child(executable, argv, environment, *, record=True):
         try:
             executable = os.fsdecode(executable)
             arguments = [os.fsdecode(value) for value in argv]
@@ -187,18 +192,34 @@ def _install():
             if option not in {"-B", "-u", "-O", "-OO", "-s", "-q"}:
                 issue(f"python_child_untraceable_option: {option}")
                 valid = False
-        trace("python_child", guarded=valid)
+        if record:
+            trace("python_child", guarded=valid)
+        return True
 
     def audit(event, arguments):
-        nonlocal busy
-        if busy:
+        if getattr(state, "busy", False):
             return
-        busy = True
+        state.busy = True
         try:
             if event == "subprocess.Popen":
-                audit_child(arguments[0], arguments[1], arguments[3])
+                recorded = audit_child(arguments[0], arguments[1], arguments[3])
+                caller = sys._getframe(1)
+                if recorded and caller.f_code is popen_execute_code:
+                    owner = caller.f_locals["self"]
+                    identity = id(owner)
+                    popen_launches[identity] = weakref.ref(
+                        owner, lambda _reference, key=identity: popen_launches.pop(key, None),
+                    )
             elif event == "os.posix_spawn":
-                audit_child(arguments[0], arguments[1], arguments[2])
+                caller = sys._getframe(1)
+                owner = caller.f_locals["self"] if caller.f_code is popen_spawn_code else None
+                reference = popen_launches.get(id(owner))
+                paired = reference is not None and reference() is owner
+                # Popen's spawn fast path audits one child twice. Validate both
+                # events, but count only once for that exact Popen instance.
+                audit_child(arguments[0], arguments[1], arguments[2], record=not paired)
+                if paired:
+                    popen_launches.pop(id(owner))
             elif event in {"os.system", "os.exec", "os.fork", "os.forkpty"}:
                 issue(f"untracked_process_operation: {event}")
             elif event == "open":
@@ -232,7 +253,7 @@ def _install():
                 elif path.stem in prefixes or any(part in prefixes for part in path.parts[:-1]):
                     source_file(filename, "__external_execution__")
         finally:
-            busy = False
+            state.busy = False
 
     sys.addaudithook(audit)
 

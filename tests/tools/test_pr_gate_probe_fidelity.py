@@ -416,6 +416,285 @@ def test_normal_python_children_inherit_guard_and_are_correlated(work):
         assert document["process_count"] == 2
 
 
+@pytest.mark.skipif(not hasattr(os, "posix_spawn"), reason="requires POSIX spawn")
+@pytest.mark.parametrize(("launch", "events"), [
+    (
+        "subprocess._USE_POSIX_SPAWN = False\n"
+        "status = subprocess.run(argv, close_fds=True).returncode\n",
+        ["subprocess.Popen"],
+    ),
+    (
+        "subprocess._USE_POSIX_SPAWN = True\n"
+        "status = subprocess.run(argv, close_fds=False).returncode\n",
+        ["subprocess.Popen", "os.posix_spawn"],
+    ),
+    (
+        "pid = os.posix_spawn(sys.executable, argv, os.environ)\n"
+        "status = os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1])\n",
+        ["os.posix_spawn"],
+    ),
+], ids=["popen-fork", "popen-posix-spawn", "direct-posix-spawn"])
+def test_paired_python_child_launch_is_counted_once(work, launch, events):
+    replace_driver(work, (
+        "import os, subprocess, sys\n"
+        "events = []\n"
+        "def audit(event, arguments):\n"
+        "    if event in {'subprocess.Popen', 'os.posix_spawn'}:\n"
+        "        events.append(event)\n"
+        "sys.addaudithook(audit)\n"
+        f"argv = [sys.executable, '-c', {DRIVER!r}]\n"
+        + launch
+        + f"assert events == {events!r}, events\n"
+        "raise SystemExit(status)\n"
+    ))
+    receipt = pair(work)
+    assert receipt["comparison"]["compatible"], receipt
+    assert receipt["base"]["exit_code"] == 0, receipt
+    assert receipt["candidate"]["exit_code"] == 1, receipt
+    for side in ("base", "candidate"):
+        document = origin(work, receipt, side)
+        assert document["status"] == "verified", document
+        assert document["issues"] == []
+        assert document["process_count"] == 2
+        assert receipt[side]["execution_error"] is None
+        assert receipt[side]["cleanup_complete"]
+        assert [entry["path"] for entry in document["files"]] == [
+            "src/snapshot_product/__init__.py",
+        ]
+
+
+@pytest.mark.skipif(not hasattr(os, "posix_spawn"), reason="requires POSIX spawn")
+@pytest.mark.parametrize("use_posix_spawn", [False, True], ids=["fork", "posix-spawn"])
+@pytest.mark.parametrize("methods", [
+    "    def __eq__(self, other):\n"
+    "        return self is other\n",
+    "    def __eq__(self, other):\n"
+    "        raise AssertionError('Popen equality must not be used by the guard')\n"
+    "    def __hash__(self):\n"
+    "        raise AssertionError('Popen hashing must not be used by the guard')\n",
+], ids=["unhashable", "no-hash-or-equality"])
+def test_popen_subclass_identity_does_not_require_hashing_or_retain_the_child(
+    work, methods, use_posix_spawn,
+):
+    replace_driver(work, (
+        "import gc, subprocess, sys, weakref\n"
+        f"subprocess._USE_POSIX_SPAWN = {use_posix_spawn!r}\n"
+        "class ComparedPopen(subprocess.Popen):\n"
+        + methods
+        + f"child = ComparedPopen([sys.executable, '-c', {DRIVER!r}], close_fds=False)\n"
+        "reference = weakref.ref(child)\n"
+        "status = child.wait()\n"
+        "del child\n"
+        "gc.collect()\n"
+        "assert reference() is None, 'guard retained the completed Popen'\n"
+        "raise SystemExit(status)\n"
+    ))
+    receipt = pair(work)
+    assert receipt["base"]["exit_code"] == 0, receipt
+    assert receipt["candidate"]["exit_code"] == 1, receipt
+    for side in ("base", "candidate"):
+        document = origin(work, receipt, side)
+        assert document["status"] == "verified", document
+        assert document["issues"] == []
+        assert document["process_count"] == 2
+        assert receipt[side]["execution_error"] is None
+
+
+@pytest.mark.skipif(not hasattr(os, "posix_spawn"), reason="requires POSIX spawn")
+def test_equal_popen_instances_are_separate_overlapping_launches(work):
+    replace_driver(work, (
+        "import snapshot_product, subprocess, sys, threading\n"
+        "from concurrent.futures import ThreadPoolExecutor\n"
+        "subprocess._USE_POSIX_SPAWN = True\n"
+        "ready = threading.Barrier(2, timeout=3)\n"
+        "class ComparedPopen(subprocess.Popen):\n"
+        "    def __eq__(self, other):\n"
+        "        return isinstance(other, ComparedPopen)\n"
+        "    def __hash__(self):\n"
+        "        return 1\n"
+        "    def _posix_spawn(self, *args, **kwargs):\n"
+        "        ready.wait()\n"
+        "        return super()._posix_spawn(*args, **kwargs)\n"
+        "def launch():\n"
+        "    with ComparedPopen([sys.executable, '-c', 'import snapshot_product'], close_fds=False) as child:\n"
+        "        return child.wait()\n"
+        "with ThreadPoolExecutor(max_workers=2) as executor:\n"
+        "    first, second = executor.submit(launch), executor.submit(launch)\n"
+        "    assert first.result(5) == second.result(5) == 0\n"
+        "assert snapshot_product.VALUE == 1\n"
+    ))
+    receipt = pair(work)
+    assert receipt["base"]["exit_code"] == 0, receipt
+    assert receipt["candidate"]["exit_code"] == 1, receipt
+    for side in ("base", "candidate"):
+        document = origin(work, receipt, side)
+        assert document["status"] == "verified", document
+        assert document["issues"] == []
+        assert document["process_count"] == 3
+        assert receipt[side]["execution_error"] is None
+
+
+@pytest.mark.skipif(not hasattr(os, "posix_spawn"), reason="requires POSIX spawn")
+def test_repeated_and_mixed_python_launches_are_distinct_children(work):
+    replace_driver(work, (
+        "import os, snapshot_product, subprocess, sys\n"
+        "argv = [sys.executable, '-c', 'import snapshot_product']\n"
+        "subprocess._USE_POSIX_SPAWN = False\n"
+        "subprocess.run(argv, check=True)\n"
+        "subprocess._USE_POSIX_SPAWN = True\n"
+        "for _ in range(2):\n"
+        "    subprocess.run(argv, close_fds=False, check=True)\n"
+        "    pid = os.posix_spawn(sys.executable, argv, os.environ)\n"
+        "    assert os.waitpid(pid, 0)[1] == 0\n"
+        "assert snapshot_product.VALUE == 1\n"
+    ))
+    receipt = pair(work)
+    assert receipt["base"]["exit_code"] == 0
+    assert receipt["candidate"]["exit_code"] == 1
+    for side in ("base", "candidate"):
+        document = origin(work, receipt, side)
+        assert document["status"] == "verified", document
+        assert document["issues"] == []
+        assert document["process_count"] == 6
+
+
+@pytest.mark.skipif(not hasattr(os, "posix_spawn"), reason="requires POSIX spawn")
+def test_nested_python_spawn_launches_keep_each_process_guard(work):
+    child = (
+        "import subprocess, sys\n"
+        "subprocess._USE_POSIX_SPAWN = True\n"
+        f"raise SystemExit(subprocess.run([sys.executable, '-c', {DRIVER!r}], "
+        "close_fds=False).returncode)\n"
+    )
+    replace_driver(work, (
+        "import subprocess, sys\n"
+        "subprocess._USE_POSIX_SPAWN = True\n"
+        f"raise SystemExit(subprocess.run([sys.executable, '-c', {child!r}], "
+        "close_fds=False).returncode)\n"
+    ))
+    receipt = pair(work)
+    assert receipt["base"]["exit_code"] == 0
+    assert receipt["candidate"]["exit_code"] == 1
+    for side in ("base", "candidate"):
+        document = origin(work, receipt, side)
+        assert document["status"] == "verified", document
+        assert document["issues"] == []
+        assert document["process_count"] == 3
+
+
+@pytest.mark.skipif(not hasattr(os, "posix_spawn"), reason="requires POSIX spawn")
+def test_failed_popen_does_not_hide_a_later_direct_spawn(work):
+    replace_driver(work, (
+        "import os, subprocess, sys\n"
+        "subprocess._USE_POSIX_SPAWN = False\n"
+        "try:\n"
+        "    subprocess.run([os.path.join(os.environ['TMPDIR'], 'missing', 'python'), "
+        "'-c', 'pass'], check=True)\n"
+        "except FileNotFoundError:\n"
+        "    pass\n"
+        "pid = os.posix_spawn(sys.executable, "
+        "[sys.executable, '-c', 'import snapshot_product'], os.environ)\n"
+        "assert os.waitpid(pid, 0)[1] == 0\n"
+    ))
+    receipt = pair(work)
+    for side in ("base", "candidate"):
+        document = origin(work, receipt, side)
+        assert receipt[side]["exit_code"] == 0
+        assert document["process_count"] == 2
+        assert document["status"] == "incomplete", document
+        assert len(document["issues"]) == 1
+        assert document["issues"][0].startswith("python_child_guard_count_mismatch:")
+        assert receipt[side]["execution_error"] == "source_origin_incomplete"
+
+
+@pytest.mark.skipif(not hasattr(os, "posix_spawn"), reason="requires POSIX spawn")
+@pytest.mark.parametrize("launch", [
+    "subprocess._USE_POSIX_SPAWN = True\n"
+    "subprocess.run(argv, env=environment, close_fds=False, check=True)\n",
+    "pid = os.posix_spawn(sys.executable, argv, environment)\n"
+    "assert os.waitpid(pid, 0)[1] == 0\n",
+], ids=["popen-posix-spawn", "direct-posix-spawn"])
+@pytest.mark.parametrize("change", ["option", "environment"])
+def test_spawn_launches_still_validate_guard_inputs(work, launch, change):
+    replace_driver(work, (
+        "import os, snapshot_product, subprocess, sys\n"
+        f"argv = [sys.executable, *{['-S'] if change == 'option' else []!r}, '-c', 'pass']\n"
+        "environment = os.environ.copy()\n"
+        + ("environment.pop('PR_GATE_CONTEXT_ID')\n" if change == "environment" else "")
+        + launch
+    ))
+    receipt = pair(work)
+    expected = (
+        "python_child_untraceable_option"
+        if change == "option" else "python_child_guard_environment_changed"
+    )
+    for side in ("base", "candidate"):
+        document = origin(work, receipt, side)
+        assert document["status"] == "incomplete", document
+        assert any(expected in issue for issue in document["issues"]), document
+        assert receipt[side]["execution_error"] == "source_origin_incomplete"
+
+
+@pytest.mark.skipif(not hasattr(os, "posix_spawn"), reason="requires POSIX spawn")
+def test_low_level_spawn_is_validated_after_its_popen_event(work):
+    replace_driver(work, (
+        "import os, snapshot_product, subprocess, sys\n"
+        "subprocess._USE_POSIX_SPAWN = True\n"
+        "original = subprocess.Popen._posix_spawn\n"
+        "def changed_spawn(self, args, executable, env, *rest):\n"
+        "    child_env = dict(os.environ if env is None else env)\n"
+        "    child_env.pop('PR_GATE_CONTEXT_ID')\n"
+        "    return original(self, args, executable, child_env, *rest)\n"
+        "subprocess.Popen._posix_spawn = changed_spawn\n"
+        "subprocess.run([sys.executable, '-c', 'pass'], close_fds=False, check=True)\n"
+    ))
+    receipt = pair(work)
+    for side in ("base", "candidate"):
+        document = origin(work, receipt, side)
+        assert document["status"] == "incomplete", document
+        assert any("python_child_guard_environment_changed" in issue
+                   for issue in document["issues"]), document
+
+
+@pytest.mark.skipif(not hasattr(os, "posix_spawn"), reason="requires POSIX spawn")
+def test_overlapping_python_launch_audits_are_not_suppressed(work):
+    replace_driver(work, (
+        "import os, snapshot_product, subprocess, sys, threading\n"
+        "from concurrent.futures import ThreadPoolExecutor\n"
+        "subprocess._USE_POSIX_SPAWN = False\n"
+        "entered, release = threading.Event(), threading.Event()\n"
+        "original_open = os.open\n"
+        "def delayed_trace(path, *args, **kwargs):\n"
+        "    if str(path).endswith('.jsonl') and not entered.is_set():\n"
+        "        entered.set()\n"
+        "        assert release.wait(5)\n"
+        "    return original_open(path, *args, **kwargs)\n"
+        "os.open = delayed_trace\n"
+        "argv = [sys.executable, '-c', 'import snapshot_product']\n"
+        "def direct_spawn():\n"
+        "    pid = os.posix_spawn(sys.executable, argv, os.environ)\n"
+        "    return os.waitpid(pid, 0)[1]\n"
+        "with ThreadPoolExecutor(max_workers=2) as executor:\n"
+        "    first = executor.submit(subprocess.run, argv, check=True)\n"
+        "    try:\n"
+        "        assert entered.wait(3)\n"
+        "        second = executor.submit(direct_spawn)\n"
+        "        assert second.result(3) == 0\n"
+        "    finally:\n"
+        "        release.set()\n"
+        "    assert first.result(3).returncode == 0\n"
+        "assert snapshot_product.VALUE == 1\n"
+    ))
+    receipt = pair(work)
+    assert receipt["base"]["exit_code"] == 0, receipt
+    assert receipt["candidate"]["exit_code"] == 1, receipt
+    for side in ("base", "candidate"):
+        document = origin(work, receipt, side)
+        assert document["status"] == "verified", document
+        assert document["issues"] == []
+        assert document["process_count"] == 3
+
+
 @pytest.mark.parametrize("code,expected", [
     ("print('only harness code')", "no_observable_product_source"),
     ("import importlib.util; importlib.util.find_spec('snapshot_product')",
