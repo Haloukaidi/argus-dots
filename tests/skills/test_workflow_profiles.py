@@ -45,7 +45,7 @@ def provider(monkeypatch):
 
     def check(stage, root, *, state_root=None, workflow_profile="full"):
         assert state_root is not None
-        assert workflow_profile in module.WORKFLOW_PROFILES
+        assert workflow_profile in {*module.WORKFLOW_PROFILES, "custom"}
         return () if (root / f"{stage}.txt").is_file() else (f"missing {stage} evidence",)
 
     module.stage_completion_issues = check
@@ -233,7 +233,7 @@ def test_manager_requires_new_scope_but_preserves_legacy_continuation(provider, 
 
 
 def test_manager_rejects_invented_profile_before_commit(provider, tmp_path):
-    with pytest.raises(VerticalDecisionError, match="unknown workflow_profile"):
+    with pytest.raises(VerticalDecisionError, match="invalid workflow_profile"):
         Manager(project_root=tmp_path, runner=ProfileRunner("invented")).decide_vertical(
             "Design and verify a small block.",
         )
@@ -290,3 +290,173 @@ def test_invalid_provider_profiles_fail_contract_validation(provider, invalid):
     provider.WORKFLOW_PROFILES = invalid
     with pytest.raises(VerticalContractError, match="profile"):
         vertical_contract("profile_lab", provider)
+
+
+@pytest.fixture
+def composable_provider(provider):
+    provider.WORKFLOW_STAGE_REQUIREMENTS = {
+        "design": ("verify",),
+        "verify": (),
+        "deliver": ("design",),
+    }
+    return provider
+
+
+@pytest.mark.parametrize("requested, expected", [
+    (("design",), ("design", "verify")),
+    (("verify",), ("verify",)),
+    (("deliver",), ("design", "verify", "deliver")),
+    (("verify", "design"), ("design", "verify")),
+])
+def test_custom_composition_closes_requirements_in_canonical_order(composable_provider, tmp_path, requested, expected):
+    persist_vertical(
+        tmp_path, "profile_lab", workflow_profile="custom", workflow_requested_stages=requested,
+    )
+    contract = load_vertical_contract("profile_lab", tmp_path)
+    assert contract.stage_order == expected
+    assert contract.workflow_requested_stages == tuple(
+        stage for stage in composable_provider.STAGE_ORDER if stage in requested
+    )
+    assert "Requested:" in contract.workflow_summary()
+    assert "Outside scope:" in contract.workflow_summary()
+    assert "mandatory companions" in available_vertical_purposes()["profile_lab"]
+    assert read_pipeline_state(tmp_path)["workflow_stages"] == list(expected)
+
+
+@pytest.mark.parametrize("requested", [(), [], "design", ("unknown",), ("design", "design"), [None]])
+def test_invalid_custom_requests_leave_no_state(composable_provider, tmp_path, requested):
+    with pytest.raises(VerticalContractError, match="requested stages"):
+        persist_vertical(
+            tmp_path, "profile_lab", workflow_profile="custom", workflow_requested_stages=requested,
+        )
+    assert not read_pipeline_state(tmp_path)
+
+
+def test_custom_requests_need_provider_opt_in_and_cannot_change_named_profiles(provider, tmp_path):
+    with pytest.raises(VerticalContractError, match="does not support"):
+        persist_vertical(tmp_path, "profile_lab", workflow_profile="custom", workflow_requested_stages=("design",))
+    with pytest.raises(VerticalContractError, match="require workflow_profile"):
+        persist_vertical(tmp_path, "profile_lab", workflow_profile="build", workflow_requested_stages=("verify",))
+
+
+def test_custom_requires_evidence_and_preserves_completion_boundaries(composable_provider, tmp_path):
+    persist_vertical(tmp_path, "profile_lab", workflow_profile="custom", workflow_requested_stages=("design",))
+    with pytest.raises(ValueError, match="not the final stage"):
+        complete_final_stage(tmp_path, reason="short circuit", allow_early_completion=True)
+    with pytest.raises(StageCompletionError, match="missing design"):
+        advance_stage(tmp_path, target_stage="verify", reason="attempt")
+    (tmp_path / "design.txt").write_text("accepted")
+    advance_stage(tmp_path, target_stage="verify", reason="reviewed")
+    (tmp_path / "verify.txt").write_text("accepted")
+    complete_final_stage(tmp_path, reason="reviewed")
+    assert vertical_completion_certificate_status(tmp_path, "profile_lab")["ok"]
+    assert set(read_pipeline_state(tmp_path)["stages"]) == {"design", "verify"}
+
+
+def test_custom_continuation_freezes_requested_and_effective_scope(composable_provider, tmp_path):
+    persist_vertical(tmp_path, "profile_lab", workflow_profile="custom", workflow_requested_stages=("design",))
+    before = read_pipeline_state(tmp_path)
+    persist_vertical(tmp_path, "profile_lab")
+    assert read_pipeline_state(tmp_path) == before
+    with pytest.raises(ValueError, match="active task"):
+        persist_vertical(tmp_path, "profile_lab", workflow_profile="custom", workflow_requested_stages=("verify",))
+    # Even an equal closure does not authorize changing the requested objective.
+    with pytest.raises(ValueError, match="active task"):
+        persist_vertical(tmp_path, "profile_lab", workflow_profile="custom", workflow_requested_stages=("design", "verify"))
+    composable_provider.WORKFLOW_STAGE_REQUIREMENTS["design"] = ()
+    with pytest.raises(VerticalContractError, match="changed since selection"):
+        load_vertical_contract("profile_lab", tmp_path)
+
+
+@pytest.mark.parametrize("fast", ["0", "1"])
+def test_manager_composes_and_explains_requested_scope(composable_provider, tmp_path, monkeypatch, fast):
+    monkeypatch.setenv("ARGUS_SKILL_MANAGER_FAST_ROUTE", fast)
+
+    class CustomRunner:
+        def run_exec(self, *, prompt, **kwargs):
+            assert "WORKFLOW_STAGES=" in prompt
+            reply = (
+                "CHOICE=existing\nVERTICAL=profile_lab\nWORKFLOW_MODE=staged\n"
+                "WORKFLOW_PROFILE=custom\nWORKFLOW_STAGES=design\nCONFIDENCE=0.99\n"
+                "EXECUTION_TASK=Build a block without delivery packaging.\n"
+            )
+            return SimpleNamespace(
+                last_agent_message=reply, agent_messages=[reply], thread_id="custom",
+                tool_activity_observed=True,
+            )
+
+    manager = Manager(project_root=tmp_path, runner=CustomRunner())
+    decision = manager.decide_vertical("Build a block without packaging.")
+    assert decision.workflow_requested_stages == ("design",)
+    division = manager.commit_vertical_decision("Build a block.", decision)
+    assert division.stages == ["design", "verify"]
+    assert "verify (required by design)" in division.workflow_summary
+    assert "Outside scope: deliver" in division.headline()
+    assert division.workflow_profile == "custom"
+    from argus.manager.front_door import PreparedManagerHandoff
+
+    PreparedManagerHandoff(
+        mem=SimpleNamespace(project_root=tmp_path), body="Build a block.",
+        manager=manager, decision=decision, intent_id="custom-scope", root_task_id=None,
+    ).completed(division)
+    event = json.loads((tmp_path / "events.jsonl").read_text().splitlines()[-1])
+    assert event["workflow_profile"] == "custom"
+    assert event["workflow_summary"] == division.workflow_summary
+    assert event["stages"] == ["design", "verify"]
+    assert division.workflow_summary in event["text"]
+    manager.runner = ProfileRunner(None)
+    continued = manager.decide_vertical("Continue.")
+    assert continued.workflow_profile == "custom"
+    assert continued.workflow_requested_stages == ("design",)
+    manager.commit_vertical_decision("Continue.", continued)
+
+
+def test_custom_replacement_resets_only_at_operator_boundary(composable_provider, tmp_path):
+    persist_vertical(tmp_path, "profile_lab", workflow_profile="custom", workflow_requested_stages=("verify",))
+    decision = VerticalDecision(
+        choice="existing", vertical="profile_lab", workflow_profile="custom",
+        workflow_requested_stages=("design",),
+    )
+    manager = Manager(project_root=tmp_path)
+    with pytest.raises(ValueError, match="active task"):
+        manager.commit_vertical_decision("Now create it.", decision)
+    manager.commit_vertical_decision("Now create it.", decision, force_stage_reset=True)
+    assert read_pipeline_state(tmp_path)["current_stage"] == "design"
+    assert read_pipeline_state(tmp_path)["workflow_stages"] == ["design", "verify"]
+
+
+def test_scoped_contract_cannot_silently_drop_checklists_when_reselected(composable_provider):
+    contract = vertical_contract("profile_lab", composable_provider).compose_workflow(("verify",))
+    with pytest.raises(VerticalContractError, match="unscoped"):
+        contract.for_profile("full")
+
+
+@pytest.mark.parametrize("requirements", [
+    {"design": ()},
+    {"design": ("verify",), "verify": ("design",), "deliver": ()},
+    {"design": ("design",), "verify": (), "deliver": ()},
+    {"design": ("absent",), "verify": (), "deliver": ()},
+    {"design": "verify", "verify": (), "deliver": ()},
+    {"design": ("verify", "verify"), "verify": (), "deliver": ()},
+])
+def test_invalid_requirement_graphs_fail_visibly(provider, requirements):
+    provider.WORKFLOW_STAGE_REQUIREMENTS = requirements
+    with pytest.raises(VerticalContractError, match="requirements"):
+        vertical_contract("profile_lab", provider)
+
+
+@pytest.mark.parametrize("parse_name", ["parse_fast_vertical_decision", "parse_vertical_decision"])
+def test_composition_parser_accepts_lists_not_ambiguous_json_strings(parse_name):
+    from argus.manager import domain_author
+
+    parse = getattr(domain_author, parse_name)
+    payload = {
+        "choice": "existing", "vertical": "software", "workflow_mode": "staged",
+        "workflow_profile": "custom", "workflow_stages": ["rtl", "ppa"],
+        "execution_task": "work", "confidence": 0.99,
+    }
+    decision = parse(payload, known_verticals=["software"])
+    assert decision.workflow_requested_stages == ("rtl", "ppa")
+    for invalid in ("rtl;ppa", None, 3, ["rtl", {}]):
+        payload["workflow_stages"] = invalid
+        assert parse(payload, known_verticals=["software"]) is None

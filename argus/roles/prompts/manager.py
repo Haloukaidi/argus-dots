@@ -26,6 +26,15 @@ SKILL_PLACEMENT_BATCH = "skill_placement_batch"
 LIVE_VIEW = "live_view"
 PENDING_QUESTION = "pending_question"
 
+_COMPOSABLE_WORKFLOW_ROUTING = (
+    "For a composable vertical, use WORKFLOW_PROFILE=custom and "
+    "WORKFLOW_STAGES=<requested stage names separated by ;> when no preset "
+    "matches exactly. Host adds mandatory companions and keeps canonical order. "
+    "Select creation stages only when creating/changing those outputs; existing "
+    "inputs still need evidence. Explain requested, added and excluded work. "
+    "If requirements conflict with exclusions, clarify before dispatch.\n\n"
+)
+
 _RESEARCH_DELIVERABLE_ROUTING = (
     "For a supplied idea or hypothesis requested as a full paper, choose staged "
     "research with direction locked. Locked needs a concrete supplied mechanism "
@@ -366,8 +375,13 @@ def build_fast_vertical_decision_prompt(
         "authority, scope, system risk, repository context, or a new capability is "
         "uncertain, choose grounded so you can investigate freely in the next call. "
         "Do not plan implementation.\n\n"
-        "If the chosen vertical lists workflow profiles, return WORKFLOW_PROFILE with "
-        "the smallest listed profile that fully covers the requested deliverable, "
+        + (
+            _COMPOSABLE_WORKFLOW_ROUTING
+            if any("Custom workflow stages" in purpose for purpose in verticals_with_purpose.values())
+            else ""
+        )
+        + "If the chosen vertical lists workflow profiles, return WORKFLOW_PROFILE with "
+        "the smallest supported scope that fully covers the requested deliverable, "
         "and use WORKFLOW_MODE=staged. "
         "Choose full only for an explicitly requested complete workflow or matching "
         "end-to-end delivery. Preserve the active profile during supplemental work. "
@@ -457,8 +471,13 @@ def build_vertical_decision_prompt(
     return (
         "Choose VERTICAL and, independently, WORKFLOW. "
         "A vertical is a stable reusable staged capability, not a Planner DAG.\n\n"
-        "When its menu lists workflow profiles, also select WORKFLOW_PROFILE: the "
-        "smallest listed profile covering the requested deliverable, with "
+        + (
+            _COMPOSABLE_WORKFLOW_ROUTING
+            if any("Custom workflow stages" in purpose for purpose in verticals_with_purpose.values())
+            else ""
+        )
+        + "When its menu lists workflow profiles, also select WORKFLOW_PROFILE: the "
+        "smallest supported scope covering the requested deliverable, with "
         "WORKFLOW_MODE=staged, or full for a "
         "complete workflow. Omitted stages are outside scope, not completed. "
         "Do not invent a profile, weaken its checks, or change an active task's "
