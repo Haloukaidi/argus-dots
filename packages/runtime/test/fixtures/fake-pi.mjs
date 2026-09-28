@@ -27,15 +27,18 @@ if (mode.startsWith('structured-')) {
   send({ type: 'agent_settled' });
 } else if (mode.startsWith('turn-cap')) {
   send({ type: 'ready', pid: process.pid });
-  const turns = mode === 'turn-cap-exited' ? 2 : Infinity;
+  // 'exited' and 'lingering' settle at once; 'lingering' then stays alive briefly.
+  const paced = mode === 'turn-cap-paced';
+  const turns = paced ? Infinity : 2;
   for (let turn = 1; turn <= turns; turn += 1) {
     send({ type: 'message_end', message: { role: 'toolResult' } });
     send({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'draft' } });
     send({ type: 'message_end', message: { role: 'assistant', model: 'gpt-5.6-sol', provider: 'openai',
       content: [{ type: 'text', text: `checkpoint ${turn}` }], stopReason: 'stop', usage: { input: 10, output: 2, cost: { total: 0.1 } } } });
-    if (mode !== 'turn-cap-exited') await sleep(200);
+    if (paced) await sleep(200);
   }
   send({ type: 'agent_settled' });
+  if (mode === 'turn-cap-lingering') await sleep(300);
 } else if (mode.startsWith('accounting-')) {
   const usage = { input: 150_000, output: 100, cacheRead: 0, cacheWrite: 0 };
   const message = { role: 'assistant', model: 'gpt-5.6-sol', provider: 'openai', stopReason: 'stop' };

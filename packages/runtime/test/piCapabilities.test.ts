@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -127,21 +128,24 @@ test('zero and larger allowances preserve normal completion', async () => {
 });
 
 test('buffered messages from an already closed process do not trigger an allowance stop', async () => {
-  const stream = backend('turn-cap-exited').run({ ...request, providerTurnCap: 1 });
+  // Pi writes everything, lingers, then exits. On Linux the wait below does not
+  // yield, so the cap fires before Node can observe that exit.
+  const stream = backend('turn-cap-lingering').run({ ...request, providerTurnCap: 1 });
   const first = await stream.next();
   assert.ok(first.value?.type === 'line');
   const { pid } = JSON.parse(first.value.line) as { pid: number };
+  await new Promise(resolve => setTimeout(resolve, 100));
   const deadline = Date.now() + 5000;
   while (true) {
     try {
       process.kill(pid, 0);
-      if (process.platform === 'linux' && /^State:\s+Z/m.test(await readFile(`/proc/${pid}/status`, 'utf8'))) break;
+      if (process.platform === 'linux' && /^State:\s+Z/m.test(readFileSync(`/proc/${pid}/status`, 'utf8'))) break;
     } catch (error) {
       if (['ESRCH', 'ENOENT'].includes((error as NodeJS.ErrnoException).code ?? '')) break;
       throw error;
     }
     assert.ok(Date.now() < deadline);
-    await new Promise(resolve => setTimeout(resolve, 20));
+    if (process.platform !== 'linux') await new Promise(resolve => setTimeout(resolve, 20));
   }
   let result: RunnerResult | undefined;
   for await (const event of stream) if (event.type === 'result') result = event.result;
