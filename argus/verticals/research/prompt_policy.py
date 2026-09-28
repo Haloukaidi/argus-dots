@@ -372,7 +372,12 @@ def _method_card_engineer_block(stage: str, operation: str) -> str:
         "Stand-ins (mock model, fake environment, oracle policy, synthetic data where "
         "the route names real data) belong in tests/spec only: a claim-bearing run "
         "exercises the real system the route names; if it cannot run here, name the "
-        "deviation in METHOD.md and say so, never report a simulation as the benchmark."
+        "deviation in METHOD.md and say so, never report a simulation as the benchmark. "
+        "When a round produces a claim-bearing number, write .argus/claim_attainment.json: "
+        "one entry per clause of the claim with clause, obtained, met (yes/no/partial/"
+        "untested) and source {path, field} of the number; the host reads that field and "
+        "shows the value beside your words to the Reviewer and the Planner. A clause you "
+        "cannot meet is a negative result to state, never to reword."
     )
 
 
@@ -381,26 +386,33 @@ def _method_card_reviewer_block(stage: str) -> str:
         return ""
     return (
         "## Method card first\n"
-        "Read in this order: the review packet (anchors with code excerpts, test "
-        "outcomes, config changes, files changed, Run reality), then METHOD.md, then "
-        "the derived method-card status in Raw verification evidence (proven, "
-        "contradicted, partial, untested, unchecked; reused code; hyperparameter "
-        "changes), then tests/spec, then code, and the Engineer's account last. Per component report MATCHES, CONTRADICTS, NOT_IMPLEMENTED or "
-        "INSUFFICIENT_EVIDENCE with file:line (reviewer/claim-to-code-trace.md). "
+        "Start from Claim attainment (the Engineer's per-clause statement with host-read values) "
+        "and the host log of the Engineer's round; "
+        "choose the one link most likely not to hold the claim and read only there. A clause marked not met, partial or untested is a negative result to "
+        "iterate on, never a claim to narrow; results with no statement are a continue with one "
+        "question: which clauses do these numbers meet. A stated value the host resolves differently, "
+        "a run shorter than its protocol allows, or a metric named differently from the protocol's "
+        "is where you open the script; a metric on which every method scores the same separates nothing. Then the review packet "
+        "(anchors, tests, config changes, files changed, Run "
+        "reality), METHOD.md, the derived method-card status in Raw verification evidence "
+        "(proven, contradicted, partial, untested, unchecked; reused code; hyperparameter "
+        "changes), tests/spec, code, and the Engineer's account last. Per component report MATCHES, CONTRADICTS, NOT_IMPLEMENTED or "
+        "INSUFFICIENT_EVIDENCE with file:line. "
         "Required repairs, returned as continue naming the smallest fix: a component "
         "without a '# @component' anchor or a knockout that fails in its absence, an "
         "untested or contradicted component, a failing or unexplained-skip test, tests "
         "collected last round but missing now, a hyperparameter change without a "
-        "'# why' or a card note, code that contradicts the card. The claim is fixed; "
-        "never accept claim drift: a result that narrows the claim, or a negative "
+        "'# why' or a card note, code that contradicts the card. The claim is fixed: "
+        "a result that narrows it is claim drift, and it or a negative "
         "result with fewer than three diagnosed attempts, is a repair request. A "
         "result produced through a stand-in listed under Run reality is "
-        "NOT_IMPLEMENTED whatever the tests say, unless METHOD.md Deviations names it "
-        "and the paper calls the evaluation simulated. Run reality also dates each "
-        "result file against the last code edit and names functions fed random "
-        "tensors: a one-minute run or random keys is not the protocol's evaluation, "
-        "whatever the results file lists. Do not ask for tools or re-run anything "
-        "yourself."
+        "NOT_IMPLEMENTED whatever the tests say, unless METHOD.md Deviations names it. "
+        "Run reality dates each result file against the last code edit and names functions "
+        "fed random tensors: a one-minute run or random keys is not the protocol's evaluation. "
+        "Do not re-read "
+        "what the packet already shows; ask at most two questions, each answered by a "
+        "file or a number. A path outside the workspace in the host log (another venv or "
+        "project) is a reproducibility question to raise. Do not ask for tools or re-run anything yourself."
     )
 
 
@@ -423,7 +435,10 @@ def _method_card_planner_block(stage: str) -> str:
         "the bar. When the route hosts a model or an environment, the claim-bearing task "
         "depends on a stand-up task whose acceptance is the official example running "
         "end to end here (engineer/framework-stand-up-pilot.md); a benchmark run "
-        "through a stand-in is not a result."
+        "through a stand-in is not a result. Read Claim attainment before deciding the "
+        "stage: a clause not met, partial or untested keeps Experiment open for another "
+        "iteration on the implementation; advancing to Paper on the clauses that happened "
+        "to pass is claim drift, whatever the margin over a baseline."
     )
 
 
@@ -436,6 +451,7 @@ def _planner_fragment(stage: str, project_root: Path | None) -> str:
             _stage_playbook_block(stage),
             _hardware_block_for_stage(stage, project_root),
             _method_card_planner_block(stage),
+            _attainment_block_for_planner(stage, project_root),
             (
                 "## Post-result experiment scale assessment\n"
                 "After Reviewer accepts the current experiment, apply the "
@@ -464,7 +480,11 @@ def _planner_fragment(stage: str, project_root: Path | None) -> str:
                 "`<name>.pdf` and `<name>.png` written from it by `" + _PPTX_EXPORT_CLI + "`, "
                 "the PDF included by the manuscript, and `" + _FIGURE_LINT_CLI + "` reporting "
                 "no method-figure defect. A matplotlib or TeX-compiled diagram does not satisfy it; "
-                "re-issue the task, do not accept the substitute."
+                "re-issue the task, do not accept the substitute. Figures are their own Engineer "
+                "tasks with a look-and-repair loop (export, open the PNG, fix, export again), not a "
+                "line inside the writing task; a data-figure task is done when "
+                "`paper/figures/src/<stem>/facts.json` sits beside each export and the lint names "
+                "no hand-drawing."
                 if stage in {"paper", "review"}
                 else ""
             ),
@@ -538,16 +558,16 @@ def _engineer_figure_block(stage: str, operation: str) -> str:
         return ""
     return (
         "## Data figures\n"
-        "Draw data figures through the shared paper_chart_style helper (vector PDF, "
-        "TrueType fonts, colorblind palette, ours highlighted, sized for the float), or "
-        "through the ECharts route of the same skill (echarts_figure.py, browser-rendered "
-        "vector); one route per paper. "
-        "Show uncertainty wherever runs were repeated, keep legends clear of titles "
-        "and data at final size, and never substitute a sentinel value for zero or a "
+        "Pass the data to the paper_charts helper (bars/lines/dots/grid/save from "
+        "engineer/paper-chart-styling.md): the script names series and per-seed rows, the "
+        "helper draws (ours emphasised, repeats as error bars, bars from zero, one legend "
+        "outside, PDF + PNG + facts.json), or use the ECharts route of the same skill; one "
+        "route per paper. Never substitute a sentinel value for zero or a "
         "missing point on a log axis. The method figure is composed only through "
         "PPT Master (Method D; Method B fallback): author `paper/figures/<name>.pptx`, "
         "then `" + _PPTX_EXPORT_CLI + "` writes `<name>.pdf` and `<name>.png` from it "
-        "(no Office needed); matplotlib patches and TeX-compiled drawings are not a route for it. "
+        "(no Office needed; the scripts' directory is named under Environment in the task "
+        "brief); matplotlib patches and TeX-compiled drawings are not a route for it. "
         "`" + _FIGURE_LINT_CLI + "` reports font, raster, missing-file and method-figure "
         "defects; fix them before inspecting the export at final size."
     )
@@ -607,7 +627,9 @@ def _reviewer_figure_block(stage: str, scope: str) -> str:
             "substitutions, and a method figure that shows the mechanism rather than "
             "formula boxes; open `paper/figures/<name>.png`, the exporter's render at "
             "manuscript width, and read it as a reader would: bullet lists in three boxes "
-            "are not a mechanism. `" + _FIGURE_LINT_CLI + "` lists font, raster, "
+            "are not a mechanism. `paper/figures/src/<name>/facts.json` says what a data "
+            "figure encodes (repeats per series, axis origin, legend placement). `"
+            + _FIGURE_LINT_CLI + "` lists font, raster, hand-drawing, "
             "missing-file and method-figure defects to require as repairs. A method "
             "or architecture figure exported by matplotlib or TeX, or without a native PPT "
             "source of the same stem under paper/, is a required repair (return "
@@ -820,6 +842,30 @@ def _reviewer_fragment(
         )
         if block
     )
+
+
+def _attainment_block_for_planner(stage: str, project_root: Path | None) -> str:
+    """The Engineer's per-clause statement with host-read values, for the stage decision."""
+    if project_root is None or stage not in {"experiment", "paper"}:
+        return ""
+    try:
+        from .method_card import derive_method_card, render_claim_attainment
+
+        card = derive_method_card(Path(project_root))
+        lines = render_claim_attainment(card)
+        has_results = any(entry.get("files") for entry in card.get("results_footprint") or [])
+    except Exception:  # noqa: BLE001 - derived context must never break a prompt
+        return ""
+    if lines:
+        return "## Claim attainment\n" + "\n".join(lines)
+    if has_results:
+        return (
+            "## Claim attainment\n"
+            "Results exist but no claim attainment statement (.argus/claim_attainment.json): "
+            "Experiment stays open, and the next task states which clauses the numbers meet "
+            "(met / not met / partial / untested, with the file and field for each)."
+        )
+    return ""
 
 
 def _derived_method_card_for_reviewer(stage: str, project_root: Path | None) -> str:

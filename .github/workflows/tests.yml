@@ -1,16 +1,12 @@
 name: tests
 
-# One check on every push and pull request: the Linux full suite (ruff, the
-# mypy type gate against the change's base, then the whole pytest suite).
-# Linux is the development platform and this job is the one that decides
-# whether a change is green.
+# Python lint/tests on Linux and the TypeScript runtime on all supported hosts.
+# The TypeScript job also checks the existing frontend contract consumers.
 #
-# The platform-portability, frontend and Windows desktop-package checks that
-# used to run alongside it are kept verbatim in extended.yml and run only on
-# demand (workflow_dispatch) -- before a release, or when a change touches the
-# chat bridges, the pairing/QR path, the cockpits or the Tauri host. They were
-# moved out to keep the per-push signal to a single job and to stop paying
-# macOS/Windows runner minutes on every commit.
+# Everything else -- the mypy type gate, the platform-portability, frontend
+# and Windows desktop-package checks -- live in extended.yml and run only on
+# demand (workflow_dispatch): before a release, or when a change touches the
+# chat bridges, the pairing/QR path, the cockpits or the Tauri host.
 
 on:
   push:
@@ -24,12 +20,13 @@ concurrency:
 
 jobs:
   linux:
-    name: linux · full suite
+    name: linux · lint + tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
+          node-version: '22.12.0'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -44,18 +41,29 @@ jobs:
           python -m pip install -e '.[dev,qr,trial]'
       - name: Lint
         run: python -m ruff check argus argus_skill tests
-      - name: Reject new Python type diagnostics
-        env:
-          TYPECHECK_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: >-
-          python -m argus.release_tools.typecheck_gate
-          --base "$TYPECHECK_BASE" --output-dir "$RUNNER_TEMP/typecheck"
-      - name: Preserve Python type diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-typecheck
-          path: ${{ runner.temp }}/typecheck
-          if-no-files-found: ignore
       - name: Test
-        run: python -m pytest -q
+        run: python -m pytest -q -n auto
+
+  typescript:
+    name: typescript · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Check existing frontend consumers
+        if: runner.os == 'Linux'
+        run: |
+          npm --prefix frontend/web ci
+          npm --prefix frontend/web run typecheck
+          npm --prefix frontend/tui ci
+          npm --prefix frontend/tui run typecheck
+          node --import tsx --test frontend/tui/test/protocol.test.ts

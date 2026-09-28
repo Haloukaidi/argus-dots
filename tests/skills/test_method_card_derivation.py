@@ -585,3 +585,127 @@ def test_random_input_measurements_and_fast_results_are_dated(tmp_path: Path) ->
     assert "src/eval/run_model_eval.py:3 evaluate_retrieval_at_scale — used from src/eval/run_model_eval.py:14; builds inputs with torch.randn" in packet
     assert "- results/model_eval_summary.json was written 57 s after the last edit to src/eval/run_model_eval.py" in packet
     assert "init_weights" not in packet and "load_wikitext" not in packet
+
+
+def test_claim_attainment_shows_the_engineers_words_beside_the_hosts_values(tmp_path: Path) -> None:
+    # One project reported "+22 pp over KIVI" for a claim that asked for 96% of
+    # BF16 and got 35%. Per clause, the Engineer says met or not and points at
+    # the number; the host reads the pointed field and prints it beside the words.
+    import json
+
+    root = tmp_path / "proj"
+    (root / "results").mkdir(parents=True)
+    (root / ".argus").mkdir()
+    (root / "METHOD.md").write_text("# RotKV\n\nRotKV keeps 96% of BF16 retrieval.\n", encoding="utf-8")
+    (root / "results" / "ruler.json").write_text(
+        json.dumps({"bf16": {"acc": 1.0}, "rotkv": {"acc": 0.3458}, "runs": [{"acc": 0.9}]}), encoding="utf-8"
+    )
+    (root / ".argus" / "claim_attainment.json").write_text(
+        json.dumps(
+            {
+                "clauses": [
+                    {"clause": "preserve >96% of BF16 retrieval", "obtained": "34.6% of BF16", "met": "no",
+                     "source": {"path": "results/ruler.json", "field": "rotkv.acc"}},
+                    {"clause": "first run above 0.8", "obtained": "0.9", "met": "yes",
+                     "source": {"path": "results/ruler.json", "field": "runs.0.acc"}},
+                    {"clause": "beat KIVI by 25 pp", "obtained": "+22 pp", "met": "partial",
+                     "source": {"path": "results/ruler.json", "field": "comparison.gain"}},
+                    {"clause": "1.8x throughput", "obtained": "not measured", "met": "untested",
+                     "source": {"path": "results/profile.json", "field": "speedup"}},
+                    {"clause": "reads elsewhere", "obtained": "x", "met": "yes",
+                     "source": {"path": "/etc/hostname", "field": ""}},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    card = derive_method_card(root)
+    entries = card["claim_attainment"]
+
+    assert [e["met"] for e in entries] == ["not met", "met", "partial", "untested", "met"]
+    assert [e["pointer"] for e in entries] == ["ok", "ok", "no field", "no file", "outside workspace"]
+    assert entries[0]["value"] == "0.3458" and entries[1]["value"] == "0.9"
+
+    packet = render_for_reviewer(root)
+    assert "Claim attainment (the Engineer's statement per clause of the claim" in packet
+    assert '- [not met] preserve >96% of BF16 retrieval — Engineer: "34.6% of BF16"; host reads results/ruler.json rotkv.acc = 0.3458' in packet
+    assert "- [partial] beat KIVI by 25 pp — Engineer: \"+22 pp\"; pointer no field: results/ruler.json comparison.gain" in packet
+    assert "pointer outside workspace: /etc/hostname" in packet
+    assert packet.index("Claim attainment") < packet.index("Run reality") if "Run reality" in packet else True
+
+
+def test_results_without_an_attainment_statement_are_named_as_such(tmp_path: Path) -> None:
+    root = tmp_path / "proj"
+    (root / "results").mkdir(parents=True)
+    (root / "METHOD.md").write_text("# M\n\nM does X.\n", encoding="utf-8")
+    (root / "results" / "summary.json").write_text("{}", encoding="utf-8")
+
+    packet = render_for_reviewer(root)
+
+    assert "No claim attainment statement (.argus/claim_attainment.json): results exist but the Engineer has not said which clauses of the claim they meet." in packet
+
+
+def test_result_tables_read_per_method_numbers_and_name_metrics_that_separate_nothing(tmp_path: Path) -> None:
+    from argus.verticals.research import method_card as mc
+
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "run.py").write_text("print(1)\n", encoding="utf-8")
+    results = tmp_path / "results"
+    results.mkdir()
+    (results / "pilot.json").write_text(json.dumps({
+        "metadata": {"context_length": 8192, "seeds": [1, 2, 3], "budget_ratio": 0.2},
+        "full_cache": {"ppl": 2.4505, "niah_accuracy": 1.0, "eval_time_seconds": 34.1},
+        "snapkv": {"ppl": 2.4634, "niah_accuracy": 1.0, "eval_time_seconds": 37.0},
+        "ours": {"ppl": 2.5088, "niah_accuracy": 1.0, "eval_time_seconds": 37.5},
+    }), encoding="utf-8")
+    tables = mc.result_tables(tmp_path)
+    assert len(tables) == 1 and tables[0]["methods"] == ["full_cache", "snapkv", "ours"]
+    assert tables[0]["metrics"]["ppl"] == {"full_cache": 2.4505, "snapkv": 2.4634, "ours": 2.5088}
+    assert tables[0]["no_separation"] == ["niah_accuracy"]
+    lines = mc.render_result_tables({"result_tables": tables})
+    assert lines[0] == "Numbers in the newest result files, per method:"
+    assert "ppl: full_cache 2.4505, snapkv 2.4634, ours 2.5088" in lines[1]
+    assert "niah_accuracy: all 3 methods 1 (separates nothing)" in lines[1]
+    (results / "notes.json").write_text(json.dumps({"seed": 1, "note": "x"}), encoding="utf-8")
+    assert all(t["file"] != "results/notes.json" for t in mc.result_tables(tmp_path))
+
+
+def test_statement_clauses_are_held_against_the_cards_falsification_conditions(tmp_path: Path) -> None:
+    from argus.verticals.research import method_card as mc
+
+    card = dict(mc._empty_card()) if hasattr(mc, "_empty_card") else {}
+    card["falsifiers"] = (
+        "The thesis is falsified if:\n"
+        "1. Under a 20% KV cache budget on the 8B model at 32K context, the method fails to outperform "
+        "VATP and RoCo by at least 3.0 points on average LongBench score, or\n"
+        "2. NIAH retrieval accuracy drops below 90% in the middle context depths (30%--70%), or\n"
+        "3. The runtime overhead reduces decoding throughput by more than 5% compared to attention-only eviction.\n"
+    )
+    assert len(mc.falsifier_items(card)) == 3
+    assert mc.falsifier_items(card)[0].startswith("Under a 20% KV cache budget") and not mc.falsifier_items(card)[0].endswith("or")
+    card["claim_attainment"] = [
+        {"clause": "reducing KV cache memory by 75%--80%", "obtained": "80% reduction at rho 0.2", "met": "met",
+         "source": "results/bench.json", "field": "runs.ours_budget_20.budget_ratio", "pointer": "ok", "value": 0.2, "age_minutes": 3},
+        {"clause": "NIAH retrieval accuracy stays above 90% in the middle depths (30%--70%)", "obtained": "100%", "met": "met",
+         "source": "results/bench.json", "field": "runs.ours_budget_20.niah_mid_depth_accuracy", "pointer": "ok", "value": 1.0, "age_minutes": 3},
+    ]
+    against = mc.attainment_against_falsifiers(card)
+    assert against["restated"] == [0]
+    assert len(against["unaddressed"]) == 2 and against["unaddressed"][0].startswith("Under a 20% KV cache budget")
+    lines = mc.render_claim_attainment(card)
+    assert "a configuration value, not a measurement" in lines[1]
+    assert "[restated: this clause is not among METHOD.md's falsification conditions" in lines[1]
+    assert "[restated" not in lines[2]
+    assert any(line.startswith("Falsification conditions in METHOD.md the statement does not address") for line in lines)
+    assert sum(1 for line in lines if line.startswith("- Under a 20%") or line.startswith("- The runtime overhead")) == 2
+
+
+def test_without_a_falsification_list_the_statement_is_shown_as_is(tmp_path: Path) -> None:
+    from argus.verticals.research import method_card as mc
+
+    card = {"falsifiers": "", "claim_attainment": [
+        {"clause": "x", "obtained": "", "met": "met", "source": "r.json", "field": "acc", "pointer": "ok", "value": 1, "age_minutes": None}
+    ]}
+    lines = mc.render_claim_attainment(card)
+    assert len(lines) == 2 and "[restated" not in lines[1]

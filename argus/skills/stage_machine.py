@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from ..core.pipeline_state import read_pipeline_state, write_pipeline_state
 
@@ -108,6 +108,25 @@ def completion_contract_fingerprint(
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(rendered).hexdigest()
+
+
+def _current_manager_intent_binding(project_root: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(
+            (project_root / "manager-handoff.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    intent_id = str(payload.get("intent_id") or "").strip()
+    objective_sha256 = str(payload.get("objective_sha256") or "").strip()
+    if not intent_id or not objective_sha256:
+        return {}
+    return {
+        "completion_intent_id": intent_id,
+        "completion_objective_sha256": objective_sha256,
+    }
 
 
 def _normalize_stage(stage: str | None) -> str:
@@ -410,6 +429,7 @@ def _set_stage(
             # code I am running?" — record the answer instead of making the next
             # operator reconstruct it from process archaeology.
             prev_record["completion_contract_source"] = str(framework_source_root())
+        prev_record.update(_current_manager_intent_binding(root))
         snapshot_root = Path(evidence_root) if evidence_root is not None else root
         try:
             from ..core.manuscript_snapshot import manuscript_snapshot

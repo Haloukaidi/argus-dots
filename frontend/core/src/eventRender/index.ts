@@ -594,6 +594,7 @@ export function renderEvent(event: TypedArgusEvent, context: RenderContext): Ren
     case 'life.planner.dependency_dropped': case 'life.planner.parallel_dropped':
     case 'life.engineer.backend_resolved': case 'life.reviewer.backend_resolved': case 'life.curator.backend_resolved':
     case 'life.runtime_failure.circuit_opened': case 'life.runtime_failure.circuit_blocked': case 'life.runtime_failure.canary_passed':
+    case 'life.runtime.incident.detected': case 'life.runtime.incident.recovered': case 'life.runtime.incident.escalated':
     case 'life.plan.revision.proposed': case 'life.plan.revision.rejected': case 'life.plan.revision.committed': case 'life.plan.node.superseded':
     case 'life.lifecycle.transition': case 'life.inbox.drained':
     case 'life.operator_question.pending': case 'life.operator_question.answered':
@@ -606,6 +607,7 @@ export function renderEvent(event: TypedArgusEvent, context: RenderContext): Ren
     case 'wiki.initialized': case 'wiki.hook.warning': case 'wiki.created': case 'wiki.updated':
     case 'wiki.retired': case 'wiki.promotion.promoted': case 'wiki.promotion.demoted':
     case 'wiki.retired.compressed': case 'wiki.evolution.completed':
+    case 'knowledge.learned': case 'knowledge.recalled':
     // Bookkeeping a reader of the feed does not need: retries, receipts, and
     // state the sidebar or a later message already shows.
     case 'life.planner.verdict.discarded': case 'life.manager.feedback.unresolved':

@@ -1,6 +1,7 @@
 """Deterministic figure checks: the defects a script can catch before a reader does."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -268,3 +269,67 @@ def test_a_pdf_beside_the_pptx_must_carry_an_export_producer(tmp_path: Path) -> 
         issues = mod.figure_lint_issues(tmp_path)
         flagged = any("was not exported from `overview.pptx`" in i and "pptx_export.py --pptx paper/figures/overview.pptx" in i for i in issues)
         assert flagged is expected, (producer, issues)
+
+
+def test_hand_drawing_choices_are_named_as_facts(tmp_path: Path) -> None:
+    _paper(tmp_path, "no figures")
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    (scripts / "by_hand.py").write_text(
+        "from paper_chart_style import set_pub_style\nimport matplotlib.pyplot as plt\n"
+        "PALETTE = {'a': '#0173B2', 'b': '#DE8F05', 'c': '#029E73'}\n"
+        "fig, ax = plt.subplots()\nax.bar([0, 1], [90, 91], color=PALETTE['a'])\n"
+        "ax.set_ylim(80, 95)\nax.legend(frameon=True, facecolor='white', loc='upper right')\n"
+        "ax.set_title('Results')\nfig.savefig('x.pdf')\n",
+        encoding="utf-8",
+    )
+    (scripts / "through_helper.py").write_text(
+        "from paper_charts import bars, save\nimport matplotlib.pyplot as plt\n"
+        "fig, ax = bars(['a'], {'x': [1.0]})\nfig.savefig('y.pdf')\n",
+        encoding="utf-8",
+    )
+    issues = mod.figure_lint_issues(tmp_path)
+    assert len(issues) == 1
+    issue = issues[0]
+    assert "`scripts/by_hand.py` draws by hand beside the paper_chart_style theme" in issue
+    assert "sets 3 colours by hand" in issue
+    assert "pins a framed legend inside the axes" in issue
+    assert "starts a bar axis at 80 instead of zero" in issue
+    assert "writes an in-plot title" in issue
+    assert "through_helper" not in " ".join(issues)
+
+
+def test_facts_recorded_by_the_helper_are_reported(tmp_path: Path) -> None:
+    _paper(tmp_path, "no figures")
+    src = tmp_path / "paper" / "figures" / "src" / "cut"
+    src.mkdir(parents=True)
+    (src / "facts.json").write_text(
+        json.dumps(
+            {
+                "helper": "paper_charts",
+                "figure": "cut",
+                "panels": [
+                    {"kind": "bars", "axis_from_zero": False, "truncated_reason": "all above 80", "legend": "inside"},
+                    {"kind": "lines", "axis_from_zero": False, "legend": "above"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    issues = mod.figure_lint_issues(tmp_path)
+    assert any("figure `cut` has bars that do not start at zero (reason recorded: all above 80)" in i for i in issues)
+    assert any("figure `cut` places its legend inside the axes" in i for i in issues)
+    assert len(issues) == 2  # a line chart's axis need not start at zero
+
+
+def test_the_helper_files_themselves_are_not_linted_as_figure_scripts(tmp_path: Path) -> None:
+    _paper(tmp_path, "no figures")
+    analysis = tmp_path / "paper" / "analysis"
+    analysis.mkdir(parents=True)
+    demo = (
+        "import matplotlib.pyplot as plt\nCOLORS = ['#0173B2', '#DE8F05', '#029E73']\n"
+        "ax.legend(frameon=True, loc='upper right')\nax.set_title('before')\nfig.savefig('x.png')\n"
+    )
+    (analysis / "paper_chart_style.py").write_text(demo, encoding="utf-8")
+    (analysis / "paper_charts.py").write_text(demo, encoding="utf-8")
+    assert mod.figure_lint_issues(tmp_path) == ()

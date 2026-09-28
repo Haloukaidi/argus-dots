@@ -117,6 +117,7 @@ KNOBS: tuple[Knob, ...] = (
     Knob("ARGUS_SKILL_MODEL", "auto", "shared model override; auto uses the selected backend's default", "models", cockpit=True),
     Knob("ARGUS_SKILL_MANAGER_MODEL", "auto", "model for the Manager; auto uses the selected backend's default", "models", cockpit=True),
     Knob("ARGUS_SKILL_ENGINEER_MODEL", "auto", "model for the L1 engineer; auto uses the selected backend's default", "models", cockpit=True),
+    Knob("ARGUS_SKILL_FIGURE_MODEL", "auto", "model for figure tasks (the method figure through PPT Master, data figures); auto follows the engineer model", "models", cockpit=True),
     Knob("ARGUS_SKILL_MAP_MODEL", "auto", "map summaries model; auto follows the research engineer model", "models", cockpit=True),
     Knob("ARGUS_SKILL_MAP_REASONING_EFFORT", "auto", "map summaries reasoning effort; auto follows the research engineer", "reasoning", cockpit=True),
     Knob("ARGUS_SKILL_MAP_REVIEW_REASONING_EFFORT", "auto", "map teaching review reasoning effort; auto follows map summaries", "reasoning", cockpit=True),
@@ -170,6 +171,8 @@ KNOBS: tuple[Knob, ...] = (
         cockpit=True,
     ),
     Knob("ARGUS_SKILL_MAX_ROUNDS", "0", "optional engineer-round cap per mission; disabled by default", "mission"),
+    Knob("ARGUS_SKILL_REVIEWER_READ_DIRS", "[]", "JSON array of absolute input directories for scoped Reviewer reads", "mission"),
+    Knob("ARGUS_SKILL_REVIEWER_VALIDATION_IMAGE", "(unset)", "local Docker image for opt-in read-only Reviewer command checks; empty disables", "mission"),
     Knob("ARGUS_SKILL_ROUND_CHECKPOINT", "off", "record private git refs for Reviewer-recommended round checkpoints", "mission"),
     Knob("ARGUS_RESEARCH_SPEC_CHECKS", "on", "research vertical: after each Engineer round the host runs the project's own tests/spec (and tests/parity) suite with zero model tokens and shows the outcome to the Reviewer and next Engineer round as evidence, never as a gate; off disables", "mission"),
     Knob("ARGUS_RESEARCH_SPEC_CHECK_TIMEOUT_SECONDS", "600", "research vertical: wall-clock limit for one host-run spec check (30-3600 seconds); the whole process group is killed and the timeout reported as evidence", "mission"),
@@ -197,6 +200,12 @@ KNOBS: tuple[Knob, ...] = (
     Knob("ARGUS_SKILL_METRICS_MAX_ARCHIVES", "14", "maximum number of rotated metrics archives to retain", "telemetry"),
     Knob("ARGUS_SKILL_AGENT_IO_MODE", "full", "agent I/O persistence: full saves prompt and every raw stream frame exactly once plus a summary; compact stores summary only", "telemetry"),
     Knob("ARGUS_SKILL_SAFE_MODE", "off", "extra-conservative guardrails", "lifecycle", cockpit=True),
+    # --- learning (what Argus keeps from missions and answers) ---
+    Knob("ARGUS_SKILL_REFLECTION", "1", "after each mission, look back once and keep at most one lesson page, two fact pages and one procedure when something durable was learned", "learning", cockpit=True),
+    Knob("ARGUS_SKILL_REFLECTION_MODEL", "auto", "model for the post-mission reflection and answer learning; auto uses the cheap front-door model", "models", cockpit=True),
+    Knob("ARGUS_SKILL_ANSWER_LEARNING", "1", "after a researched chat answer, keep a survey page with its sources and a date to re-verify", "learning"),
+    Knob("ARGUS_SKILL_CONSOLIDATE_INTERVAL_S", "3600", "seconds between passes that rebuild a vertical's shared knowledge index and recompile its principles from repeated lessons", "learning"),
+    Knob("ARGUS_SKILL_RECALL_SIBLING_WIKIS", "1", "let knowledge recall read the shared vertical tier and other projects' Wikis on this host; ignored on multi-tenant hosts", "learning"),
     Knob("ARGUS_SKILL_ENGINEER_SANDBOX", "off", "codex sandbox for builder roles (engineer/reviewer/planner/subagent): set 'workspace-write' to confine writes to the project workdir + a writable allowlist (excludes ~/.argus-skill, the package, ~/.codex) and scrub VCS creds, instead of --dangerously-bypass. Default OFF — verify required network, cache, and remote accelerator access before enabling", "lifecycle"),
     Knob("ARGUS_SKILL_MEASURED_MODE", "off", "measured-mode evaluation gating", "lifecycle"),
     Knob("ARGUS_SKILL_SKIP_VAULT_PREFLIGHT", "off", "bypass the capability-vault preflight on daemon start", "lifecycle"),
@@ -261,6 +270,9 @@ _TOGGLE_KNOBS = frozenset(
         "ARGUS_SKILL_SHOW_REASONING",
         "ARGUS_SKILL_ENABLE_TELEGRAM",
         "ARGUS_SKILL_ENABLE_FEISHU",
+        "ARGUS_SKILL_REFLECTION",
+        "ARGUS_SKILL_ANSWER_LEARNING",
+        "ARGUS_SKILL_RECALL_SIBLING_WIKIS",
     }
 )
 _NON_NEGATIVE_INT_KNOBS = frozenset(
@@ -922,6 +934,34 @@ def backend_uses_openai_catalog(
 
 #: Knob values that mean "decide for me" rather than naming a model.
 _AUTO_MODEL_SENTINELS = frozenset({"", "auto", "inherit", "default"})
+
+
+def resolve_task_route_model(
+    route: str,
+    *,
+    fallback: str,
+    env: Mapping[str, str] | None = None,
+) -> str:
+    """The model for one kind of task when the operator named one; else ``fallback``.
+
+    A vertical may say that a task belongs to a route (the research vertical
+    routes figure work to ``figure``). The route's knob is
+    ``ARGUS_SKILL_<ROUTE>_MODEL``; an unknown route or an automatic value
+    (``auto``, ``inherit``, empty) keeps the engineer's model, so nothing
+    changes for operators who never set it. Environment outranks the
+    persisted cockpit value, as for every other model knob.
+    """
+    cleaned = str(route or "").strip()
+    name = f"ARGUS_SKILL_{cleaned.upper()}_MODEL"
+    if not cleaned or name not in {knob.name for knob in KNOBS}:
+        return fallback
+    env_map = env if env is not None else os.environ
+    value = str(env_map.get(name, "") or "").strip()
+    if not value:
+        from .knob_store import read_persisted_knobs
+
+        value = str(read_persisted_knobs().get(name, "") or "").strip()
+    return fallback if value.lower() in _AUTO_MODEL_SENTINELS else value
 
 
 def resolve_cheap_route_model(

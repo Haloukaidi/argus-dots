@@ -136,9 +136,9 @@ v3 在 v2 的交接修复之上加了两件事:主机从树上派生的"Run real
    Reviewer 提示只加一句:一分钟的运行或随机 key 不是协议里的评测,不管结果文件上写了什么模型。仍然不是门:一个物理仿真器就该用随机初值,由 Reviewer 判断。
 2. *形式合规的 pptx。* v3 的 Engineer 查了 `ppt_master status`(ready)、`which soffice`(没有),然后用 TikZ 编译了框架图,再用 python-pptx 造了一个同名 pptx。文字相同、形状数在阈值边缘,原有的形状/路径比对没抓到。v3.5 加一条不需要阈值的事实:方法图 PDF 的 producer 是 pdfTeX/XeTeX/matplotlib 等——没有任何 PPTX 导出链会产出这些 producer,所以旁边的 pptx 只是陪衬。v3 的树上现在报 `was produced by pdfTeX-1.40.25, which no PPTX export chain produces`。
 
-**v3 暴露、还没修的。** 见 4.5 前三条。
+**v3 暴露、还没修的。** 见 4.7 前三条。
 
-### 4.6 重画演示:GPT-6 Astra 走路线 D/B(23:53–00:07 PDT)
+### 4.5 重画演示:GPT-6 Astra 走路线 D/B(23:53–00:07 PDT)
 
 用户要求用 GPT-6 Astra 重画 v3 论文的 Figure 1 并跑完整流程。做法:独立进程调用网页前门同一入口 `manager_message`(`argus-eval-20260916/redraw_astra/run_redraw.py`),只在该进程环境里把 `ARGUS_SKILL_ENGINEER_MODEL` 设为 `gpt-6-astra`,共享实例与 v4 对照的模型不受影响;Manager 前门分类后走 self-implement 路线。
 
@@ -152,7 +152,37 @@ v3 在 v2 的交接修复之上加了两件事:主机从树上派生的"Run real
 
 对比 v3 自己产出的三块项目符号框(同一工作区、gemini-3.8-flash、并入写全文的任务、6 分钟):差别来自三件事——图单独成任务、导出链可执行、模型能看自己渲染的 PNG 并返修。产物在 `argus-eval-20260916/figures/v3-astra/`。
 
-### 4.5 仍然存在的问题
+### 4.6 v4(v3.5/v3.6 = 8ac7a1a01…2254a98c0;对照项目 s-bed96846,23:13–03:19 PDT,已完成)
+
+v4 是第一个从头到尾跑在"Run reality 带结果时间戳与随机输入函数、方法图导出链可用"版本上的对照。题目再次选中 Decoupled-RotKV(同 v3),参考克隆 kivi@876b4d2。
+
+| 指标 | 基线 | v1 | v2 | v3 | v4 |
+|---|---|---|---|---|---|
+| 总时长 | 2.97 h | 2.85 h | 0.92 h | 3.43 h | 4.12 h |
+| 调用 / 费用(state 口径) | 140 / $12.02 | 50 / $5.94 | 68 / $6.72 | 54 / $7.79 | 91 / $15.83 |
+| 任务 / 评审 | 8 / 10(continue 4) | 6 / 6 | — / 6 | 6 / 6(continue 0) | 10 / 12(continue 2,均因后台任务未结束) |
+| 组件 proven / spec 测试 | 0 / 0 | 4 / 14 | 3 / 9 | 3+1 partial / 9 | 4 / 9 |
+| 真实模型 | 否 | 否 | 否 | 2×7B 各 1 段 2048 token 困惑度 | SmolLM2-360M(正对照)、TinyLlama-1.1B(RULER/困惑度/LongBench/profiling)、Llama-3-8B-Web(RULER 4k–32k、困惑度);claim 写的 Llama-3.1-8B 未用 |
+| 主打数字 | 合成 | 真实数据 | 4.7 分钟"基准" | torch.randn 上的机制扫描 | 8B 上的注意力头级 needle 命中率(不是生成式 RULER):BF16 1.00 / KIVI 0.12 / RotKV 0.35 / RTN INT4 0.45 |
+| claim 处置 | — | — | — | 接受 | **接受了 claim 漂移**:claim 要求保留 BF16 的 >96%、匹敌 4-bit;实测 35%、低于 4-bit RTN;Reviewer 02:54 按 "+22.46pp over KIVI" 判 done,Planner 03:01 "decisively establishes superiority",论文按实数写但叙事仍是优越 |
+| METHOD.md Deviations | 无 | — | "none" | 写了合成激活,漏了合成检索 | "none"(模型三次替换、PG-19/LongBench 缩水均未写) |
+| 方法图 | matplotlib | matplotlib | matplotlib | TikZ + 陪衬 pptx | **没有**:论文只有 4 张 matplotlib 数据图,paper 阶段 8 分钟 |
+| 数据图 | 6 缺陷 | 0 | 0 | 0(手写颜色、截轴、轴内图例) | 1 缺陷(绕过助手);图内标题、带框图例压线、手写配色 |
+| 评审结论 | accept 8/10 | accept | accept | Strong Accept | Accept (Poster/Oral), Confidence 5/5;REVIEW.md 承认"对 RTN INT4 仍有差距" |
+
+**v3.5 机制在 v4 里的表现。**
+- "结果文件距代码最后编辑 N s"在每个 Reviewer 包里都出现了(RULER 4.7 min、困惑度 21 s、LongBench 64 s→10.2 min、profiling 24 s、8B RULER 17.1 min),`build_ruler_prompt` 被正确列为合成(RULER 本就合成,协议点名)。这些事实到位了,但 Reviewer 没有一次因它们返修;两次 continue 都是"后台任务未结束"。
+- 正对照结果里的 "perplexity" 是 `ce_bf16 + attn_mae×1e-4` 取指数的公式值(783 / 516),Engineer 汇报只引了实测的余弦/MAE,Reviewer 没读脚本。后续困惑度改为真前向。
+- 独立代码评审(5 维度 + 反方验证,15 条确认、0 条推翻):残差取在 `[:16]` 即 HF 布局下**最高频**的 16 个坐标(方法卡说低频),knockout 测试同样埋在 `[:16]` 故全绿;正对照生成路径 `angles=None` 即单位阵,"RotKV 生成"其实没旋转;注意力分数漏掉 input_layernorm(MAE 四万的来源);探针里的 "KIVI" 无 group size、无全精度窗口;"胜出"靠 0.0002 的余弦差且比特预算不等。骨架(split 布局可交换、融合、cache 接入、代数 oracle 测试)是合格的,证据链不是。
+
+**v4 暴露、下一版要修的。**
+1. *claim 阈值不在 Reviewer 眼前。* claim 原文(>96%、匹敌 4-bit)只在 00:24、01:03 两包出现;决定性的 02:54 是 Reviewer 线程续轮,包里省了静态块。修法:包里常驻 claim 的数值阈值一行;主机从 results/*.json 摘各方法的顶层数字并排列出(bf16 1.00 / rotkv 0.35 / rtn4 0.45),续轮也保留这两样和"claim 固定"一句。
+2. *结果字段的来源。* Run reality 增加"results 里每个数值字段由脚本哪一行赋值",公式困惑度一眼可见。
+3. *替身识别再进一步。* 注意力头级命中率被命名为 RULER accuracy、方法卡的"低频通道"被实现成 `[:16]`——这两类需要懂领域的评审读代码,提示解决不了,评审模型水平问题;至少让 Reviewer 包里带上结果文件字段名与 METHOD.md 指标名的对照。
+4. *方法图缺席。* paper 阶段 8 分钟、没画方法图、Reviewer 没提。图要单独成任务(见 4.7)。
+5. *越界读取三次。* `/data/chenxi/...` 的 Llama-3-8B-Web 权重、基线与 v2 项目工作区的 .sty/.bib/main.tex、运行树源码。工作区边界要做。
+
+### 4.7 仍然存在的问题
 
 - **路线 D 在这台机器上从未走通过最后一步(v3.6 已补)。** 09-08 至今 6 张带 pptx 的方法图,PDF 的 producer 是 pdfTeX ×2、cairo ×2、Ghostscript ×1,没有一张从 pptx 导出;PPT Master 自己不导 PDF,机器上也没有 PowerPoint/LibreOffice,技能只写"从 pptx 导出"却没写用什么导。v3 的 Engineer 查到 `which soffice` 为空后,转而用 `inspect.getsource` 读了 figure_lint 的全部源码,照着阈值(150 段路径、20 个形状、60% 词重叠)做同名 pptx,并把另一个租户的 pptx 当"能过"的样本;6 分钟里跑了 8 次 lint。v3.6(e5ebccc34)加了导出步骤 `figure_spec_scripts/pptx_export.py --pptx paper/figures/<name>.pptx`:用 PPT Master 自带的 `pptx_to_svg.py` 读 pptx,浏览器渲染出 `<name>.pdf`(producer Skia/PDF)和按稿件宽度的 `<name>.png`,2.7 秒,不需要 Office;lint 对 pptx 旁 producer 不是导出链的 PDF 直接点名;Planner 验收、Engineer 路线、Reviewer 图段、阶段检查单都写了同一条命令。用它真导 v3 那个 pptx,得到的是三块无箭头的项目符号框(figures/v3/decoupled_rotkv_framework.pptx-true-export.png),渲染干净,构图空洞——构图问题要靠下一条。
 - **Reviewer 的看图是走过场。** v3 的 review 阶段 25 秒内读了 11 张整页 PNG,对文字被裁掉的框架图写 "cleanly illustrates",给 Strong Accept。整页缩略图上看不出图内裁切。v3.6 让导出器顺手产出 `<name>.png`,并在 Reviewer 的图段里写明"打开它,三个框里的项目符号不是机制";还没做的是把图单独立成任务(带设计、渲染、返修循环),以及主机把每张 `\includegraphics` 引用的图按稿件宽度渲染进评审包。
@@ -164,3 +194,69 @@ v3 在 v2 的交接修复之上加了两件事:主机从树上派生的"Run real
 - 自进化产出(项目 skill、决策记录)在 v1 里为零。本题不涉及训练基础设施选型,`# why` 与决策记录的触发条件也从未到达 Engineer(见 4.2);v2 之后再看。
 - 选题空间拥挤时"重生成一次"不够;重生成的路线应被要求换问题而不是换方法,或允许 Manager 在全否两次后向操作者提问。
 - 真实数据上"持平"的结果被论文写成 "matches or exceeds";这与 claim 的"2× 更少特征"并不等价,Reviewer 给了 accept(8/10)。固定 claim 的梯子在这里没有被走完——Planner 在合成对照成功后直接进入论文,没有按 4–5 级(规模与数据、基线公平性)继续迭代。
+
+### 4.8 v3.7 联合评审(11f25da63,03:59 部署;对照项目 v5 s-fb4716b7,03:59–12:35 PDT,已完成)
+
+v4 的 Reviewer 一轮读 105 个文件,其中 61 个是 Engineer 刚读过的,却没打开那个用公式算"困惑度"的脚本;它接受了 35% 对 96% 的 claim 漂移,因为恢复的评审轮次里没有阈值,只有 Engineer 的叙述。用户的口径:Reviewer 不该是独立评审,而是共享证据与工件的联合评审;不要机械,要智能。v3.7 改的是评审的输入,不是给它新工具:
+
+| 机制 | 内容 | 所在 |
+|---|---|---|
+| 声明达成表 | Engineer 每产出一个承载 claim 的数字,写 `.argus/claim_attainment.json`:每条子句一行——子句、得到的值、met(yes/no/partial/untested)、来源 {path, field}。主机顺着 path/field 去读文件里的真值,连同"写于 N 分钟前"、指针是否解析(ok / no file / no field / outside workspace)一起放进方法卡与评审包;没有这张表而 results/ 有文件,包里写一行"结果存在但 Engineer 没说满足哪条子句" | `method_card.claim_attainment`、`mission_brief` |
+| 主机回合日志 | 从 `events.jsonl` 汇总本轮 Engineer 做了什么:N 条命令、M 次读、K 次写、用时;最长的四条命令(以到下一动作的时间为上界);调用过的测试/评估;工作区之外碰过的路径。这是主机的记录,不是 Engineer 的自述 | `round_log.render_round_log`,由 `spec_checks` 注册为回合证据 |
+| 最弱环节评审 | 评审提示改为:先看声明达成表与主机日志,选一个最可能撑不住 claim 的环节,只读那里;标 not met / partial / untested 的子句是要迭代的负结果,不是可以收窄的 claim;已定的证据不再重读;最多问两个问题,每个都由一个文件或一个数字回答 | `prompt_policy` reviewer 块(≤340 词) |
+| Planner 阶段规则 | 读声明达成表再定阶段:有子句 not met / partial / untested 就保持 Experiment;拿碰巧通过的子句进论文是 claim 漂移,不论对基线赢了多少 | `prompt_policy` planner 块 |
+
+v5 要证明的事:达成表被写出且指针解析;评审包里出现主机日志;Reviewer 在有未满足子句时返 continue;Planner 不提前进 Paper;Reviewer 读文件次数远低于 v4 的 105。截至 05:05,v5 仍在 Idea 阶段(1 h,$4.7):第一代三条路线被各自的独立评审全部否掉后重开,第二代在跑;尚无可验证的评审包。结果见监控日志与后续小节。
+
+**v5 结果(03:59–12:35,8.66 h,$11.78;v4 4.12 h,$15.83;8 个任务,6 次评审全 done,5 次评审跳过)**
+
+| 要证明的事 | 结果 |
+|---|---|
+| 达成表被写出且指针解析 | 是,但只有一次:任务 3(Llama 基准)后 Engineer 写了 `.argus/claim_attainment.json`,4 条子句,指针全部解析到 `results/llama3_benchmark_eval.json` 的字段;Qwen(任务 4)与消融(任务 5)之后没有重写,表一直停在 Llama 版本 |
+| 评审包里出现主机日志 | 是:10 个评审包全部带"Engineer's actions this round (host log since …)";从任务 3 起都带"Claim attainment"行 |
+| Reviewer 读文件次数 | 每轮 3/3/8/11/7/6/8/7/12/10 次,全程 75 次(v4 一轮 105);评审中位 49 s |
+| Reviewer 在有未满足子句时返 continue | 没有检验到位:任务 3 的表把配置值(budget_ratio=0.2)和"PPL 上界"(SnapKV 更好)都标成 met,评审按表 done;e79ba72fb 之后主机会把陈述对照 METHOD.md 的证伪条件,未被陈述覆盖的条件写成 untested,但 v5 运行树没有这一版 |
+| Planner 不提前进 Paper | 否。11:10 判定"Llama/Qwen/LongBench/多深度检索/消融全部满足声明"转写稿;而两个模型上 SnapKV 都没有声明所说的"灾难性检索失败"(NIAH 全 1.0),Qwen 上我们的 NIAH 0.93 还低于 SnapKV。v4 的漂移是收窄阈值,v5 的漂移是无视前提没有复现 |
+
+Qwen-2.5-7B(rho=0.10/0.20/0.50):我们 PPL 3.10/2.967/2.979、NIAH 0.93/0.93/1.00、LongBench 8.82/9.84/9.63;SnapKV PPL 3.08/3.02/3.00、NIAH 1.0/1.0/1.0、LongBench 8.43/9.72/9.54。LongBench 略好、NIAH 略差、PPL 各有胜负——一个"没有灾难可消除"的结果,论文却按原声明写了。
+
+另外三件事:
+
+- **后台任务评审的系统性失败。**任务 4、5 都是 Engineer 把评测派成持久任务后结束回合;Reviewer 被要求评这一轮,却两次照抄 Engineer 的等待记号 `{"wait_for": …}` 而没写判定行,主机按"评审后端不可用 2/2"把任务记成 error(评测照跑,Planner 等它结束再开新任务)。修复 2c19d769b:评审包点名"你评的是派发,等待行是 Engineer 的";带正文、以等待记号收尾的评审读作"延后到该任务"(continue)。
+- **全盘 find。**实验阶段 1 次(`uv`,154 min,4.7 节),写稿阶段 6 次(`iclr*.sty`、`pptx_export.py`、`paper_chart_style.py`、`playwright`、`svg_to_pptx.py`、`figure_lint*`),每次到 10 分钟被常驻监视终止,合计约 1 h 空转。修复:任务简报环境段列出 torch 所在、PATH 上的工具(缺席即缺席)、技能脚本目录的绝对路径(79ba3bf7c)。
+- **预算。**08:44 全局日 token 上限(50M,主要是 v4 花掉的)打断一轮 Engineer,上限提到 200M 后继续。
+
+图件:`fig1_method` 走 PPT Master 路线 D(pptx → Chromium/Skia 的 PDF+PNG,`FIGURE_PROVENANCE.json` 记 `pptx_export.py`),内容对,但仍是三列胶囊的排版;`fig2`、`fig3` 是 matplotlib 手绘(运行树里还没有 paper_charts 助手):figure_lint 指出图例框在坐标区内、柱状纵轴从 50 起、图内标题。论文 12 页,同行评审阶段一轮通过。对比表 `argus-eval-20260916/snapshots/s-fb4716b7-final-vs-v4.md`、`-vs-baseline.md`;图与稿 `figures/v5/`。
+
+结论:联合评审把读文件次数压到 v4 的七成、成本降 26%,评审包里确实有了达成表与主机日志;但达成表只写了一次,Planner 仍按叙述转阶段。已在 dev、未在 v5 运行树的机制:陈述对照证伪条件(e79ba72fb)、每轮按方法列出最新结果文件里的数字(不依赖 Engineer 写表)、有结果无陈述 → continue。
+
+### 4.9 数据图:助手来画,不再由脚本决定好不好看(04:30–05:10 PDT)
+
+用户连问四次"为什么图这么丑"。答案分两半:方法图已由路线 D 与 Astra 演示解决(4.5);数据图的问题在绘制调用本身——v3/v4 的脚本自己写 PALETTE、把带框图例钉在数据上、`set_ylim(-2, 105)`、把多 seed 平均成一根没有误差线的柱、加图内标题。样式助手 `paper_chart_style` 只定主题,画什么、怎么画仍是脚本说了算,所以主题再好也救不了。
+
+- **`paper_charts` 助手**(`figure_spec_scripts/paper_charts.py`,与样式助手一起复制进 `paper/analysis/`):脚本只传数据与名字——`bars / lines / dots / grid + finish / save`。助手决定:我们的方法拿强调色、黑边或粗实线并置顶;基线取互异的色、标记与虚线(灰度可读);重复运行(列表的列表)自动画均值 ± 标准差的误差线或误差带并记录重复数;条形从零(截断必须给 `truncated_reason`,记入 facts);一个图例放在面板上方;2 的幂自动 log2 轴;log 轴上的零报错而不是画哨兵;点图标签自动避让、"better" 箭头放在轴外;无图内标题。`save` 写 PDF(TrueType)、稿件宽度的 PNG(给人看)、`paper/figures/src/<stem>/facts.json`(每个序列的重复数、轴起点、图例位置、缺失点)与来源记录。
+- **`figure_lint` 的新事实**:脚本仍手工做的决定(≥3 个手写颜色、钉住的框图例、`set_ylim` 从非零起的条形轴、图内标题),以及 facts 里记录的"条形轴不从零""图例在图内"。技能文档、论文手册、阶段说明、工程师/评审/规划者提示全部改为"把数据交给 paper_charts";规划者:每张图是独立任务,带"导出 → 看 PNG → 改 → 再导出"的返修循环。
+- **验证**:用 GPT-6 Astra 在 v3 项目里按新助手重画三张数据图(5.7 min,$2.17),三张都过关:perplexity_eval 双面板柱状(BF16 参照线在柱上方)、retrieval_depth_breakdown 与 retrieval_scaling 折线(我们的方法粗实线实心标记、基线空心)。facts 如实记 repeats=1——只有汇总单值,没有伪造误差线。Engineer 顺手改了助手副本四处(逐条件的参照线、参照线置于柱之上、共享 y 轴不裁切、基线空心标记),已上游化;lint 两处误报(把助手文件自身当手绘脚本;折线轴不从零也报)已修。前后对比:`argus-eval-20260916/figures/v3/` 对 `figures/v3-astra-data/`。
+- **图任务的模型路由**(`ARGUS_SKILL_FIGURE_MODEL`,cockpit 别名 `figure_model`):Astra 只负责需要"看图"的工作。研究垂域在自己的模块上暴露 `model_route_for_task(text)`:任务文本点名图的源、导出或工具(`.pptx`、`pptx_export`、`paper_charts`、`figures/src/<stem>/facts.json`)或说"画/重画 … figure",走 `figure` 路线;只是"把图放进论文"的写作任务不走。执行层在组装一次任务的循环配置时向垂域要路线,按环境 → cockpit 持久值的顺序解析 `ARGUS_SKILL_<ROUTE>_MODEL`;`auto`/未设保持工程师模型,不设就什么都不变。部署后把该旋钮设为能看图的模型,方法图任务就自动用它,其余任务不动。
+
+未做:范例图库(强论文数据图的构图样本)、Reviewer 侧看图(只读工具读 PNG 需要能看图的评审模型)。
+
+### 4.10 持续自进化:学到的东西有人写、有人读(09-17 09:30–12:40 PDT,f51f26c1f…7740bbdd9,已部署 8985)
+
+用户的问题:知识库与技能库真的在复用、真的在自进化吗?先审计实例(24 个项目、约 150 个任务)的账:实例范围内 0 个由代理写出的技能;10 页知识库(0.39 页/小时);Reviewer 读过 0 个技能页、0 个知识页;跨项目复用 2 例(其中 1 例是队友主动);知识召回 `recalled_paths` 174/174 为空(召回根只有本项目的 Wiki);技能提升 39/39 跳过("no project skill delta");Planner 与 Reviewer 的提示里没有任何"写下来"的指令;知识库提升在运行实例上没有接线。答案是"没有":有零星的写,没有读,也没有反思。
+
+今晚接上的闭环。主机负责一切确定的部分(能写到哪、前后快照、front matter 检查、INDEX 行、事件、日志、收据),模型只负责"什么值得记":
+
+| 环节 | 机制 |
+|---|---|
+| 读回来 | 知识召回读四层:本项目 Wiki → 垂域共享层(`<home>/wiki/_shared_verticals/<vertical>/pages`,经验教训优先)→ 该垂域的原则 → 全局层 → 同垂域其他项目的 Wiki(多租户主机上关闭)。每条带页面种类、来源、日期。每次召回记 `knowledge.recalled` 事件与日志,于是"复用 N 次"可数 |
+| 任务后反思 | 每个跑满一分钟、至少一轮的任务结束后,一次小模型调用(reasoning low;写权限限定在垂域共享层、项目 Wiki、项目技能层),最多写:一页经验教训到垂域层、两页事实到项目 Wiki(标 `audience: vertical` 的在评审 done 后提升到共享层)、一条流程到项目技能层。"没学到就不写"是明写的默认。收据 `.argus/REFLECTED.json` 保证一个任务只反思一次 |
+| 问答后学习 | 聊天里做过调研的回答(至少两个 URL,或 600 字以上的问句回答)在回复线程外写一页综述到共享层:来源、结论、复核日期(90 天);同名页只追加带日期的"更新"段 |
+| 巩固 | 每个垂域每小时一次(守护进程两次 drain 之间):重建 INDEX.md;有 3 页以上教训时编成 `principles.md`,每条原则必须引用至少两页存在的教训,否则回滚上一版;原则注入 Engineer、Reviewer、Planner 的提示 |
+| 看得见 | `<home>/knowledge-journal.jsonl`;事件 `knowledge.learned` / `knowledge.recalled`;`/api/wiki` 每页带 kind、source、reuse_count,库带 principles;`/api/knowledge/feed`;知识库覆盖层默认"学习动态"页,另有经验教训、原则、全局、垂直领域、项目页,卡片带种类徽章与"复用 N 次";侧栏"刚学到"行 |
+
+开关:`ARGUS_SKILL_REFLECTION`(默认开)、`ARGUS_SKILL_REFLECTION_MODEL`(auto = 前门小模型)、`ARGUS_SKILL_ANSWER_LEARNING`、`ARGUS_SKILL_CONSOLIDATE_INTERVAL_S`(3600)、`ARGUS_SKILL_RECALL_SIBLING_WIKIS`。
+
+验证:ruff、事件生成器、tsc、vitest 1227、后端全量(除本机 venv 装了社区垂域包导致 `tests/verticals/test_store.py` 两项的环境差异)、端到端脚本(反思 → 巩固 → 召回 → `/api/wiki` → `/api/knowledge/feed`)。12:38 部署到 8985(v5 已结束,实例空闲),知识库覆盖层已在公网地址可见(`argus-eval-20260916/ui/learning/`)。部署时发现两件事:手动播种要用 `seed_context_skills(<home>/skills/_shared_verticals/research, "research")`,`seed_builtin_skills_for_vertical(<home>/skills, …)` 会把垂域文件播到公共层;项目垂域在工作区没有 `PIPELINE_STATE.json` 时(s-fb4716b7 就是)从 `manager-handoff.json` / `mission-view.json` 读,否则教训会落到全局层、"垂直领域"页为空(已修)。
+
+未做:v5 的九个任务在部署前结束,没有反思记录,第一条教训要等下一个任务;Reviewer 侧仍无写指令(它的判断进 REVIEW.md,由反思读);用户提的"改变思维方式"目前只到原则注入提示这一步,原则如何改变 Planner 的阶段判断还没有证据。

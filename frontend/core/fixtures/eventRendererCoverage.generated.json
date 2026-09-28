@@ -29,6 +29,8 @@
     "idea.search.completed",
     "idea.search.skipped",
     "idea.search.started",
+    "knowledge.learned",
+    "knowledge.recalled",
     "life.auth_failure",
     "life.budget.pause",
     "life.curator.backend_resolved",
@@ -108,6 +110,9 @@
     "life.research.second_reading",
     "life.review.waived",
     "life.reviewer.backend_resolved",
+    "life.runtime.incident.detected",
+    "life.runtime.incident.escalated",
+    "life.runtime.incident.recovered",
     "life.runtime_failure.canary_passed",
     "life.runtime_failure.circuit_blocked",
     "life.runtime_failure.circuit_opened",
@@ -192,7 +197,7 @@
       "counts": {
         "handled": 22,
         "hidden": 0,
-        "missing": 164
+        "missing": 169
       },
       "fallback": "greppable",
       "handled": [
@@ -249,6 +254,8 @@
         "idea.search.completed",
         "idea.search.skipped",
         "idea.search.started",
+        "knowledge.learned",
+        "knowledge.recalled",
         "life.auth_failure",
         "life.budget.pause",
         "life.curator.backend_resolved",
@@ -314,6 +321,9 @@
         "life.research.second_reading",
         "life.review.waived",
         "life.reviewer.backend_resolved",
+        "life.runtime.incident.detected",
+        "life.runtime.incident.escalated",
+        "life.runtime.incident.recovered",
         "life.runtime_failure.canary_passed",
         "life.runtime_failure.circuit_blocked",
         "life.runtime_failure.circuit_opened",
@@ -390,7 +400,7 @@
     "tui": {
       "counts": {
         "handled": 100,
-        "hidden": 86,
+        "hidden": 91,
         "missing": 0
       },
       "fallback": "hide",
@@ -513,6 +523,8 @@
         "idea.search.completed",
         "idea.search.skipped",
         "idea.search.started",
+        "knowledge.learned",
+        "knowledge.recalled",
         "life.curator.backend_resolved",
         "life.daemon.ready",
         "life.engineer.backend_resolved",
@@ -541,6 +553,9 @@
         "life.planner.verdict.discarded",
         "life.planner.waiting_contract.normalized",
         "life.reviewer.backend_resolved",
+        "life.runtime.incident.detected",
+        "life.runtime.incident.escalated",
+        "life.runtime.incident.recovered",
         "life.runtime_failure.canary_passed",
         "life.runtime_failure.circuit_blocked",
         "life.runtime_failure.circuit_opened",
@@ -589,7 +604,7 @@
     "web": {
       "counts": {
         "handled": 100,
-        "hidden": 86,
+        "hidden": 91,
         "missing": 0
       },
       "fallback": "hide",
@@ -712,6 +727,8 @@
         "idea.search.completed",
         "idea.search.skipped",
         "idea.search.started",
+        "knowledge.learned",
+        "knowledge.recalled",
         "life.curator.backend_resolved",
         "life.daemon.ready",
         "life.engineer.backend_resolved",
@@ -740,6 +757,9 @@
         "life.planner.verdict.discarded",
         "life.planner.waiting_contract.normalized",
         "life.reviewer.backend_resolved",
+        "life.runtime.incident.detected",
+        "life.runtime.incident.escalated",
+        "life.runtime.incident.recovered",
         "life.runtime_failure.canary_passed",
         "life.runtime_failure.circuit_blocked",
         "life.runtime_failure.circuit_opened",

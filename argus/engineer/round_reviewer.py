@@ -1,8 +1,8 @@
 """Round-loop phase: Reviewer invocation and infra-only retry.
 
 Owns calling the independent Reviewer for the current round and retrying
-ONLY the reviewer leg on an infra flake (subprocess crash or missing verdict
-schema) — never discarding the Engineer's already-valid output and never
+ONLY the reviewer leg on a failed call or an unsubmitted review action —
+never discarding the Engineer's already-valid output and never
 re-running the (expensive) Engineer turn just because the cheap Reviewer call
 hiccuped. Reviewer backend death must never be laundered
 into a silent ``continue``: it is routed through the same transient-backoff +
@@ -30,7 +30,7 @@ from ..core.stop_kinds import (
     stop_kind_from_external_interrupt,
 )
 from ..life.context_packet import render_mission_brief
-from .external_work import render_external_work_advisory
+from .external_work import parse_external_wait_request, render_external_work_advisory
 from .round_signals import _review_event_payload
 from .round_state import (
     EngineerTurnOutcome,
@@ -51,6 +51,32 @@ if TYPE_CHECKING:
     from .runner import SupervisedConfig
 
 log = logging.getLogger(__name__)
+
+
+def _background_launch_block(state: RoundLoopState, engineer_message: str) -> str:
+    """Tell the Reviewer it is judging a launch, not waiting on one.
+
+    The Engineer's account of such a round ends on the wait line it wrote for
+    the host. Shown without comment, the Reviewer took that line as the shape
+    of a reply and closed on it too, so no judgment was read (trial project
+    s-fb4716b7, task 4). Name what is under review and whose line that is.
+    """
+    if not state.pending_external_wait_review:
+        return ""
+    request = parse_external_wait_request(engineer_message)
+    work_id = request[1] if request else "the background run"
+    return (
+        "## This round sent work to the background\n"
+        f"The Engineer's account ends by asking the host to wait for `{work_id}`; "
+        "the host is already waiting. You are judging what was launched: the code "
+        "that will produce the result, its configuration, the launch itself, and "
+        "what the numbers will decide once they arrive. Give that judgment in the "
+        "native review action tool, with your explanation in ordinary prose. "
+        "Use defer_review if the judgment depends on the pending result. "
+        "The closing wait line is the Engineer's request to the host, not a judgment "
+        "or a template for your reply; do not repeat it and do not wait yourself. "
+        "The mission finishes only after the result is read, whatever you decide here."
+    )
 
 
 def _previous_review_summary(state: RoundLoopState) -> str:
@@ -198,6 +224,7 @@ class RoundReviewerMixin:
             rotation_block,
             *state.pending_secret_guard_notes,
             process_ownership_note,
+            _background_launch_block(state, engineer_message),
         )
         reviewer_background_context = "\n\n".join(
             part for part in (*shared_context_parts, external_work_context) if part

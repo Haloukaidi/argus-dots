@@ -122,6 +122,15 @@ _RANDOM_INPUT = re.compile(
 _MEASURING_NAME = re.compile(r"eval|bench|retriev|recall|accura|measur|score|perplex|metric|sweep", re.IGNORECASE)
 MAX_STAND_INS = 20
 STAND_IN_USES = 5
+# The Engineer's own statement of which clauses of the claim its results meet,
+# one entry per clause, each pointing at the file and field that holds the
+# number. The host reads the pointed value and shows it beside the words: the
+# comparison is the model's, the number is the file's. One control project
+# reported "+22 pp over KIVI" for a claim that asked for 96% of BF16 and got
+# 35%; a per-clause statement leaves no room for that framing.
+CLAIM_ATTAINMENT_PATH = ".argus/claim_attainment.json"
+ATTAINMENT_MAX = 8
+_ATTAINMENT_STATUS = {"yes": "met", "met": "met", "true": "met", "no": "not met", "not met": "not met", "false": "not met", "partial": "partial", "partially": "partial", "untested": "untested", "unknown": "untested", "n/a": "untested"}
 DEF_BODY_CAP = 400
 RESULT_FILES_DATED = 3
 RESULT_DIRS = ("results", "outputs", "runs", "artifacts", "logs")
@@ -794,6 +803,322 @@ def _duration(seconds: int) -> str:
     return f"{seconds / 3600.0:.1f} h"
 
 
+def _resolve_field(value: Any, field_path: str) -> tuple[bool, Any]:
+    """Follow a dotted path (``rotkv.composite_accuracy``, ``runs.0.acc``) into parsed JSON."""
+    current = value
+    for part in [p for p in str(field_path).replace("[", ".").replace("]", "").split(".") if p]:
+        if isinstance(current, dict):
+            if part not in current:
+                return False, None
+            current = current[part]
+        elif isinstance(current, list):
+            try:
+                current = current[int(part)]
+            except (ValueError, IndexError):
+                return False, None
+        else:
+            return False, None
+    return True, current
+
+
+def claim_attainment(workdir: Path) -> list[dict[str, Any]]:
+    """The Engineer's per-clause statement with the pointed values read by the host.
+
+    Each entry: clause, obtained (the Engineer's words), met (normalised),
+    source path and field, and what the host found there: ``pointer`` is
+    ``ok``, ``no file``, ``no field``, ``not json`` (file present, value not
+    addressable), ``outside workspace`` or ``no pointer``; ``value`` is the
+    resolved value rendered short; ``age_minutes`` is the file's age.
+    """
+    workdir = Path(workdir)
+    path = workdir / CLAIM_ATTAINMENT_PATH
+    if not path.is_file():
+        return []
+    try:
+        payload = json.loads(_read_text(path))
+    except Exception:  # noqa: BLE001 - a malformed statement is reported as such
+        return [{"clause": "(unreadable .argus/claim_attainment.json)", "obtained": "", "met": "untested", "source": "", "field": "", "pointer": "no pointer", "value": None, "age_minutes": None}]
+    clauses = payload.get("clauses") if isinstance(payload, dict) else payload
+    if not isinstance(clauses, list):
+        return []
+    out: list[dict[str, Any]] = []
+    now = time.time()
+    for raw in clauses[:ATTAINMENT_MAX]:
+        if not isinstance(raw, dict):
+            continue
+        source: dict[str, Any] = raw["source"] if isinstance(raw.get("source"), dict) else {}
+        src_path = str(source.get("path") or raw.get("path") or "").strip()
+        field = str(source.get("field") or raw.get("field") or "").strip()
+        met_raw = str(raw.get("met") if raw.get("met") is not None else "").strip().lower()
+        entry: dict[str, Any] = {
+            "clause": str(raw.get("clause") or "").strip()[:200],
+            "obtained": str(raw.get("obtained") or "").strip()[:200],
+            "met": _ATTAINMENT_STATUS.get(met_raw, "untested" if not met_raw else met_raw[:20]),
+            "source": src_path,
+            "field": field,
+            "pointer": "no pointer",
+            "value": None,
+            "age_minutes": None,
+        }
+        if src_path:
+            target = (workdir / src_path).resolve() if not Path(src_path).is_absolute() else Path(src_path).resolve()
+            try:
+                inside = target.is_relative_to(workdir.resolve())
+            except (OSError, ValueError):
+                inside = False
+            if not inside:
+                entry["pointer"] = "outside workspace"
+            elif not target.is_file():
+                entry["pointer"] = "no file"
+            else:
+                try:
+                    entry["age_minutes"] = round((now - target.stat().st_mtime) / 60.0, 1)
+                except OSError:
+                    pass
+                if target.suffix.lower() == ".json" and field:
+                    try:
+                        found, value = _resolve_field(json.loads(_read_text(target)), field)
+                    except Exception:  # noqa: BLE001
+                        found, value = False, None
+                        entry["pointer"] = "not json"
+                    else:
+                        entry["pointer"] = "ok" if found else "no field"
+                        entry["value"] = _short_value(value) if found else None
+                else:
+                    entry["pointer"] = "not json" if field else "ok"
+        out.append(entry)
+    return out
+
+
+def _short_value(value: Any) -> str:
+    if isinstance(value, float):
+        return f"{value:.4g}"
+    text = json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value
+    return text if len(text) <= 80 else text[:77] + "..."
+
+
+_FALSIFIER_ITEM = re.compile(r"^\s*(?:\d+[.)]|[-*•])\s+(.*\S)\s*$")
+_TRAILING_OR = re.compile(r"[,;]?\s*\b(?:or|and)\s*$", re.IGNORECASE)
+_WORD = re.compile(r"[a-z][a-z0-9\-]{2,}|\d+(?:\.\d+)?%?")
+_STOPWORDS = frozenset(
+    "the and for with under than that this from into over across when while which where "
+    "into onto upon about after before their there these those then them they will would "
+    "should could must have has had been being are was were not any all each per via "
+    "claim thesis falsified fails fail failure method ours our its it's at on in of to by "
+    "is as be or an a".split()
+)
+_CONFIG_FIELD = re.compile(
+    r"(?:^|[._\[])(?:budget|budget_ratio|ratio|rho|config|configuration|seed|seeds|steps|epochs|lr|"
+    r"learning_rate|batch|batch_size|window|obs_window|local_window|n_samples|num_samples|context_length|"
+    r"max_len|sink_tokens)(?:$|[._\]])",
+    re.IGNORECASE,
+)
+FALSIFIER_MATCH = 0.3
+
+
+def falsifier_items(card: dict[str, Any]) -> list[str]:
+    """The individual conditions under METHOD.md's falsification heading, one string each."""
+    text = str(card.get("falsifiers") or "")
+    items: list[str] = []
+    for raw in text.splitlines():
+        match = _FALSIFIER_ITEM.match(raw)
+        if match:
+            items.append(_TRAILING_OR.sub("", match.group(1)).strip())
+    if items:
+        return items
+    body = " ".join(line.strip() for line in text.splitlines() if line.strip())
+    body = re.sub(r"^.*?falsified if:?\s*", "", body, flags=re.IGNORECASE)
+    return [part.strip() for part in re.split(r"(?<=[.;])\s+", body) if len(part.strip()) > 20]
+
+
+def _content_words(text: str) -> set[str]:
+    return {w for w in _WORD.findall(text.lower()) if w not in _STOPWORDS}
+
+
+def falsifier_coverage(clause: str, falsifiers: list[str]) -> tuple[int, float]:
+    """(index of the best-matching falsifier, its coverage), coverage = shared content words / the falsifier's."""
+    words = _content_words(clause)
+    best, best_score = -1, 0.0
+    for index, condition in enumerate(falsifiers):
+        target = _content_words(condition)
+        if not target:
+            continue
+        score = len(words & target) / len(target)
+        if score > best_score:
+            best, best_score = index, score
+    return best, best_score
+
+
+def attainment_against_falsifiers(card: dict[str, Any]) -> dict[str, Any]:
+    """Which statement clauses restate the claim, and which METHOD.md conditions the statement leaves out.
+
+    v5's Engineer stated three clauses of its own wording, all met, while
+    METHOD.md's three falsification conditions (a LongBench margin, a
+    mid-depth retrieval floor, a throughput ceiling) went untested; the
+    Reviewer repeated the statement. The host can hold the statement against
+    the card's own list.
+    """
+    falsifiers = falsifier_items(card)
+    entries = card.get("claim_attainment") or []
+    if not falsifiers or not entries:
+        return {"falsifiers": falsifiers, "restated": [], "unaddressed": []}
+    covered: set[int] = set()
+    restated: list[int] = []
+    for position, entry in enumerate(entries):
+        index, score = falsifier_coverage(str(entry.get("clause") or ""), falsifiers)
+        if index >= 0 and score >= FALSIFIER_MATCH:
+            covered.add(index)
+        else:
+            restated.append(position)
+    unaddressed = [falsifiers[i] for i in range(len(falsifiers)) if i not in covered]
+    return {"falsifiers": falsifiers, "restated": restated, "unaddressed": unaddressed}
+
+
+def _configuration_field(field: str) -> bool:
+    return bool(field) and bool(_CONFIG_FIELD.search(str(field)))
+
+
+def render_claim_attainment(card: dict[str, Any], *, limit: int = ATTAINMENT_MAX) -> list[str]:
+    """Lines shared by the review packet, the task brief and the Planner's context."""
+    entries = card.get("claim_attainment") or []
+    if not entries:
+        return []
+    lines = [
+        "Claim attainment (the Engineer's statement per clause of the claim; the value on the "
+        "right is what the host read from the file the entry points to):"
+    ]
+    against = attainment_against_falsifiers(card)
+    restated = set(against["restated"])
+    for position, entry in enumerate(entries[:limit]):
+        pointer = entry.get("pointer")
+        if pointer == "ok":
+            host = f"host reads {entry['source']} {entry['field']} = {entry['value']}"
+            if entry.get("age_minutes") is not None:
+                host += f" (written {entry['age_minutes']} min ago)"
+            if _configuration_field(str(entry.get("field") or "")):
+                host += " — a configuration value, not a measurement"
+        elif pointer == "no pointer":
+            host = "no file or field named"
+        else:
+            host = f"pointer {pointer}: {entry['source']} {entry['field']}".rstrip()
+        obtained = f' — Engineer: "{entry["obtained"]}"' if entry.get("obtained") else ""
+        note = (
+            " [restated: this clause is not among METHOD.md's falsification conditions; the claim is fixed]"
+            if position in restated and against["falsifiers"]
+            else ""
+        )
+        lines.append(f"- [{entry['met']}] {entry['clause']}{obtained}; {host}{note}")
+    if len(entries) > limit:
+        lines.append(f"- ... {len(entries) - limit} more clauses")
+    if against["unaddressed"]:
+        lines.append(
+            "Falsification conditions in METHOD.md the statement does not address (untested until stated, "
+            "whatever the clauses above say):"
+        )
+        for condition in against["unaddressed"][:ATTAINMENT_MAX]:
+            lines.append(f"- {_one_line_text(condition, 200)}")
+    return lines
+
+
+def _one_line_text(text: str, limit: int) -> str:
+    flat = " ".join(str(text).split())
+    return flat if len(flat) <= limit else flat[: limit - 1] + "…"
+
+
+RESULT_TABLE_FILES = 3
+RESULT_TABLE_METRICS = 6
+RESULT_TABLE_METHODS = 6
+RESULT_TABLE_BYTES = 2_000_000
+_META_KEYS = {"metadata", "meta", "config", "args", "settings", "params"}
+
+
+def _numeric(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _method_rows(payload: Any) -> dict[str, dict[str, float]]:
+    """``{method: {metric: value}}`` from a results JSON, or {} when it has no such shape.
+
+    A results file usually keys methods at the top level (``full_cache``,
+    ``snapkv``, ``ours``) with a metrics dict each; sometimes one level down
+    (``results``). Metadata blocks share no metric with the methods and drop out.
+    """
+    if not isinstance(payload, dict):
+        return {}
+    candidates = {
+        str(k): {str(mk): float(mv) for mk, mv in v.items() if _numeric(mv)}
+        for k, v in payload.items()
+        if isinstance(v, dict) and str(k).lower() not in _META_KEYS
+    }
+    candidates = {k: v for k, v in candidates.items() if v}
+    counts: dict[str, int] = {}
+    for metrics in candidates.values():
+        for name in metrics:
+            counts[name] = counts.get(name, 0) + 1
+    shared = {name for name, n in counts.items() if n >= 2}
+    rows = {k: {m: v for m, v in metrics.items() if m in shared} for k, metrics in candidates.items()}
+    rows = {k: v for k, v in rows.items() if v}
+    if len(rows) >= 2:
+        return rows
+    for v in payload.values():
+        if isinstance(v, dict):
+            nested = _method_rows(v)
+            if nested:
+                return nested
+    return {}
+
+
+def result_tables(workdir: Path, footprint: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Per-method numbers from the newest result JSON files, and the metrics that separate nothing.
+
+    The v5 control project's pilot scored three methods 1.0 on retrieval and
+    the Reviewer called the mission done: a metric on which every method is
+    equal measures nothing about the claim, and the host can say so.
+    """
+    workdir = Path(workdir)
+    footprint = footprint if footprint is not None else results_footprint(workdir)
+    files = [item["file"] for entry in footprint for item in (entry.get("newest") or []) if str(item.get("file", "")).endswith(".json")]
+    out: list[dict[str, Any]] = []
+    for rel in files[:RESULT_TABLE_FILES]:
+        path = workdir / rel
+        try:
+            if path.stat().st_size > RESULT_TABLE_BYTES:
+                continue
+            payload = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+        except (OSError, ValueError):
+            continue
+        rows = _method_rows(payload)
+        if not rows:
+            continue
+        methods = list(rows)[:RESULT_TABLE_METHODS]
+        metrics: list[str] = []
+        for method in methods:
+            for name in rows[method]:
+                if name not in metrics:
+                    metrics.append(name)
+        metrics = metrics[:RESULT_TABLE_METRICS]
+        table = {m: {method: rows[method][m] for method in methods if m in rows[method]} for m in metrics}
+        flat = [m for m, values in table.items() if len(values) >= 2 and len({round(v, 6) for v in values.values()}) == 1]
+        out.append({"file": rel, "methods": methods, "metrics": table, "no_separation": flat})
+    return out
+
+
+def render_result_tables(card: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    for entry in card.get("result_tables") or []:
+        parts = []
+        for metric, values in entry["metrics"].items():
+            if metric in entry["no_separation"]:
+                value = next(iter(values.values()))
+                parts.append(f"{metric}: all {len(values)} methods {value:g} (separates nothing)")
+            else:
+                parts.append(f"{metric}: " + ", ".join(f"{m} {v:g}" for m, v in values.items()))
+        lines.append(f"- {entry['file']} (host-read): " + "; ".join(parts))
+    if lines:
+        lines.insert(0, "Numbers in the newest result files, per method:")
+    return lines
+
+
 def render_run_reality(card: dict[str, Any], *, limit: int = 6) -> list[str]:
     """Lines shared by the review packet and the task brief: stand-ins and footprint."""
     lines: list[str] = []
@@ -842,6 +1167,7 @@ def render_run_reality(card: dict[str, Any], *, limit: int = 6) -> list[str]:
                 f"- {item['file']} was written {_duration(item['seconds_after_code'])} "
                 f"after the last edit to {item['code_file']}"
             )
+    lines.extend(render_result_tables(card))
     return lines
 
 
@@ -1252,6 +1578,8 @@ def _empty_card() -> dict[str, Any]:
         "checks": None,
         "stand_ins": [],
         "results_footprint": [],
+        "result_tables": [],
+        "claim_attainment": [],
     }
 
 
@@ -1320,6 +1648,8 @@ def derive_method_card(workdir: Path) -> dict[str, Any]:
         ("change_log", lambda: change_log(workdir)),
         ("stand_ins", lambda: stand_ins(workdir)),
         ("results_footprint", lambda: results_footprint(workdir)),
+        ("result_tables", lambda: result_tables(workdir, card.get("results_footprint"))),
+        ("claim_attainment", lambda: claim_attainment(workdir)),
     ):
         try:
             card[key] = derive()
@@ -1428,6 +1758,14 @@ def render_for_reviewer(workdir: Path) -> str:
     ]
     if unlisted_anchors:
         lines.append("Anchors without a card row: " + ", ".join(unlisted_anchors[:10]))
+    attainment = render_claim_attainment(card)
+    if attainment:
+        lines.extend(attainment)
+    elif any(entry.get("files") for entry in card.get("results_footprint") or []):
+        lines.append(
+            "No claim attainment statement (.argus/claim_attainment.json): results exist but the "
+            "Engineer has not said which clauses of the claim they meet."
+        )
     reality = render_run_reality(card)
     if reality:
         lines.append("Run reality (derived from the tree, not from any account):")

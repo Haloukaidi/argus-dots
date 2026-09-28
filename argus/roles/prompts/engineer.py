@@ -359,14 +359,24 @@ def build_mission_prompt(
     if contract_block:
         sections.append(contract_block)
     if project_root is not None:
-        from ...wiki.context import render_knowledge_wiki_block
+        from ...wiki.context import (
+            render_knowledge_wiki_block,
+            render_project_principles,
+            shared_knowledge_roots,
+        )
 
         knowledge_block = render_knowledge_wiki_block(
             project_root,
             role="Engineer",
+            shared_roots=shared_knowledge_roots(project_root),
         )
         if knowledge_block:
             sections.append(sanitize_model_visible_text(knowledge_block))
+        # What repeated lessons of this vertical have settled into: short,
+        # bounded, and present only once the vertical has compiled principles.
+        principles_block = render_project_principles(project_root)
+        if principles_block:
+            sections.append(sanitize_model_visible_text(principles_block))
     static_text = "\n\n".join(sections)
     delta_text = "\n\n".join(delta_sections)
     if include_static:

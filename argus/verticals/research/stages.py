@@ -15,14 +15,18 @@ from typing import Any
 
 from ...core.vertical_contract import IterationAssessment
 from ...skills.stage_machine import ChecklistItem
-from . import library_preparation
+from . import idea_portfolio, library_preparation
 from .mission_brief import prepare_mission
 from .prompt_policy import render_role_prompt_context, render_role_prompt_fragment
 from .review_purchase import review_purchase_policy
+from .task_routes import (
+    model_route_for_task,  # noqa: F401 - the host reads this hook off the vertical module
+)
 
 log = logging.getLogger(__name__)
 
 LIBRARY_PREPARER = library_preparation.prepare_skill_libraries
+BACKGROUND_RECONCILER = idea_portfolio.reconcile_idea_portfolio_campaign
 
 CANONICAL_STAGE_ORDER: tuple[str, ...] = (
     "idea",
@@ -255,10 +259,10 @@ STAGE_CHECKLISTS: dict[str, tuple[ChecklistItem, ...]] = {
                 "manuscript and executed code, with clear grouping, visual hierarchy, "
                 "balanced spacing, and publication-size typography. Use proper "
                 "mathematical typesetting and restrained strokes and emphasis. "
-                "Data figures go through the shared paper_chart_style helper as vector "
-                "PDFs with TrueType fonts, show uncertainty (error bars or bands) "
-                "wherever runs were repeated, keep legends clear of titles and data, "
-                "and never plot a substituted sentinel for zero or a missing value; "
+                "Data figures go through the shared paper_charts helper, which draws "
+                "bars, lines and dots from the data (repeats as error bars or bands, bars "
+                "from zero, one legend outside, ours emphasised) as vector PDFs with "
+                "TrueType fonts; never plot a substituted sentinel for zero or a missing value; "
                 "`python -m argus.verticals.research.figure_lint` reports font, raster "
                 "and missing-file defects to fix before inspecting at final size. "
                 "Keep most effort on scientific methods, experiments, and interpretation. "
@@ -812,4 +816,5 @@ __all__ = [
     "iteration_assessment",
     "completion_gate",
     "PAPER_MISSION",
+    "model_route_for_task",
 ]

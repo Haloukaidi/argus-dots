@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "argus"
-version = "0.1.7"
+version = "0.1.8"
 description = "Argus — a persistent, reviewed runtime for autonomous research and engineering."
 readme = "README.md"
 license = { text = "MIT" }
@@ -100,8 +100,10 @@ harbor = [
 # scikit-learn, lightgbm, mplfinance, torch) left with the vertical.
 dev = [
   "build>=1",
+  "hatchling>=1.27",
   "mypy>=1.8,<2",
   "pytest>=7",
+  "pytest-xdist>=3",
   "qrcode>=7.4,<9",
   "ruff>=0.4",
   "cryptography>=41",
@@ -131,11 +133,15 @@ packages = ["argus", "argus_skill"]
 # Package Markdown and JSON files are runtime Skill data.
 
 [tool.hatch.build.targets.wheel.force-include]
+"packages/contracts/schemas" = "argus/_contracts"
 "argus_doctor.py" = "argus_doctor.py"
 "frontend/tui/bundle/argus.mjs" = "argus/_frontend/tui/bundle/argus.mjs"
 "frontend/web/dist" = "argus/_frontend/web/dist"
 
 [tool.hatch.build.targets.sdist]
+# npm workspace links must not be traversed before their real package paths.
+exclude = ["**/node_modules/**", "packages/*/dist/**"]
+skip-excluded-dirs = true
 # Include checked-in frontend artifacts in source distributions.
 artifacts = [
   "frontend/web/dist/**",
@@ -144,6 +150,8 @@ include = [
   "argus_doctor.py",
   "argus/**",
   "argus_skill/**",
+  "packages/contracts/**",
+  "packages/runtime/fixtures/**",
   "tests/**",
   "frontend/tui/bundle/**",
   "README.md",

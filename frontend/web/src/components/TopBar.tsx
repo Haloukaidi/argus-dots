@@ -1,4 +1,5 @@
 import { WorkspaceHeader } from './WorkspaceShell';
+import { SessionWorkdir } from './SessionWorkdir';
 import type { Snapshot, EventMsg } from '../api';
 import type { MissionView } from '../../../core/src/types';
 import { theme } from '../lib/theme';
@@ -59,10 +60,15 @@ export function TopBar({
   const degraded = Boolean(snap.partial || snap.observability?.slo.status === 'degraded');
   const spendUsd = typeof snap.spend_usd === 'number' ? snap.spend_usd : snap.usage_summary?.known_cost_usd ?? 0;
   const externalDaemon = snap.daemon.alive && snap.daemon.control_available === false;
+  // A foreground request (a direct answer or a one-agent task) runs without
+  // the daemon; offering "Run" then reads as if nothing had started.
+  const foregroundWork = !snap.daemon.alive && ['running', 'waiting'].includes(currentWorkStatus(snap, missionView, events).state);
   const daemonActionLabel = externalDaemon
     ? t('topbar.externallyManaged')
     : snap.daemon.alive
     ? t('topbar.pauseDaemon')
+    : foregroundWork
+    ? t('topbar.working')
     : t('topbar.runDaemon');
   const healthTitle = degraded
     ? [
@@ -88,15 +94,16 @@ export function TopBar({
         <div className="topbar-title min-w-0 truncate text-sm font-semibold text-ink" title={snap.session.display_name || snap.session.id}>
           {snap.session.display_name || snap.session.id}
         </div>
-        {roleActive || focus ? <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           {roleActive ? <span
             data-role-dot={roleName}
             aria-label={t('topbar.roleActive', { role: roleLabel(roleName, t) })}
             className="h-2 w-2 shrink-0 animate-pulse rounded-full motion-reduce:animate-none"
             style={{ background: theme.role[roleName] || 'rgb(var(--ink-faint))' }}
           /> : null}
-          <span className="shrink-0 text-[10px] font-medium text-ink-dim">{!streamOk ? t('common.reconnecting') : snapshotStale ? t('common.stale') : workStatusLabel(work, locale)}</span>
-        </div> : null}
+          {roleActive || focus ? <span className="shrink-0 text-[10px] font-medium text-ink-dim">{!streamOk ? t('common.reconnecting') : snapshotStale ? t('common.stale') : workStatusLabel(work, locale)}</span> : null}
+          <SessionWorkdir session={snap.session} />
+        </div>
       </div>
       <span
         title={healthTitle}
@@ -138,14 +145,14 @@ export function TopBar({
         <>
           <button
             type="button"
-            disabled={busy || externalDaemon}
+            disabled={busy || externalDaemon || foregroundWork}
             onClick={snap.daemon.alive ? onStop : onStart}
             aria-label={daemonActionLabel}
             title={externalDaemon ? t('topbar.externalDaemonHint') : daemonActionLabel}
             className="compact-control flex h-8 shrink-0 items-center gap-1 px-2 disabled:opacity-40"
           >
             <FontAwesomeIcon icon={snap.daemon.alive ? faPause : faPlay} className="h-3 w-3" />
-            <span className="hidden sm:inline">{externalDaemon ? t('common.external') : snap.daemon.alive ? t('common.pause') : t('common.run')}</span>
+            <span className="hidden sm:inline">{externalDaemon ? t('common.external') : snap.daemon.alive ? t('common.pause') : foregroundWork ? t('common.working') : t('common.run')}</span>
           </button>
           <button
             type="button"

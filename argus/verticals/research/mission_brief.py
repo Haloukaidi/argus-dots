@@ -26,7 +26,9 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shutil
 import subprocess
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -50,6 +52,9 @@ DEFINITION_OF_DONE = (
 )
 
 INTERPRETER_TIMEOUT_S = 5.0
+TORCH_PROBE_TIMEOUT_S = 15.0
+TORCH_CANDIDATES = 5
+_TORCH_PROBE_CACHE: dict[str, str] = {}
 COMPONENT_LINES = 12
 DATA_DIRS = ("data", "datasets")
 DATA_ENTRIES = 5
@@ -273,6 +278,13 @@ def _claim_section(
     return lines
 
 
+def _attainment_section(card: dict[str, Any]) -> list[str]:
+    from .method_card import render_claim_attainment
+
+    lines = render_claim_attainment(card)
+    return ["### Claim attainment (last statement)", *lines[1:]] if lines else []
+
+
 def _reality_section(card: dict[str, Any]) -> list[str]:
     """Stand-ins and the results footprint, so the Engineer sees what the Reviewer will."""
     lines = method_card.render_run_reality(card, limit=5)
@@ -319,6 +331,140 @@ def _interpreter_line(project_root: Path) -> str:
     return (
         f"- Interpreter: .venv/bin/python ({version or 'version unknown'}); "
         "run tests as `.venv/bin/python -m pytest tests/spec`"
+    )
+
+
+def _torch_probe(python: Path) -> str:
+    """``torch 2.9.0 (CUDA yes)``, ``no torch``, or '' when the interpreter cannot be run.
+
+    Cached for the process: torch installs do not change between rounds and
+    the import alone takes seconds.
+    """
+    key = str(python)
+    if key in _TORCH_PROBE_CACHE:
+        return _TORCH_PROBE_CACHE[key]
+    try:
+        proc = subprocess.run(
+            [str(python), "-c", "import torch; print(torch.__version__, torch.cuda.is_available())"],
+            capture_output=True,
+            text=True,
+            timeout=TORCH_PROBE_TIMEOUT_S,
+            check=False,
+        )
+        out = (proc.stdout or "").strip().split()
+        if proc.returncode == 0 and len(out) >= 2:
+            result = f"torch {out[0]} (CUDA {'yes' if out[1] == 'True' else 'no'})"
+        else:
+            result = "no torch"
+    except (OSError, subprocess.SubprocessError):
+        result = ""
+    _TORCH_PROBE_CACHE[key] = result
+    return result
+
+
+def _host_interpreters(project_root: Path) -> list[tuple[str, Path]]:
+    """Interpreters worth asking about torch: the project venv, the host runtime, PATH, conda."""
+    found: list[tuple[str, Path]] = []
+    seen: set[str] = set()
+
+    def add(label: str, raw: object) -> None:
+        if not raw or len(found) >= TORCH_CANDIDATES:
+            return
+        path = Path(str(raw))
+        try:
+            real = str(path.resolve())
+        except OSError:
+            return
+        if real in seen or not path.exists():
+            return
+        seen.add(real)
+        found.append((label, path))
+
+    add(".venv/bin/python", project_root / ".venv" / "bin" / "python")
+    add("host runtime (read-only; never install into it)", sys.executable)
+    add("python3 on PATH", shutil.which("python3"))
+    add("system python3", "/usr/bin/python3")
+    add("python on PATH", shutil.which("python"))
+    conda_prefix = os.environ.get("CONDA_PREFIX", "")
+    if conda_prefix:
+        add("conda env", Path(conda_prefix) / "bin" / "python")
+    for envs_root in (Path.home() / ".conda" / "envs", Path.home() / "miniconda3" / "envs", Path.home() / "anaconda3" / "envs"):
+        if envs_root.is_dir():
+            for env in sorted(envs_root.iterdir())[:3]:
+                add(f"conda env {env.name}", env / "bin" / "python")
+    return found
+
+
+def _torch_line(project_root: Path) -> str:
+    """Where torch already is on this host, so nobody searches the disk for it.
+
+    The v5 control project's Engineer, told only "no .venv in the project",
+    tried the system python, found no torch and ran ``find / -name torch``
+    for eight minutes. The host can answer that question in seconds.
+    """
+    probes = [(label, path, _torch_probe(path)) for label, path in _host_interpreters(project_root)]
+    probes = [(label, path, result) for label, path, result in probes if result]
+    if not probes:
+        return ""
+    parts = [f"{path} [{label}]: {result}" for label, path, result in probes]
+    return (
+        "- Torch on this host: " + "; ".join(parts) + ". Create .venv and pip install torch into it "
+        "(CUDA wheels matching the driver above); do not scan the disk for packages (`find /`): "
+        "the host has already listed what exists."
+    )
+
+
+TOOLS_OF_INTEREST = ("uv", "pip", "git", "latexmk", "pdflatex", "nvidia-smi", "conda", "node", "npx", "gh")
+
+
+def _tools_line() -> str:
+    """Which command-line tools are on PATH, so absence is a fact and not a search."""
+    present = [name for name in TOOLS_OF_INTEREST if shutil.which(name)]
+    missing = [name for name in TOOLS_OF_INTEREST if name not in present]
+    line = "- Tools on PATH: " + (", ".join(present) if present else "none of the usual ones")
+    if missing:
+        line += f" (absent: {', '.join(missing)}; absent here means absent, do not `find /` for a tool)"
+    return line
+
+
+SKILL_SCRIPTS = ("pptx_export.py", "paper_charts.py", "paper_chart_style.py", "echarts_figure.py", "figure_renderer.py")
+
+
+def _skill_scripts_dirs() -> list[Path]:
+    """Where the research Skill's scripts are on this host: the seeded copy first, then the packaged one."""
+    dirs: list[Path] = []
+    try:
+        from ...core.paths import shared_skills_root
+
+        seeded = shared_skills_root() / "_shared_verticals" / "research" / "engineer" / "figure_spec_scripts"
+        if seeded.is_dir():
+            dirs.append(seeded)
+    except Exception:  # noqa: BLE001 - no Skill home means the packaged copy is the answer
+        log.debug("mission brief: no seeded Skill scripts", exc_info=True)
+    packaged = Path(__file__).resolve().parent / "skills" / "engineer" / "figure_spec_scripts"
+    if packaged.is_dir() and packaged not in dirs:
+        dirs.append(packaged)
+    return dirs
+
+
+def _skill_scripts_line() -> str:
+    """The absolute home of the Skill scripts, so ``figure_spec_scripts/…`` is never a disk search.
+
+    The v5 control project's Engineer, reading ``figure_spec_scripts/pptx_export.py``
+    in the paper Skill, ran ``find / -name pptx_export.py``, then the same for
+    ``paper_chart_style.py`` and the venue style file: ten minutes each before
+    the host stopped them. The host knows the directory.
+    """
+    dirs = _skill_scripts_dirs()
+    if not dirs:
+        return ""
+    home = dirs[0]
+    present = [name for name in SKILL_SCRIPTS if (home / name).is_file()]
+    return (
+        f"- Skill scripts: `figure_spec_scripts/` in the Skill pages is `{home}` "
+        f"({', '.join(present) if present else 'empty'}); run them from there with .venv's python. "
+        "Venue style files come from the venue's own kit, not from this machine. Nothing a "
+        "Skill names lives anywhere else here: do not `find /` for it."
     )
 
 
@@ -507,6 +653,9 @@ def _model_cache_line() -> str:
 def _environment_section(project_root: Path, card: dict[str, Any]) -> list[str]:
     lines = ["### Environment now", _interpreter_line(project_root)]
     for producer in (
+        lambda: _torch_line(project_root),
+        _tools_line,
+        _skill_scripts_line,
         lambda: _packages_line(project_root, card),
         lambda: _clones_line(project_root, card),
         _gpu_line,
@@ -626,6 +775,7 @@ def render_task_brief(
     for build in (
         lambda: _claim_section(card, root, state),
         lambda: _components_section(card),
+        lambda: _attainment_section(card),
         lambda: _environment_section(root, card),
         lambda: _reality_section(card),
         lambda: _task_section(mission, state),

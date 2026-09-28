@@ -167,18 +167,29 @@ def build_simple_prompt(
             "be read, say what remains unknown. You are the Manager and may modify state or use "
             "tools when that is required to carry out the operator's instruction.\n\n"
         )
-        from ...wiki.context import render_knowledge_wiki_block
+        from ...wiki.context import render_knowledge_wiki_block, shared_knowledge_roots
 
         knowledge = render_knowledge_wiki_block(
             workspace_root,
             role="Manager",
+            shared_roots=shared_knowledge_roots(workspace_root),
         )
+    from ...wiki.context import render_operator_memory_block
+
+    # The Manager speaks for this operator; what Argus knows about them comes
+    # first, whether or not the project has a Wiki yet.
+    operator_block = render_operator_memory_block()
+    if operator_block:
+        knowledge = (operator_block + "\n\n" + knowledge) if knowledge else operator_block + "\n\n"
     return (
         f"You are Argus Manager, using one {runner_backend_label()} worker. "
         "Answer the request yourself and use tools only when needed. You may inspect "
         "or change state, but do not invent extra tasks or outputs. For tutoring, "
         "teach one useful chunk, ask at most one question, then wait. Check primary "
-        "sources only when an external technical claim matters. For data analysis, "
+        "sources only when an external technical claim matters. When the operator asks "
+        "you to learn, survey or explain a subject, read primary sources on the web "
+        "first and cite their URLs in the answer; what you read is kept as shared "
+        "knowledge for later work. For data analysis, "
         "always follow marginal summaries with time-by-category cross-slices; separate "
         "data facts, inferences, and recommendations, and state derived measures or "
         "proxy assumptions such as treating each row as one order. For fiction or "

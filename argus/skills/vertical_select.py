@@ -40,6 +40,7 @@ import logging
 import os
 import re
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -496,6 +497,44 @@ def resolve_skill_scope(project_root: object = ".") -> str:
         return _strip_needed(str(_load_state_payload(project_root).get("vertical") or ""))
 
 
+
+_PROJECT_VERTICAL_RECORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("manager-handoff.json", ("vertical",)),
+    ("mission-view.json", ("routing", "vertical")),
+)
+
+
+def resolve_project_vertical(project_root: object, life_dir: object | None = None) -> str:
+    """The project's vertical: its pipeline state first, then the Manager's record.
+
+    A project whose vertical was decided at the front door runs every mission
+    in that vertical yet may never write ``.argus/PIPELINE_STATE.json`` into
+    its workspace (the trial host's s-fb4716b7 ran nine research missions that
+    way). ``resolve_skill_scope`` then answers "" and the knowledge base files
+    the project's lessons under the global tier. The Manager's record sits
+    beside the project's events in ``manager-handoff.json``; the mission view
+    repeats it under ``routing``. Unknown names are ignored.
+    """
+    try:
+        found = resolve_skill_scope(project_root)
+    except Exception:  # noqa: BLE001 - an unreadable state falls through to the record
+        found = ""
+    if found or life_dir is None:
+        return found
+    root = Path(str(life_dir)).expanduser()
+    known = set(available_verticals())
+    for name, keys in _PROJECT_VERTICAL_RECORDS:
+        try:
+            payload: object = json.loads((root / name).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for key in keys:
+            payload = payload.get(key) if isinstance(payload, dict) else None
+        candidate = _strip_needed(str(payload or ""))
+        if candidate in known:
+            return candidate
+    return ""
+
 def resolve_checklist_vertical(project_root: object = ".") -> str | None:
     """Resolve the vertical that owns this project's checklist.
 
@@ -902,6 +941,60 @@ def vertical_completion_certificate_status(
                 **detail,
                 "reason": "unbound (certification did not record the manuscript version)",
                 "freshness_status": "unbound",
+            }
+    handoff_path = Path(str(project_root)) / "manager-handoff.json"
+    if handoff_path.is_file():
+        completion_intent_id = str(
+            record.get("completion_intent_id") or ""
+        ).strip()
+        completion_objective = str(
+            record.get("completion_objective_sha256") or ""
+        ).strip()
+        try:
+            handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {**detail, "reason": "current Manager intent identity is unreadable"}
+        if not isinstance(handoff, dict):
+            return {**detail, "reason": "current Manager intent identity is invalid"}
+        current_intent_id = str(handoff.get("intent_id") or "").strip()
+        current_objective = str(handoff.get("objective_sha256") or "").strip()
+        if not completion_intent_id or not completion_objective:
+            try:
+                state = read_pipeline_state(Path(str(project_root)))
+                history = state.get("stage_history")
+                if not isinstance(history, list):
+                    history = []
+                completed_at = max(
+                    (
+                        datetime.fromisoformat(
+                            str(entry.get("at") or "").replace("Z", "+00:00")
+                        ).timestamp()
+                        for entry in history
+                        if isinstance(entry, dict)
+                        and str(entry.get("direction") or "") == "complete"
+                        and str(entry.get("from_stage") or "") == completed_stage
+                    ),
+                    default=0.0,
+                )
+                handoff_at = float(handoff.get("recorded_at") or 0.0)
+            except (OSError, TypeError, ValueError):
+                completed_at = 0.0
+                handoff_at = 0.0
+            if completed_at <= 0 or handoff_at <= 0 or completed_at < handoff_at:
+                return {
+                    **detail,
+                    "reason": "completion is not bound to the current Manager intent",
+                }
+        if (
+            completion_intent_id
+            and (
+                completion_intent_id != current_intent_id
+                or completion_objective != current_objective
+            )
+        ):
+            return {
+                **detail,
+                "reason": "completion belongs to a different Manager intent",
             }
     if completion_contract_version <= 0:
         return {"ok": True}

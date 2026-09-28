@@ -104,9 +104,89 @@ export type WikiOverview =
 export interface WikiPageDocument {
   path: string;
   title: string;
+  description?: string;
+  /** Page body without the front matter, when the host provides it. */
+  content?: string;
   markdown: string;
   truncated: boolean;
   updated_at: number;
+}
+
+/** Where a knowledge page lives: shared by everyone, by one vertical, or kept by one project. */
+export type WikiScope = 'private' | 'global' | 'vertical' | 'project';
+/** What a knowledge page is: a fact, a lesson from reflection, a survey distilled after an answer, a set of principles, or a plain page. */
+export type WikiPageKind = 'fact' | 'lesson' | 'survey' | 'principles' | 'note' | 'profile' | 'page';
+/** One knowledge page flattened across libraries, newest first; the host adds scope, vertical and root. */
+export interface WikiLibraryItem {
+  scope: WikiScope;
+  vertical: string;
+  root: string;
+  path: string;
+  title: string;
+  description: string;
+  updated_at: number;
+  /** Front-matter kind; the host falls back to "page" when a page names none. */
+  kind: WikiPageKind | string;
+  /** Where the page came from, e.g. "<project>/<mission>" or "chat/<session>"; empty when unknown. */
+  source: string;
+  /** ISO date the page was written; empty when unknown. */
+  created: string;
+  /** How many times the host handed this page to a role as recalled knowledge. */
+  reuse_count: number;
+}
+/** One knowledge library (global, one vertical, or the project): INDEX.md plus its pages. */
+export interface WikiLibrary {
+  scope: WikiScope;
+  vertical: string;
+  root: string;
+  index_markdown: string;
+  pages: WikiPageSummary[];
+  /** The library's principles.md, compiled from repeated lessons; null until there is one. */
+  principles?: string | null;
+  /** The operator's living profile (private scope only); null until Argus has written one. */
+  profile?: string | null;
+}
+/** Every knowledge library the host can see for the given project, plus the flattened page list. */
+export interface WikiCatalog {
+  scopes: WikiScope[];
+  libraries: WikiLibrary[];
+  items: WikiLibraryItem[];
+  verticals: string[];
+  active_vertical: string;
+  errors: string[];
+}
+/** One knowledge page: body without the front matter, raw text capped by the host. */
+export interface WikiDocument {
+  scope: WikiScope;
+  vertical: string;
+  path: string;
+  title: string;
+  description: string;
+  content: string;
+  markdown: string;
+  truncated: boolean;
+  updated_at: number;
+}
+
+/** One line of the host's knowledge journal: something learned, recalled into a prompt, or promoted to a shared level. */
+export type KnowledgeEventKind = 'learned' | 'recalled' | 'promoted';
+export interface KnowledgeEvent {
+  ts: number;
+  kind: KnowledgeEventKind;
+  scope: WikiScope;
+  vertical: string;
+  /** Page path relative to its library root, e.g. "pages/lessons/20260917-torch-search.md" or "principles.md". */
+  path: string;
+  title: string;
+  source_project: string;
+  mission_id: string;
+  role: string;
+  page_kind: string;
+  note: string;
+}
+/** The knowledge journal, newest first. */
+export interface KnowledgeFeed {
+  events: KnowledgeEvent[];
 }
 
 /** Status the host derived for one method component from the spec tests carrying its marker. */
@@ -241,6 +321,8 @@ export interface ConfigSnapshot {
   generated_at_utc: string;
   roles: ConfigRole[];
   operator_knobs: ConfigKnob[];
+  /** Models the quick picker offers: the harness catalog, models that answered here recently, the current knobs. */
+  model_options?: Array<{ model: string; source: 'catalog' | 'seen' | 'current'; last_used_at?: number }>;
   how_to_change: string[];
 }
 export interface AdvisorConfig {
@@ -843,6 +925,16 @@ export const api = {
     return getJson<import('./map/model').Dataset>(P(sid, '/map-history') + (params.size ? `?${params}` : ''), signal);
   },
   mapCopy: (source: string, name: string, locale: string, signal?: AbortSignal, sessionId?: string, preview?: ReaderPreview, foundationId?: string | null) => getJson<import('./map/presentation').MapCopy>(mapCopyPath(source, name, { locale }, sessionId, preview, foundationId), signal),
+  /** A short title and a sentence for each task's card. `write` also has the missing ones written. */
+  mapCardWords: (source: string, name: string, body: { tasks: string[]; locale: string; write: boolean }, signal?: AbortSignal, sessionId?: string) =>
+    postJson<import('./map/useMapWords').MapCardWords>(`/api/map-cards/${source}/${encodeURIComponent(name)}${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''}`, body, signal),
+  /** What the lines between tasks say. `write` also has the missing notes written. */
+  mapLines: (source: string, name: string, body: { pairs: Array<{ source: string; target: string }>; locale: string; write: boolean }, signal?: AbortSignal, sessionId?: string) =>
+    postJson<import('./map/useMapLines').MapLines>(`/api/map-lines/${source}/${encodeURIComponent(name)}${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''}`, body, signal),
+  /** The explanation a reader is about to ask about, kept at that moment with the step's records. */
+  mapQuestionSource: (sid: string, body: { card_key: string; task_id: string; locale: 'zh-CN' | 'en-US'; preview?: ReaderPreview; foundation_id?: string }, signal?: AbortSignal) =>
+    postJson<ProgressSourceRef>(`/api/map-question-source/project/${encodeURIComponent(sid)}?session_id=${encodeURIComponent(sid)}`,
+      { ...body, preview: body.preview === 'source-first' ? true : body.preview ?? false }, signal),
   generateMapCopy: (source: string, name: string, body: {cards: import('./map/presentation').CardRequest[]; locale: string; foundation_id?: string}, signal?: AbortSignal, sessionId?: string, preview?: ReaderPreview, onProgress?: (phase: ExplanationPhase) => void): Promise<import('./map/presentation').MapCopy> =>
     explanationResponse(mapCopyPath(source, name, { stream: 'true' }, sessionId, preview, body.foundation_id), body, signal, onProgress),
   generateReaderFoundation: (sid: string, body: { request_id: string; question: string; locale: 'zh-CN' | 'en-US'; source_task_id?: string; progress_source?: Pick<ProgressSourceRef, 'source_id'> }, onProgress?: (phase: ExplanationPhase) => void): Promise<ArtifactInfo> =>
@@ -1191,8 +1283,8 @@ export const api = {
    */
   rewritePrompt: (sid: string, text: string) =>
     postJson<PromptRewrite>(P(sid, '/prompt/rewrite'), { text }),
-  setConfig: (sid: string, name: string, value: string) =>
-    postJson<Record<string, unknown>>(P(sid, '/config/set'), { name, value }),
+  setConfig: (sid: string, name: string, value: string, applyToRoles = false) =>
+    postJson<Record<string, unknown>>(P(sid, '/config/set'), applyToRoles ? { name, value, apply_to_roles: true } : { name, value }),
   setBudgets: (sid: string, values: Record<string, string>) =>
     postJson<{ values: Record<string, string>; restart_required: boolean }>(
       P(sid, '/config/budget'),
@@ -1212,6 +1304,12 @@ export const api = {
   wiki: (sid: string, signal?: AbortSignal) => getJson<WikiOverview>(P(sid, '/wiki'), signal),
   wikiPage: (sid: string, path: string, signal?: AbortSignal) =>
     getJson<WikiPageDocument>(P(sid, `/wiki/page?${new URLSearchParams({ path })}`), signal),
+  wikiLibrary: (sid: string | null, signal?: AbortSignal) =>
+    getJson<WikiCatalog>(`/api/wiki${sid ? `?sid=${encodeURIComponent(sid)}` : ''}`, signal),
+  wikiDocument: (sid: string | null, scope: WikiScope, vertical: string, path: string, signal?: AbortSignal) =>
+    getJson<WikiDocument>(`/api/wiki/page?${new URLSearchParams({ scope, vertical, path, ...(sid ? { sid } : {}) })}`, signal),
+  knowledgeFeed: (limit = 50, signal?: AbortSignal) =>
+    getJson<KnowledgeFeed>(`/api/knowledge/feed?${new URLSearchParams({ limit: String(limit) })}`, signal),
   setLaunchCwd: (sid: string, launchCwd: string) =>
     postJson<{ ok: boolean }>(P(sid, '/launch-cwd'), { launch_cwd: launchCwd }),
   setWorkdir: (sid: string, workdir: string) =>

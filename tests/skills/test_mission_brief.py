@@ -433,3 +433,76 @@ def test_environment_names_the_local_model_caches(project: Path, tmp_path: Path,
     assert "2 models [org/other-model, org/small-model], 1 datasets" in line
     assert str(hub.resolve()) in line
     assert "use them before downloading or substituting" in line
+
+
+def test_brief_carries_the_last_claim_attainment_statement(project: Path, tmp_path: Path) -> None:
+    import json
+
+    (project / "results").mkdir()
+    (project / "results" / "r.json").write_text(json.dumps({"ours": {"acc": 0.35}}), encoding="utf-8")
+    (project / ".argus").mkdir(exist_ok=True)
+    (project / ".argus" / "claim_attainment.json").write_text(
+        json.dumps({"clauses": [{"clause": "keep 96% of BF16", "obtained": "35%", "met": "no", "source": {"path": "results/r.json", "field": "ours.acc"}}]}),
+        encoding="utf-8",
+    )
+
+    brief = prepare_mission(stage="experiment", project_root=project, state_root=tmp_path, mission=_mission())
+    lines = brief.splitlines()
+
+    assert "### Claim attainment (last statement)" in lines
+    assert any(line.startswith('- [not met] keep 96% of BF16 — Engineer: "35%"; host reads results/r.json ours.acc = 0.35') for line in lines)
+    assert lines.index("### Claim attainment (last statement)") < lines.index("### Environment now")
+
+
+def test_the_brief_says_where_torch_is_instead_of_letting_the_engineer_search_the_disk(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from argus.verticals.research import mission_brief as mb
+
+    monkeypatch.setattr(mb, "_TORCH_PROBE_CACHE", {})
+    monkeypatch.setattr(
+        mb,
+        "_host_interpreters",
+        lambda root: [("host runtime (read-only; never install into it)", Path("/opt/rt/bin/python")), ("python3 on PATH", Path("/usr/bin/python3"))],
+    )
+
+    def fake_run(cmd, **kwargs):
+        has = cmd[0] == "/opt/rt/bin/python"
+        return SimpleNamespace(returncode=0 if has else 1, stdout="2.9.0 True\n" if has else "", stderr="" if has else "ModuleNotFoundError")
+
+    monkeypatch.setattr(mb.subprocess, "run", fake_run)
+    line = mb._torch_line(tmp_path)
+    assert line.startswith("- Torch on this host: /opt/rt/bin/python [host runtime (read-only; never install into it)]: torch 2.9.0 (CUDA yes); /usr/bin/python3 [python3 on PATH]: no torch.")
+    assert "do not scan the disk for packages (`find /`)" in line
+    # cached: a second call runs no probe
+    monkeypatch.setattr(mb.subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(AssertionError("probe ran twice")))
+    assert mb._torch_line(tmp_path) == line
+
+
+def test_tools_on_path_are_listed_and_absence_is_stated(monkeypatch) -> None:
+    from argus.verticals.research import mission_brief as mb
+
+    monkeypatch.setattr(mb.shutil, "which", lambda name: f"/usr/bin/{name}" if name in {"git", "pip", "latexmk"} else None)
+    line = mb._tools_line()
+    assert line.startswith("- Tools on PATH: pip, git, latexmk (absent: uv, pdflatex, nvidia-smi, conda, node, npx, gh;")
+    assert "do not `find /` for a tool" in line
+
+
+def test_the_skill_scripts_directory_is_named_so_nobody_searches_the_disk(monkeypatch, tmp_path) -> None:
+    from argus.verticals.research import mission_brief as mb
+
+    # A seeded Skill home wins over the packaged copy, and the line says what is in it.
+    seeded = tmp_path / "home" / "skills" / "_shared_verticals" / "research" / "engineer" / "figure_spec_scripts"
+    seeded.mkdir(parents=True)
+    (seeded / "pptx_export.py").write_text("# export\n")
+    (seeded / "paper_charts.py").write_text("# charts\n")
+    monkeypatch.setenv("ARGUS_SKILL_HOME", str(tmp_path / "home"))
+    line = mb._skill_scripts_line()
+    assert line.startswith(f"- Skill scripts: `figure_spec_scripts/` in the Skill pages is `{seeded}` (pptx_export.py, paper_charts.py)")
+    assert "do not `find /` for it" in line and "venue's own kit" in line
+
+    # Without a seeded copy the packaged scripts beside the vertical are the answer.
+    monkeypatch.setenv("ARGUS_SKILL_HOME", str(tmp_path / "empty"))
+    packaged = mb._skill_scripts_line()
+    assert "argus/verticals/research/skills/engineer/figure_spec_scripts" in packaged.replace("\\", "/")
+    assert "pptx_export.py" in packaged and "paper_charts.py" in packaged

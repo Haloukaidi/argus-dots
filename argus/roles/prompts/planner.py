@@ -579,6 +579,15 @@ def build_continuous_prompt(
             "pages and INDEX.md directly when planning establishes durable "
             "declarative knowledge; do not copy task history or procedures.\n"
         )
+    # What repeated lessons of this vertical have settled into; bounded, and
+    # present only once the vertical has compiled principles.
+    from ...wiki.context import render_operator_memory_block, render_project_principles
+
+    principles_block = sanitize_model_visible_text(render_project_principles(_proot))
+    # Plans are made for a person; what Argus knows about the operator frames them.
+    operator_block = sanitize_model_visible_text(render_operator_memory_block())
+    if operator_block:
+        principles_block = (operator_block + "\n\n" + principles_block) if principles_block else operator_block
 
     host_policy_block = (
         "## Dynamic host policy\n"
@@ -676,6 +685,7 @@ def build_continuous_prompt(
         matched_planner_skill_block,
         _reviewed_facts_block(),
         wiki_block,
+        principles_block,
         "## Manager mission brief (authoritative)\n" + continuous_objective.strip(),
         sanitize_model_visible_text(prompt_context.role_context),
         search_altitude_block,

@@ -8,14 +8,14 @@ import time
 import uuid
 from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import Path
 from typing import Any, Mapping
 
+from .contract_resources import contract_schema_path
 from .json_codec import is_finite_number
 
 EVENT_ENVELOPE_VERSION = 1
 EVENT_TYPE_RE = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
-_PAYLOAD_SCHEMA_PATH = Path(__file__).with_name("event_payload_schemas.json")
+_PAYLOAD_SCHEMA_PATH = contract_schema_path("event_payload_schemas.json")
 
 
 def _load_payload_schemas() -> tuple[int, dict[str, dict[str, Any]]]:
@@ -170,6 +170,9 @@ class EventType(StrEnum):
     LIFE_RUNTIME_FAILURE_CIRCUIT_OPENED = "life.runtime_failure.circuit_opened"
     LIFE_RUNTIME_FAILURE_CIRCUIT_BLOCKED = "life.runtime_failure.circuit_blocked"
     LIFE_RUNTIME_FAILURE_CANARY_PASSED = "life.runtime_failure.canary_passed"
+    LIFE_RUNTIME_INCIDENT_DETECTED = "life.runtime.incident.detected"
+    LIFE_RUNTIME_INCIDENT_RECOVERED = "life.runtime.incident.recovered"
+    LIFE_RUNTIME_INCIDENT_ESCALATED = "life.runtime.incident.escalated"
     LIFE_PLAN_REVISION_PROPOSED = "life.plan.revision.proposed"
     LIFE_PLAN_REVISION_REJECTED = "life.plan.revision.rejected"
     LIFE_PLAN_REVISION_COMMITTED = "life.plan.revision.committed"
@@ -226,6 +229,8 @@ class EventType(StrEnum):
     WIKI_PROMOTION_DEMOTED = "wiki.promotion.demoted"
     WIKI_RETIRED_COMPRESSED = "wiki.retired.compressed"
     WIKI_EVOLUTION_COMPLETED = "wiki.evolution.completed"
+    KNOWLEDGE_LEARNED = "knowledge.learned"
+    KNOWLEDGE_RECALLED = "knowledge.recalled"
     OPERATOR_ALERT = "operator_alert"
     MANAGER_LIVE_VIEW_UPDATED = "manager.live_view.updated"
     MANAGER_LIVE_VIEW_REJECTED = "manager.live_view.rejected"
@@ -292,6 +297,10 @@ SIGNAL_EVENT_TYPES: frozenset[str] = frozenset({
     EventType.WIKI_PROMOTION_DEMOTED,
     EventType.WIKI_RETIRED_COMPRESSED,
     EventType.WIKI_EVOLUTION_COMPLETED,
+    # A page written into the knowledge library is one line worth keeping;
+    # the recall that hands pages to a role happens every prompt and stays
+    # in the full stream only.
+    EventType.KNOWLEDGE_LEARNED,
     EventType.LIFE_MISSION_STARTED,
     EventType.LIFE_MISSION_COMPLETED,
     EventType.LIFE_MANAGER_INTENT_STARTED,
@@ -315,6 +324,9 @@ SIGNAL_EVENT_TYPES: frozenset[str] = frozenset({
     EventType.LIFE_RUNTIME_FAILURE_CIRCUIT_OPENED,
     EventType.LIFE_RUNTIME_FAILURE_CIRCUIT_BLOCKED,
     EventType.LIFE_RUNTIME_FAILURE_CANARY_PASSED,
+    EventType.LIFE_RUNTIME_INCIDENT_DETECTED,
+    EventType.LIFE_RUNTIME_INCIDENT_RECOVERED,
+    EventType.LIFE_RUNTIME_INCIDENT_ESCALATED,
     EventType.LIFE_PLAN_REVISION_PROPOSED,
     EventType.LIFE_PLAN_REVISION_REJECTED,
     EventType.LIFE_PLAN_REVISION_COMMITTED,
@@ -435,7 +447,7 @@ def _category(event_type: EventType) -> EventCategory:
         return EventCategory.PLANNER
     if value.startswith(("skill.", "team.learning.", "self.learning.")):
         return EventCategory.SKILL
-    if value.startswith("wiki."):
+    if value.startswith(("wiki.", "knowledge.")):
         return EventCategory.WIKI
     if value.startswith("idea."):
         return EventCategory.IDEA
