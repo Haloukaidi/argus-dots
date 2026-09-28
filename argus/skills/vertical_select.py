@@ -161,11 +161,17 @@ def available_vertical_purposes() -> dict[str, str]:
     from ..verticals._base import load_vertical_contract
 
     for name in purposes:
-        profiles = load_vertical_contract(name).workflow_profiles
+        contract = load_vertical_contract(name)
+        profiles = contract.workflow_profiles
         if profiles:
             purposes[name] += " Workflow profiles: " + "; ".join(
                 f"{key} ({profile.purpose}; {' -> '.join(profile.stages)})"
                 for key, profile in profiles.items()
+            )
+        if contract.workflow_stage_requirements:
+            purposes[name] += ". Custom workflow stages (mandatory companions): " + "; ".join(
+                f"{stage} (+{','.join(required) or 'none'})"
+                for stage, required in contract.workflow_stage_requirements.items()
             )
     return purposes
 
@@ -601,6 +607,7 @@ def persist_vertical(
     target_venue: str | None = None,
     allow_research_direction_change: bool = False,
     workflow_profile: str | None = None,
+    workflow_requested_stages: tuple[str, ...] | None = None,
     allow_workflow_profile_change: bool = False,
 ) -> None:
     """Persist the chosen ``vertical`` into ``.argus/PIPELINE_STATE.json``.
@@ -636,13 +643,28 @@ def persist_vertical(
     base_contract = load_vertical_contract(vert, project_root=project_root, scoped=False)
     previous_profile = payload.get("workflow_profile", "") if previous_vertical == vert else ""
     selected_profile = previous_profile if workflow_profile is None else workflow_profile
+    previous_requested = (
+        payload.get("workflow_requested_stages", ())
+        if previous_vertical == vert else ()
+    )
+    selected_requested = (
+        previous_requested
+        if workflow_requested_stages is None and selected_profile == previous_profile
+        else workflow_requested_stages or ()
+    )
+    if selected_requested and not selected_profile:
+        raise ValueError("requested workflow stages require a workflow profile")
     selected_contract = (
-        base_contract.for_profile(selected_profile)
+        base_contract.for_profile(selected_profile, requested_stages=selected_requested)
         if workflow_profile is not None or selected_profile
         else base_contract
     )
     if (
-        previous_vertical == vert and previous_profile != selected_profile
+        previous_vertical == vert
+        and (
+            previous_profile != selected_profile
+            or tuple(previous_requested) != selected_contract.workflow_requested_stages
+        )
         and payload.get("current_stage") and not allow_workflow_profile_change
     ):
         raise ValueError("workflow profile cannot change during an active task")
@@ -658,11 +680,16 @@ def persist_vertical(
             raise ValueError("workflow changed since selection; a new operator handoff is required")
         payload["workflow_profile"] = selected_profile
         payload["workflow_stages"] = list(selected_stages)
+        if selected_profile == "custom":
+            payload["workflow_requested_stages"] = list(selected_contract.workflow_requested_stages)
+        else:
+            payload.pop("workflow_requested_stages", None)
         # Direct early completion must not bypass a scoped profile's evidence.
         workflow_mode = "staged"
     else:
         payload.pop("workflow_profile", None)
         payload.pop("workflow_stages", None)
+        payload.pop("workflow_requested_stages", None)
     payload["vertical"] = vert
     if domain is not None:
         from ..domains import require_domain

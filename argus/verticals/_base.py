@@ -57,7 +57,10 @@ def _project_vertical(
     state = read_pipeline_state(Path(str(project_root)))
     if state.get("vertical") != name or "workflow_profile" not in state:
         return provider
-    contract = vertical_contract(name, provider).for_profile(state["workflow_profile"])
+    contract = vertical_contract(name, provider).for_profile(
+        state["workflow_profile"],
+        requested_stages=state.get("workflow_requested_stages", ()),
+    )
     if state.get("workflow_stages") != list(contract.stage_order):
         raise VerticalContractError(
             f"vertical {name!r} workflow changed since selection; start a new operator handoff"

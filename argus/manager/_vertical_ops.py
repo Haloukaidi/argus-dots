@@ -574,10 +574,13 @@ class _VerticalDecisionMixin:
         if persisted_vertical:
             active_route_contract += (
                 f"\nworkflow_profile={prior_state.get('workflow_profile') or 'legacy full'}\n"
+                f"workflow_requested_stages={prior_state.get('workflow_requested_stages', [])}\n"
+                f"workflow_stages={prior_state.get('workflow_stages', [])}\n"
             )
 
         def finalize(decision: VerticalDecision) -> VerticalDecision:
             if decision.choice == "existing":
+                from ..core.vertical_contract import VerticalContractError
                 from ..verticals._base import load_vertical_contract
                 from ..verticals._data_domain import materialize_learned_data_domain
 
@@ -589,32 +592,56 @@ class _VerticalDecisionMixin:
                 contract = load_vertical_contract(
                     decision.vertical,
                     project_root=self.project_root,
-                    scoped=not allow_route_contract_change,
+                    scoped=False,
                 )
                 if contract.workflow_profiles:
                     if persisted_vertical == decision.vertical and not allow_route_contract_change:
+                        try:
+                            active = load_vertical_contract(decision.vertical, self.project_root)
+                            proposed = (
+                                contract.for_profile(
+                                    decision.workflow_profile or prior_state.get("workflow_profile", ""),
+                                    requested_stages=decision.workflow_requested_stages,
+                                )
+                                if decision.workflow_requested_stages else None
+                            )
+                        except VerticalContractError as exc:
+                            raise VerticalDecisionError(
+                                f"invalid active workflow: {exc}",
+                                contract_field="workflow_profile",
+                            ) from exc
                         previous = prior_state.get("workflow_profile", "")
                         if decision.workflow_profile and decision.workflow_profile != previous:
                             raise VerticalDecisionError("workflow profile cannot change during an active task")
+                        if proposed is not None:
+                            if proposed.workflow_requested_stages != active.workflow_requested_stages:
+                                raise VerticalDecisionError("workflow requested stages cannot change during an active task")
                         decision.workflow_profile = previous
+                        decision.workflow_requested_stages = active.workflow_requested_stages
                     elif not decision.workflow_profile:
                         raise VerticalDecisionError(
                             "choose a workflow_profile from the selected vertical's menu",
                             contract_field="workflow_profile",
                         )
                     if decision.workflow_profile:
-                        if decision.workflow_profile not in contract.workflow_profiles:
-                            raise VerticalDecisionError(
-                                f"unknown workflow_profile: {decision.workflow_profile!r}",
-                                contract_field="workflow_profile",
+                        try:
+                            selected = contract.for_profile(
+                                decision.workflow_profile,
+                                requested_stages=decision.workflow_requested_stages,
                             )
+                        except VerticalContractError as exc:
+                            raise VerticalDecisionError(
+                                f"invalid workflow_profile: {exc}",
+                                contract_field="workflow_profile",
+                            ) from exc
+                        decision.workflow_requested_stages = selected.workflow_requested_stages
                         if decision.workflow_mode != "staged":
                             raise VerticalDecisionError(
                                 "workflow profiles require WORKFLOW_MODE=staged",
                                 contract_field="workflow_mode",
                             )
                         decision.start_stage = ""
-                elif decision.workflow_profile:
+                elif decision.workflow_profile or decision.workflow_requested_stages:
                     raise VerticalDecisionError("selected vertical does not provide workflow profiles")
                 if contract.mission_kind == "software":
                     decision.workflow_mode = _repository_workflow_mode(
@@ -733,6 +760,7 @@ class _VerticalDecisionMixin:
                     return finalize(VerticalDecision(
                         choice="existing",
                         workflow_profile=fast_route.workflow_profile,
+                        workflow_requested_stages=fast_route.workflow_requested_stages,
                         session_title=fast_route.session_title,
                         vertical=fast_route.vertical,
                         domain=fast_route.domain,
@@ -1184,6 +1212,7 @@ class _VerticalDecisionMixin:
                 target_venue=decision.target_venue or None,
                 allow_research_direction_change=force_stage_reset,
                 workflow_profile=decision.workflow_profile or None,
+                workflow_requested_stages=decision.workflow_requested_stages or None,
                 allow_workflow_profile_change=force_stage_reset,
             )
             vertical_select.reset_stage_for_new_intent(
@@ -1196,12 +1225,15 @@ class _VerticalDecisionMixin:
             )
             self._adopt_operator_objective(vertical, decision, task)
             stages = self.plan_stages(vertical)
+            selected_contract = load_vertical_contract(vertical, self.project_root)
         division = Division(
             task=task,
             vertical=vertical,
             domain=decision.domain,
             kind=self._kind_for(vertical),
             stages=stages,
+            workflow_profile=selected_contract.workflow_profile,
+            workflow_summary=selected_contract.workflow_summary(),
             workflow_mode=decision.workflow_mode,
             start_stage=decision.start_stage,
             execution_task=decision.execution_task,
