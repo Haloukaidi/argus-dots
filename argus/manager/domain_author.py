@@ -152,6 +152,7 @@ _DECISION_KEYS = (
     "NAME",
     "DOMAIN",
     "WORKFLOW_MODE",
+    "WORKFLOW_PROFILE",
     "START_STAGE",
     "CONFIDENCE",
     "RESEARCH_TARGET_LEVEL",
@@ -206,6 +207,7 @@ def _decision_fields(
         "VERTICAL",
         "NAME",
         "WORKFLOW_MODE",
+        "WORKFLOW_PROFILE",
         "START_STAGE",
         "RESEARCH_TARGET_LEVEL",
         "RESEARCH_DIRECTION_MODE",
@@ -533,6 +535,7 @@ class VerticalDecision:
     # Initial stage for direct work; never resets an existing stage.
     start_stage: str = ""
     session_title: str = ""
+    workflow_profile: str = ""
 
 
 @dataclass(frozen=True)
@@ -558,6 +561,7 @@ class FastVerticalRoute:
     ambiguities: tuple[str, ...] = ()
     start_stage: str = ""
     session_title: str = ""
+    workflow_profile: str = ""
 
 
 def parse_fast_vertical_decision(
@@ -654,6 +658,7 @@ def parse_fast_vertical_decision(
     stated, exclusions, ambiguities = _stated_requirements(obj)
     return FastVerticalRoute(
         needs_grounding=False,
+        workflow_profile=str(obj.get("workflow_profile") or "").strip(),
         session_title=str(obj.get("session_title") or "").strip(),
         vertical=name,
         domain=domain,
@@ -993,6 +998,7 @@ def parse_vertical_decision(
         if name and name in known:
             return VerticalDecision(
                 choice="existing",
+                workflow_profile=str(obj.get("workflow_profile") or "").strip(),
                 session_title=str(obj.get("session_title") or "").strip(),
                 vertical=name,
                 domain=domain,
