@@ -145,7 +145,10 @@ export async function* executeProcess(options: ProcessOptions): AsyncGenerator<L
     if (force) groupCleanupAttempted = true;
     try { process.kill(-child.pid, force ? 'SIGKILL' : 'SIGTERM'); }
     catch (cause) {
-      if ((cause as NodeJS.ErrnoException).code !== 'ESRCH') {
+      const code = (cause as NodeJS.ErrnoException).code;
+      // Darwin answers EPERM rather than ESRCH for a group whose members have
+      // all exited but are not yet reaped; after the leader exits it is empty.
+      if (code !== 'ESRCH' && !(code === 'EPERM' && exited)) {
         error ??= `Unable to terminate process group: ${String(cause)}`;
         stopKind ??= 'transport_error';
       }

@@ -118,8 +118,13 @@ export class PiBackend implements RunnerBackend {
       } else {
         // A completed process can have buffered output left to consume. A cap
         // which did not stop it must not invalidate that successful receipt.
-        const capHit = providerTurnCapHit && item.stopKind === 'cancelled';
-        const stopKind = textLimit ? 'output_limit' : capHit ? 'provider_turn_limit' : item.stopKind;
+        // Output after a stop request is discarded, so a settled turn together
+        // with a clean exit means Pi finished before the cap could reach it,
+        // even when the exit was not yet observed (Python polls liveness).
+        const capOutrun = providerTurnCapHit && item.stopKind === 'cancelled'
+          && consumer.turnCompleted && item.code === 0 && item.signal === null;
+        const capHit = providerTurnCapHit && item.stopKind === 'cancelled' && !capOutrun;
+        const stopKind = textLimit ? 'output_limit' : capHit ? 'provider_turn_limit' : capOutrun ? null : item.stopKind;
         const failed = consumer.turnFailed || stopKind !== null || item.code !== 0 || !consumer.turnCompleted;
         const result: RunnerResult = {
           command: [executable, ...args], exitCode: item.code, signal: item.signal,
@@ -127,7 +132,7 @@ export class PiBackend implements RunnerBackend {
           turnCompleted: consumer.turnCompleted && !failed, turnFailed: failed,
           fatalError: textLimit ? 'Retained assistant text exceeded its byte limit.'
             : capHit ? `Provider turn cap reached (${request.providerTurnCap}); the caller may continue from the retained work in a new call.`
-            : item.error ?? consumer.fatalError ?? (failed ? `Pi exited ${item.code ?? item.signal ?? 'without an exit code'} without a successful settled turn.` : null),
+            : (capOutrun ? null : item.error) ?? consumer.fatalError ?? (failed ? `Pi exited ${item.code ?? item.signal ?? 'without an exit code'} without a successful settled turn.` : null),
           stopKind, stdoutLineCount, stderrLineCount, jsonEventCount,
           providerTurns: consumer.providerTurns, providerTurnCapHit: capHit, toolActivityObserved: consumer.toolActivityObserved,
           accounting: accounting.snapshot(consumer.turnCompleted && !failed),
