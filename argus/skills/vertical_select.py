@@ -158,6 +158,21 @@ def available_vertical_purposes() -> dict[str, str]:
         for name, plugin in vertical_plugins().items()
         if name not in purposes
     })
+    from ..verticals._base import load_vertical_contract
+
+    for name in purposes:
+        contract = load_vertical_contract(name)
+        profiles = contract.workflow_profiles
+        if profiles:
+            purposes[name] += " Workflow profiles: " + "; ".join(
+                f"{key} ({profile.purpose}; {' -> '.join(profile.stages)})"
+                for key, profile in profiles.items()
+            )
+        if contract.workflow_stage_requirements:
+            purposes[name] += ". Custom workflow stages (mandatory companions): " + "; ".join(
+                f"{stage} (+{','.join(required) or 'none'})"
+                for stage, required in contract.workflow_stage_requirements.items()
+            )
     return purposes
 
 
@@ -597,6 +612,9 @@ def persist_vertical(
     start_stage: str = "",
     target_venue: str | None = None,
     allow_research_direction_change: bool = False,
+    workflow_profile: str | None = None,
+    workflow_requested_stages: tuple[str, ...] | None = None,
+    allow_workflow_profile_change: bool = False,
 ) -> None:
     """Persist the chosen ``vertical`` into ``.argus/PIPELINE_STATE.json``.
 
@@ -626,6 +644,58 @@ def persist_vertical(
     payload = _load_state_payload(project_root)
 
     previous_vertical = str(payload.get("vertical") or "").strip().lower()
+    from ..verticals._base import load_vertical_contract
+
+    base_contract = load_vertical_contract(vert, project_root=project_root, scoped=False)
+    previous_profile = payload.get("workflow_profile", "") if previous_vertical == vert else ""
+    selected_profile = previous_profile if workflow_profile is None else workflow_profile
+    previous_requested = (
+        payload.get("workflow_requested_stages", ())
+        if previous_vertical == vert else ()
+    )
+    selected_requested = (
+        previous_requested
+        if workflow_requested_stages is None and selected_profile == previous_profile
+        else workflow_requested_stages or ()
+    )
+    if selected_requested and not selected_profile:
+        raise ValueError("requested workflow stages require a workflow profile")
+    selected_contract = (
+        base_contract.for_profile(selected_profile, requested_stages=selected_requested)
+        if workflow_profile is not None or selected_profile
+        else base_contract
+    )
+    if (
+        previous_vertical == vert
+        and (
+            previous_profile != selected_profile
+            or tuple(previous_requested) != selected_contract.workflow_requested_stages
+        )
+        and payload.get("current_stage") and not allow_workflow_profile_change
+    ):
+        raise ValueError("workflow profile cannot change during an active task")
+    selected_stages = selected_contract.stage_order
+    if selected_profile:
+        if workflow_mode is not None and _normalize_workflow_mode(workflow_mode) != "staged":
+            raise ValueError("a workflow profile requires workflow_mode='staged'")
+        if (
+            previous_profile == selected_profile
+            and payload.get("workflow_stages") != list(selected_stages)
+            and not allow_workflow_profile_change
+        ):
+            raise ValueError("workflow changed since selection; a new operator handoff is required")
+        payload["workflow_profile"] = selected_profile
+        payload["workflow_stages"] = list(selected_stages)
+        if selected_profile == "custom":
+            payload["workflow_requested_stages"] = list(selected_contract.workflow_requested_stages)
+        else:
+            payload.pop("workflow_requested_stages", None)
+        # Direct early completion must not bypass a scoped profile's evidence.
+        workflow_mode = "staged"
+    else:
+        payload.pop("workflow_profile", None)
+        payload.pop("workflow_stages", None)
+        payload.pop("workflow_requested_stages", None)
     payload["vertical"] = vert
     if domain is not None:
         from ..domains import require_domain
@@ -650,14 +720,7 @@ def persist_vertical(
         payload["workflow_mode"] = normalized_mode
     if research_target_level is not None:
         from ..core.research_contract import normalize_research_target_level
-        from ..verticals._base import (
-            load_vertical,
-            vertical_research_target_levels,
-        )
-
-        supported_levels = vertical_research_target_levels(
-            load_vertical(vert, project_root=project_root)
-        )
+        supported_levels = base_contract.research_target_levels
         if not supported_levels:
             raise ValueError(
                 f"research_target_level is not supported by vertical {vert!r}"
@@ -690,11 +753,7 @@ def persist_vertical(
         ):
             payload["research_target_set_at"] = time.time()
     else:
-        from ..verticals._base import load_vertical, vertical_research_target_levels
-
-        if not vertical_research_target_levels(
-            load_vertical(vert, project_root=project_root)
-        ):
+        if not base_contract.research_target_levels:
             payload.pop("research_target_level", None)
             payload.pop("research_target_set_at", None)
         elif previous_vertical != vert and payload.get("research_target_level"):
@@ -737,7 +796,7 @@ def persist_vertical(
             )
             if payload.get("workflow_mode") == "direct" and start_stage else ""
         )
-        initial_stage = initial_stage or _vertical_first_stage(vert, project_root)
+        initial_stage = initial_stage or selected_stages[0]
         if initial_stage:
             payload["current_stage"] = initial_stage
     if vert == "research":
@@ -805,6 +864,13 @@ def _vertical_completion_record(
         return None
     if str(record.get("status") or "").strip().lower() != "done":
         return None
+    if payload.get("workflow_profile"):
+        if current != order[-1] or any(
+            not isinstance((required := stage_record(stage)), dict)
+            or required.get("status") != "done"
+            for stage in order
+        ):
+            return None
     if current == order[-1]:
         return current, record
 

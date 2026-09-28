@@ -1,5 +1,9 @@
 # The Vertical Store
 
+Verticals may expose [named workflow profiles](workflow-profiles.md) for smaller
+task scopes while retaining an explicit full workflow. That contract describes
+framework compatibility and how existing projects keep their scope.
+
 Argus ships seven verticals. The other seventeen live in the community repository
 [`Argus-AiTeam/argus-verticals`](https://github.com/Argus-AiTeam/argus-verticals),
 one directory each. The **Vertical Store** installs those directories into a
