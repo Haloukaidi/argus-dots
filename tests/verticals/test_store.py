@@ -957,3 +957,25 @@ def test_real_fpga_archive_routes_and_seeds_its_independent_specialty(community_
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "PASS: 12 configurations" in result.stdout
+    import shlex
+
+    verification = load_vertical("digital_circuit_verification")
+    command = shlex.split(verification.evidence_check_command(
+        "digital_circuit_verification", "simulation",
+    ))
+    # The prompt's checker uses the framework loader, not a manually expanded
+    # plugin namespace. The new process has only the framework on PYTHONPATH.
+    env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2])}
+    accepted = subprocess.run(
+        command, cwd=output, env=env, capture_output=True, text=True, timeout=30,
+    )
+    assert accepted.returncode == 0, accepted.stdout + accepted.stderr
+    assert accepted.stdout.strip() == "[]"
+    assert not (output / ".argus/PIPELINE_STATE.json").exists()
+    (output / "verification/PLAN.json").rename(output / "verification/PLAN.saved.json")
+    rejected = subprocess.run(
+        command, cwd=output, env=env, capture_output=True, text=True, timeout=30,
+    )
+    assert rejected.returncode != 0
+    assert "verification/PLAN.json" in rejected.stdout
+    assert not (output / ".argus/PIPELINE_STATE.json").exists()

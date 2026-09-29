@@ -393,7 +393,7 @@ class LifeSupervisor(
             add_dirs=([str(state_root)] if state_root != workdir else []),
             skip_git_repo_check=True,
             dangerous_yolo=False,
-            open_ended=bool(getattr(self.config, "open_ended", False)),
+            open_ended=bool(self.config.continuous and self.config.open_ended),
             external_interrupt_reason_provider=_semantic_interrupt,
             role_session_path=state_root / "role-sessions" / "planner.json",
             # The same environment knob that budgets Engineer sessions budgets

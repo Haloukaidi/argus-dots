@@ -733,10 +733,14 @@ class PlanningContextMixin:
             self.config.continuous = enabled
             self.config.open_ended = open_ended
             self.config.final_certification_gate = bool(
-                self.config.paper_mission and open_ended
+                self.config.paper_mission and enabled and open_ended
             )
             if objective:
                 self.config.continuous_objective = objective
+            runner_args = getattr(self.runner, "_args", None)
+            if runner_args is not None:
+                runner_args.open_ended = enabled and open_ended
+                runner_args.continuous_objective = objective if enabled else ""
         except Exception:  # noqa: BLE001
             log.warning(
                 "continuous config provider failed; keeping current values",
