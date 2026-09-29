@@ -541,6 +541,8 @@ export interface VerticalOperation {
 
 export interface VerticalRow {
   name: string;
+  /** Category/domain/optional specialty; absent on older servers. Not skill inheritance. */
+  routing_path?: string[];
   purpose: string;
   purpose_zh: string | null;
   kind: VerticalKind;

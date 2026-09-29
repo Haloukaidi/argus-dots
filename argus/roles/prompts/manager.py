@@ -352,6 +352,32 @@ def build_steer_confirmation_prompt(text: str, *, active_mission: bool) -> str:
     )
 
 
+def _vertical_menu(
+    purposes: Mapping[str, str],
+    routing_paths: Mapping[str, tuple[str, ...]] | None,
+) -> str:
+    if not routing_paths:
+        return "\n".join(f"  - `{name}`: {purpose}" for name, purpose in sorted(purposes.items())) or "  (none)"
+    groups: dict[tuple[str, ...], list[str]] = {}
+    for name, purpose in sorted(purposes.items()):
+        path = routing_paths.get(name, ())
+        groups.setdefault(path[:2], []).append(
+            f"  - `{name}`{f' [specialty: {path[2]}]' if len(path) == 3 else ''}: {purpose}"
+        )
+    sections = [
+        "Select by category, then domain, then specialty when its complete deliverable "
+        "fits. Category headings are not selectable verticals. A specialist owns its own "
+        "workflow; knowledge dependencies do not transfer authority or require running "
+        "the parent's stages. Return the exact listed vertical name in this same decision. "
+        "For cross-domain work choose the owner of the requested deliverable and make "
+        "external interface obligations explicit; do not imply automatic cross-vertical "
+        "execution. If the primary deliverable is ambiguous, clarify before dispatch."
+    ]
+    for path, lines in sorted(groups.items()):
+        sections.append(f"### {' / '.join(path) if path else 'Other capabilities'}\n" + "\n".join(lines))
+    return "\n\n".join(sections)
+
+
 def build_fast_vertical_decision_prompt(
     task: str,
     *,
@@ -359,15 +385,10 @@ def build_fast_vertical_decision_prompt(
     domains_with_purpose: dict[str, str] | None = None,
     existing_data_domains: Sequence[str] = (),
     research_target_verticals: Sequence[str] = (),
+    vertical_routing_paths: Mapping[str, tuple[str, ...]] | None = None,
 ) -> str:
     """Render the compact, tool-free first-pass Manager prompt."""
-    menu = (
-        "\n".join(
-            f"  - `{name}`: {purpose}"
-            for name, purpose in sorted(verticals_with_purpose.items())
-        )
-        or "  (none)"
-    )
+    menu = _vertical_menu(verticals_with_purpose, vertical_routing_paths)
     domain_menu = (
         "\n".join(
             f"  - `{name}`: {purpose}"
@@ -449,12 +470,10 @@ def build_vertical_decision_prompt(
     existing_data_domains: Mapping[str, str] | Sequence[str] = (),
     existing_data_domain_summaries: Mapping[str, str] | None = None,
     research_target_verticals: Sequence[str] = (),
+    vertical_routing_paths: Mapping[str, tuple[str, ...]] | None = None,
 ) -> str:
     """Render the grounded vertical and workflow decision prompt."""
-    menu = (
-        "\n".join(f"  - `{name}`: {purpose}" for name, purpose in sorted(verticals_with_purpose.items()))
-        or "  (none)"
-    )
+    menu = _vertical_menu(verticals_with_purpose, vertical_routing_paths)
     domain_menu = (
         "\n".join(
             f"  - `{name}`: {purpose}" for name, purpose in sorted((domains_with_purpose or {}).items())
