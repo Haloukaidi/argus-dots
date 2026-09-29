@@ -867,7 +867,7 @@ def build_stage_decision_prompt(
     allow_rollback: bool = True,
     allow_early_completion: bool = False,
 ) -> str:
-    """Build the Manager's authoritative stage-transition prompt."""
+    """Build the Manager's stage-transition prompt with a concrete target example."""
     # Normalize a stray string to one stage instead of iterating over its characters.
     stages = [earlier_stages] if isinstance(earlier_stages, str) else list(earlier_stages)
     earlier = ", ".join(f"`{stage}`" for stage in stages if str(stage).strip()) or (
@@ -1033,7 +1033,7 @@ def build_stage_decision_prompt(
         + RESEARCHER_VOICE + "\n\n"
         + decision_footer_instruction(
             "ACTION=hold\n"
-            "TARGET_STAGE=current stage\n"
+            f"TARGET_STAGE={current_stage}\n"
             "REASON=one operator-language sentence stating the decisive evidence, "
             "whether the stage moves, and what happens next; do not repeat status tokens"
         )
@@ -1054,7 +1054,7 @@ def build_stage_decision_prompt(
         # executed as a one-step advance, so neither the obedient nor the
         # improvising Manager loses its verdict; this line only keeps the trace
         # exact.
-        "For HOLD and for COMPLETE, set TARGET_STAGE to the current stage.\n\n"
+        f"For HOLD and for COMPLETE, set TARGET_STAGE to `{current_stage}`.\n\n"
         # The objective and the stage's requirements hold across the
         # campaign's decisions; the wait and scope arbitration, the evidence
         # and the Planner note belong to this one decision, so they close the
