@@ -11,6 +11,8 @@ import logging
 import os
 import re
 import stat
+import subprocess
+import sys
 import threading
 import time
 import zipfile
@@ -68,6 +70,24 @@ def _rewrite_catalog(catalog: Path, mutate) -> None:
 
 
 # --- catalog ---------------------------------------------------------------------
+
+def test_routing_path_survives_catalog_install_disablement_and_offline_rows(tmp_path, monkeypatch, home):
+    path = ("hardware", "digital", "verify")
+    catalog = fake.build_release(tmp_path / "hierarchy", [fake.spec("digital_verify", routing_path=path)])
+    monkeypatch.setenv(store.CATALOG_ENV, str(catalog))
+    assert store.load_catalog()["catalog"]["verticals"]["digital_verify"]["routing_path"] == list(path)
+    store.install("digital_verify", wait=True)
+    assert _registry.vertical_plugins()["digital_verify"].routing_path == path
+    store.disable("digital_verify")
+    row = next(row for row in store.rows(catalog=None) if row["name"] == "digital_verify")
+    assert row["routing_path"] == list(path)
+    assert not row["enabled"]
+
+
+def test_catalog_rejects_mismatched_routing_name(release):
+    _rewrite_catalog(release, lambda catalog: catalog["verticals"]["solo_v"].update(routing_path=["hardware", "other"]))
+    with pytest.raises(store.VerticalStoreError, match="routing_path"):
+        store.load_catalog(refresh=True)
 
 
 def test_catalog_source_defaults_to_the_latest_github_release(monkeypatch) -> None:
@@ -511,7 +531,7 @@ def test_rows_merge_builtins_installed_and_available_with_actions(release) -> No
     expected_keys = {
         "name", "purpose", "purpose_zh", "kind", "version", "installed_version", "enabled",
         "update_available", "requires", "shared", "python_requirements", "missing_python", "tags",
-        "size_bytes", "used_by", "operation", "managed_by_host", "actions",
+        "size_bytes", "used_by", "operation", "managed_by_host", "actions", "routing_path",
     }
     assert all(set(row) == expected_keys for row in rows.values())
     assert {row["kind"] for row in rows.values()} <= set(store.KINDS)
@@ -877,7 +897,7 @@ def community_release(tmp_path_factory) -> Path:
 def test_real_community_archives_install_load_and_seed_skills(community_release, monkeypatch, home) -> None:
     monkeypatch.setenv(store.CATALOG_ENV, str(community_release))
     loaded = store.load_catalog(refresh=True)
-    assert len(loaded["catalog"]["verticals"]) == 17
+    assert {"digital_circuit", "chip_design", "prose", "modern_poetry"} <= set(loaded["catalog"]["verticals"])
     store.install("chip_design", wait=True)
     assert set(store.installed()) == {"digital_circuit", "chip_design"}
     assert {"chip_design", "digital_circuit"} <= set(vertical_select.available_verticals())
@@ -901,6 +921,39 @@ def test_real_community_archives_install_load_and_seed_skills(community_release,
     store.uninstall("chip_design", wait=True)
     assert "digital_circuit" in store.installed() and "chip_design" not in store.installed()
     zips = sorted(p.name for p in community_release.parent.glob("*.zip"))
-    assert len(zips) == 17
-    with zipfile.ZipFile(community_release.parent / "chip_design-0.1.0.zip") as zf:
+    assert len(zips) == len(loaded["catalog"]["verticals"])
+    with zipfile.ZipFile(community_release.parent / loaded["catalog"]["verticals"]["chip_design"]["archive"]["file"]) as zf:
         assert all(name.startswith("argus_verticals/chip_design/") for name in zf.namelist())
+
+
+@pytest.mark.integration
+def test_real_fpga_archive_routes_and_seeds_its_independent_specialty(community_release, monkeypatch, home):
+    monkeypatch.setenv(store.CATALOG_ENV, str(community_release))
+    catalog = store.load_catalog(refresh=True)["catalog"]
+    if "fpga_design" not in catalog["verticals"]:
+        pytest.skip("community checkout predates the FPGA domain")
+    store.install("fpga_design", wait=True)
+    assert set(store.installed()) == {"digital_circuit", "digital_circuit_verification", "fpga_design"}
+    paths = vertical_select.available_vertical_routing_paths()
+    assert paths["fpga_design"] == ("hardware", "fpga_design")
+    assert paths["digital_circuit_verification"] == ("hardware", "digital_circuit", "verification")
+    module = load_vertical("fpga_design")
+    assert Path(module.__file__).resolve().is_relative_to(store.package_root().resolve())
+    skills = dict(iter_vertical_skill_texts("fpga_design"))
+    assert "engineer/digital-knowledge-map.md" in skills
+    assert "engineer/verification-matrix.md" in skills
+    assert "engineer/fpga-engineering-map.md" in skills
+    from argus.verticals._base import load_vertical_contract
+
+    state = home / "fpga-project"
+    vertical_select.persist_vertical(state, "fpga_design", workflow_profile="implementation")
+    assert load_vertical_contract("fpga_design", state).stage_order == ("verification", "implementation")
+    output = home / "installed-reference"
+    result = subprocess.run(
+        [sys.executable, "-m", "argus_verticals.digital_circuit.verification.run_reference", str(output)],
+        cwd=home,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join((str(store.store_root()), str(Path(__file__).resolve().parents[2])))},
+        capture_output=True, text=True, timeout=60,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "PASS: 12 configurations" in result.stdout

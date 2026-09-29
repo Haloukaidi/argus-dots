@@ -149,7 +149,17 @@ def available_verticals() -> tuple[str, ...]:
     return (*VERTICALS, *(name for name in vertical_plugins() if name not in VERTICALS))
 
 
-def available_vertical_purposes() -> dict[str, str]:
+def available_vertical_routing_paths() -> dict[str, tuple[str, ...]]:
+    from ..verticals._registry import vertical_plugins
+
+    return {
+        name: plugin.routing_path
+        for name, plugin in vertical_plugins().items()
+        if plugin.routing_path and name not in VERTICALS
+    }
+
+
+def available_vertical_purposes(*, compact: bool = False) -> dict[str, str]:
     from ..verticals._registry import vertical_plugins
 
     purposes = dict(VERTICAL_PURPOSES)
@@ -165,7 +175,7 @@ def available_vertical_purposes() -> dict[str, str]:
         profiles = contract.workflow_profiles
         if profiles:
             purposes[name] += " Workflow profiles: " + "; ".join(
-                f"{key} ({profile.purpose}; {' -> '.join(profile.stages)})"
+                f"{key} ({'' if compact else profile.purpose + '; '}{' -> '.join(profile.stages)})"
                 for key, profile in profiles.items()
             )
         if contract.workflow_stage_requirements:

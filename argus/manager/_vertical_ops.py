@@ -687,7 +687,8 @@ class _VerticalDecisionMixin:
         ):
             fast_prompt = build_fast_vertical_decision_prompt(
                 task,
-                verticals_with_purpose=vertical_select.available_vertical_purposes(),
+                verticals_with_purpose=vertical_select.available_vertical_purposes(compact=True),
+                vertical_routing_paths=vertical_select.available_vertical_routing_paths(),
                 domains_with_purpose=DOMAIN_PURPOSES,
                 existing_data_domains=existing,
                 research_target_verticals=research_target_verticals,
@@ -783,7 +784,8 @@ class _VerticalDecisionMixin:
 
         prompt = build_vertical_decision_prompt(
             task,
-            verticals_with_purpose=vertical_select.available_vertical_purposes(),
+            verticals_with_purpose=vertical_select.available_vertical_purposes(compact=True),
+            vertical_routing_paths=vertical_select.available_vertical_routing_paths(),
             domains_with_purpose=DOMAIN_PURPOSES,
             existing_data_domains=existing,
             existing_data_domain_summaries=existing_summaries,

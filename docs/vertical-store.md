@@ -1,10 +1,26 @@
 # The Vertical Store
 
+Providers may declare `VERTICAL_ROUTING_PATH = ("hardware", "chip_design")`
+or `("hardware", "digital_circuit", "benchmark")`. The category is a browsing
+group, not an executable provider. Domain and optional specialty joined with
+`_` must equal the existing vertical ID. Unclassified providers remain available.
+The catalog derives this field from the provider; the store preserves it and
+offers prefix-based category/domain/specialty filtering.
+
+Both Manager routing prompts use the same hierarchy, selecting an exact existing
+ID in one decision rather than adding a mandatory classification agent. Compact
+menus retain stage/profile choices but omit repeated profile descriptions.
+This is structured model routing, not a deterministic semantic classifier:
+ambiguous tasks still need clarification. `VERTICAL_SKILL_PARENTS` remains
+separate, explicit, direct-parent knowledge reuse, not workflow inheritance.
+A multi-domain task does not automatically compose multiple verticals; its
+primary owner must define the required external interfaces.
+
 Verticals may expose [named workflow profiles](workflow-profiles.md) for smaller
 task scopes while retaining an explicit full workflow. That contract describes
 framework compatibility and how existing projects keep their scope.
 
-Argus ships seven verticals. The other seventeen live in the community repository
+Argus ships seven verticals. Additional providers live in the community repository
 [`Argus-AiTeam/argus-verticals`](https://github.com/Argus-AiTeam/argus-verticals),
 one directory each. The **Vertical Store** installs those directories into a
 user-level location, one vertical at a time, without `pip`: it reads the

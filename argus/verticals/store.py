@@ -543,10 +543,17 @@ def _validate_entry(name: str, raw: object, *, local_source: bool) -> dict[str, 
     size_bytes = raw.get("size_bytes", 0)
     if not isinstance(size_bytes, int) or isinstance(size_bytes, bool) or size_bytes < 0:
         size_bytes = 0
+    from ._registry import validate_routing_path
+
+    try:
+        routing_path = validate_routing_path(name, raw.get("routing_path", []))
+    except ValueError as exc:
+        raise VerticalStoreError(f"{where}: {exc}") from exc
     return {
         "name": name,
         "version": version,
         "module": module,
+        "routing_path": list(routing_path),
         "purpose": " ".join(purpose.split()),
         "purpose_zh": " ".join(purpose_zh.split()) if isinstance(purpose_zh, str) else None,
         "paths": paths,
@@ -912,6 +919,7 @@ def _place(
                 "requires": list(spec["requires"]),
                 "shared": list(spec["shared"]),
                 "paths": list(spec["paths"]),
+                "routing_path": list(spec.get("routing_path", [])),
             }
             for tree in spec["shared"]:
                 owners = data["shared"].setdefault(tree, {"owners": [], "sha256s": {}})
@@ -1623,7 +1631,7 @@ def rows(
             "name": name, "purpose": VERTICAL_PURPOSES.get(name, ""), "purpose_zh": None,
             "kind": "builtin", "version": None, "installed_version": None, "enabled": True,
             "update_available": False, "requires": [], "shared": [], "python_requirements": [],
-            "missing_python": [], "tags": [], "size_bytes": 0,
+            "missing_python": [], "tags": [], "size_bytes": 0, "routing_path": [],
             "used_by": list(sessions.get(name, [])), "operation": None,
             "managed_by_host": host, "actions": [],
         })
@@ -1638,6 +1646,12 @@ def rows(
         update_available = bool(entry is not None and spec is not None and not _is_current(entry, spec))
         enabled = kind == "package" or (entry is not None and name not in disabled)
         requirements = list(spec["python_requirements"]) if spec else []
+        if name in plugins:
+            routing_path = plugins[name].routing_path
+        elif entry is not None and "routing_path" in entry:
+            routing_path = entry["routing_path"]
+        else:
+            routing_path = spec.get("routing_path", []) if spec else []
         result.append({
             "name": name,
             "purpose": spec["purpose"] if spec else plugin.purpose if plugin else "",
@@ -1652,6 +1666,7 @@ def rows(
             "python_requirements": requirements,
             "missing_python": missing_python(requirements),
             "tags": list(spec["tags"]) if spec else [],
+            "routing_path": list(routing_path),
             "size_bytes": spec["size_bytes"] if spec else 0,
             "used_by": list(sessions.get(name, [])),
             "operation": op,
