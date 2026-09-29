@@ -961,10 +961,15 @@ class SkillLoopExecuteMixin:
             )
             from ..manager.plan_mode import draft_plan
             from ..roles.prompts import resolve_role_prompt
-            from ..roles.prompts.planner import preview_request
+            from ..roles.prompts.planner import PLAN_PREVIEW, continuous_request
             from ._runtime_planning_context import bounded_planner_request
 
-            preview_prompt = resolve_role_prompt(preview_request(workdir))
+            preview_prompt = resolve_role_prompt(continuous_request(
+                getattr(config, "vertical_state_root", None) or workdir,
+                operation=PLAN_PREVIEW,
+                include_search_altitude=False,
+                altitude_root=workdir,
+            ))
             if _decided_vertical(config, workdir) == "research":
                 # The research Planner's own cycle plans the campaign minutes
                 # later with the stage playbook, and the idea stage forms its
