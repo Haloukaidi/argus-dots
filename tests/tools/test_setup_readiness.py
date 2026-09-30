@@ -582,3 +582,59 @@ def test_setup_cannot_mutate_global_git_or_backend_auth() -> None:
         assert f"_apply_{capability}_identity" not in source
     assert "_seed_codex_config" not in source
     assert "user.email" not in source
+
+
+def test_setup_failure_report_follows_the_stdout_narrative(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """Under a pipe, stdout is block-buffered and stderr is not.
+
+    The readiness failure and its advice are written to stderr; without a flush
+    they surfaced before the "Step 1" header and the account preamble, so a
+    logged setup read as if the failure had happened first.
+    """
+    from argus.core.backend_readiness import ReadinessProblem
+
+    transcript: list[str] = []
+
+    class _PipedStdout(io.StringIO):
+        def flush(self) -> None:
+            transcript.append(self.getvalue())
+            self.seek(0)
+            self.truncate(0)
+
+    class _Stderr:
+        def write(self, text: str) -> int:
+            transcript.append(text)
+            return len(text)
+
+        def flush(self) -> None:
+            return None
+
+    monkeypatch.setattr(setup.sys, "stdout", _PipedStdout())
+    monkeypatch.setattr(setup.sys, "stderr", _Stderr())
+    report = BackendReadiness(
+        profile=BackendProfile(
+            backend="copilot", auth_mode="subscription_cli",
+            backend_source="argument", auth_mode_source="argument",
+        ),
+        executable="/usr/bin/copilot", version="1.0.89", auth_checked=False,
+        problems=[ReadinessProblem(
+            capability="authentication",
+            detail="copilot authentication is not usable",
+            remediation="run `argus --setup --backend copilot --copilot-login --copilot-home PATH`",
+        )],
+    )
+    monkeypatch.setattr(setup, "_resolve_setup_runner_bin", lambda *_a, **_k: "/usr/bin/copilot")
+    monkeypatch.setattr(setup, "check_backend_readiness", lambda *_a, **_k: report)
+
+    rc = setup.run_setup(
+        backend="copilot", non_interactive=True, copilot_home=str(tmp_path / "dedicated"),
+    )
+
+    assert rc == SETUP_EXIT_NOT_READY
+    text = "".join(transcript)
+    assert text.index("Dedicated Copilot account directory") < text.index("ready: no")
+    assert text.index("Step 1: Agent CLI Backend") < text.index("ready: no")
+    assert text.index("Agent backend selected") < text.index("ready: no")
+    assert text.index("ready: no") < text.index("if login is needed")

@@ -324,6 +324,19 @@ class LifeSupervisor(
             return Path(root)
         return self._project_workdir()
 
+    def _project_state_root(self) -> Path:
+        """The project's own state directory, never the shared global home.
+
+        A split-memory daemon holds a ``MemoryBundle`` whose ``root`` is the
+        global home, while the Manager-owned files a vertical lookup needs
+        (pipeline state, delivery manifests, venue selection) live under its
+        ``project_root``. A plain ``LifeMemory`` keeps both in one directory.
+        """
+        value = getattr(self.memory, "project_root", None) or getattr(
+            self.memory, "root", None
+        )
+        return Path(value).expanduser() if value else self._artifact_root()
+
     def _current_pipeline_stage(self) -> str | None:
         """Read current stage through the active vertical contract.
 
@@ -1475,7 +1488,7 @@ class LifeSupervisor(
                         venue_review_snapshot=latest.get("venue_review_snapshot"),
                         review_source="reviewer",
                     ),
-                    state_root=self.memory.root, artifact_root=workspace,
+                    state_root=self._project_state_root(), artifact_root=workspace,
                 )
                 if acceptance_issue:
                     final_submission_certified = False
@@ -1495,7 +1508,7 @@ class LifeSupervisor(
                 review_status=str(outcome.get("review_status") or "not_assessed"),
                 final_submission_certified=final_submission_certified,
                 workspace=workspace,
-                state_root=self.memory.root,
+                state_root=self._project_state_root(),
                 stage=str(self._current_pipeline_stage() or ""),
                 reviewer_artifacts=candidates,
             )
