@@ -417,7 +417,6 @@ CALL_SCOPED_EVENT_TYPES: frozenset[str] = frozenset({
     EventType.PROVIDER_REQUEST_COMPLETED,
     EventType.PROVIDER_REQUEST_DENIED,
     EventType.USAGE_RECORDED,
-    EventType.ACCOUNTING_JOURNAL_REPAIRED,
 })
 
 @dataclass(frozen=True)
@@ -443,7 +442,7 @@ def _category(event_type: EventType) -> EventCategory:
         return EventCategory.AGENT_IO
     if value.startswith("provider."):
         return EventCategory.PROVIDER
-    if value.startswith("usage.") or value.startswith("codex.util."):
+    if value.startswith(("usage.", "accounting.", "codex.util.")):
         return EventCategory.USAGE
     if value.startswith("life.planner.") or value.startswith("plan."):
         return EventCategory.PLANNER
