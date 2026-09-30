@@ -53,6 +53,11 @@ from ..core.pipeline_state import (
 
 log = logging.getLogger(__name__)
 
+# Roots already reported once for the research fallback. The first miss is
+# worth a warning; the same undecided root asked again during one process
+# (delivery receipts, idle signatures, completion checks) is not news.
+_FALLBACK_WARNED_ROOTS: set[str] = set()
+
 
 # --- constants -------------------------------------------------------------
 
@@ -577,11 +582,16 @@ def resolve_vertical(project_root: object = ".") -> str:
     decided = resolve_vertical_if_decided(project_root)
     if decided is not None:
         return decided
-    log.warning(
-        "no Manager vertical resolved for %r; using research only as a low-level "
-        "compatibility fallback (formal tasks must classify through Manager)",
-        project_root,
-    )
+    key = str(project_root)
+    if key in _FALLBACK_WARNED_ROOTS:
+        log.debug("no Manager vertical resolved for %r; research fallback again", project_root)
+    else:
+        _FALLBACK_WARNED_ROOTS.add(key)
+        log.warning(
+            "no Manager vertical resolved for %r; using research only as a low-level "
+            "compatibility fallback (formal tasks must classify through Manager)",
+            project_root,
+        )
     return DEFAULT_VERTICAL
 
 

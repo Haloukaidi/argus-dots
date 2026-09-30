@@ -1240,6 +1240,25 @@ def _cmd_follow(args: argparse.Namespace) -> int:
     return 0
 
 
+def _ask_project_observation(life_dir: Path) -> str:
+    """The project's recorded facts, when this workdir already belongs to one.
+
+    The web ``/ask`` grounds its reply in ``observe_project``; the CLI answered
+    from the question alone, so "where is this project at?" asked inside a
+    finished project was answered as if no project existed. A workdir with no
+    recorded work keeps the plain reply: there is nothing to observe yet.
+    """
+    root = Path(life_dir)
+    if not any((root / name).is_file() for name in ("events.jsonl", "backlog.jsonl")):
+        return ""
+    try:
+        from ...manager.observation import observe_project
+
+        return observe_project(root).render().strip()
+    except Exception:  # noqa: BLE001 - the observation informs; the reply must not fail on it
+        return ""
+
+
 def _cmd_ask(args: argparse.Namespace) -> int:
     """Answer ``--ask <question>`` inline via the Manager quick-reply path.
 
@@ -1297,6 +1316,9 @@ def _cmd_ask(args: argparse.Namespace) -> int:
     )
     prompt = build_quick_reply_prompt(objective=question)
     prompt = append_operator_context(prompt, operator_context)
+    observation = _ask_project_observation(bundle.project.root)
+    if observation:
+        prompt += "\n\n" + observation
     result = gateway_run_exec(
         runner,
         prompt=prompt,
