@@ -98,6 +98,8 @@ class PageMeta:
     source: str = ""
     created: str = ""
     body_lead: str = ""
+    # The date the page was corrected in place, when its front matter says so.
+    corrected: str = ""
 
 
 @dataclass(frozen=True)
@@ -296,6 +298,7 @@ def _describe(root: KnowledgeRoot, path: Path, content: str, mtime: float) -> Pa
         source=_clip(str(front.get("source") or "").strip(), 80),
         created=_iso_date(front.get("created"), mtime),
         body_lead=_clip(_first_prose_line(body)),
+        corrected=_clip(str(front.get("corrected") or "").strip(), 10),
     )
 
 
@@ -538,6 +541,9 @@ class MarkdownKnowledgeRecall:
         details = [meta.page_kind, document.origin]
         if meta.created:
             details.append(meta.created)
+        if meta.corrected:
+            # A reader sees that the page was corrected before deciding to open it.
+            details.append(f"corrected {meta.corrected}")
         tokens = [f"content {document.digest[:12]}"]
         if channel:
             tokens.append(channel)

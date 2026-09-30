@@ -30,7 +30,18 @@ library's `.history` directory, excluded from browsing and recall.
 
 Corrections update the current page's summary, conclusions and index entry.
 The current page does not retain an incorrect lead followed by a corrective
-appendix. Recall searches topic and procedure content, excluding generic
+appendix. A person or a role that finds a page wrong corrects it the same way:
+`argus wiki correct pages/<page>.md --wiki <library> --statement "..." --reason
+"..."` (or `--scope vertical --vertical <name>` / `--scope global` for this
+home's shared libraries, and `POST /api/wiki/page/correct` from the web
+cockpit) replaces the page's opening paragraph with the corrected statement,
+replaces the summary when a new one is given, moves what the page said before
+into a `## History` section that recall does not search, keeps the earlier
+file under the library's `.history` directory, marks the front matter with
+`corrected: <date>` so recall shows "corrected <date>" in the page's line,
+updates the index entry, and writes a `corrected` record to the knowledge
+journal so the feed shows it. A corrected shared page is newer than the
+project copy it was promoted from, so the next promotion keeps it. Recall searches topic and procedure content, excluding generic
 request words, source metadata and history. Weak positive embedding similarity
 alone does not make a page relevant. Existing derived indexes are refreshed
 automatically without changing the canonical Markdown.
