@@ -741,7 +741,7 @@ class Reviewer:
             paper_review_snapshot,
             requires_venue_review,
             selected_acceptance_minimum,
-            selected_venue,
+            venue_for_review,
             venue_review_instruction,
         )
         from ..skills.vertical_select import resolve_vertical_if_decided
@@ -754,7 +754,7 @@ class Reviewer:
             scope=scope,
             operation=operation,
         )
-        venue = selected_venue(state_root) if venue_required else ""
+        venue = venue_for_review(state_root) if venue_required else ""
         acceptance_minimum = selected_acceptance_minimum(state_root) if venue_required else "weak_accept"
         venue_snapshot = paper_review_snapshot(artifact_root) if venue_required else None
         reviewed_manuscript_snapshot = None

@@ -319,3 +319,30 @@ def test_stage_certificate_keeps_venue_rating_and_expires_on_figure_changes(pape
     record = latest_stage_review(paper, "review")
     assert record["certified"] is False
     assert "changed" in record["stale_reason"]
+
+
+@pytest.mark.parametrize("recommendation, clear", [("weak_accept", True), ("weak_reject", False)])
+def test_reviewer_verdict_counts_when_no_venue_was_selected(paper, recommendation, clear):
+    from argus.core.venue_review import UNSELECTED_VENUE, venue_for_review
+
+    state_root = paper / "session-state"
+    persist_vertical(state_root, "research")
+    state = read_pipeline_state(state_root)
+    state["current_stage"] = "review"
+    write_pipeline_state(state_root, state)
+    assert venue_for_review(state_root) == UNSELECTED_VENUE
+    runner = _Runner(assessment(recommendation, clear=clear))
+    review = Reviewer(runner).evaluate(
+        objective="Judge the current paper", round_index=1, session_id=None,
+        main_summary="Ready for review", main_error=None, scope="final_submission",
+        config=ReviewerConfig(model="gpt-5.6-sol", active_vertical="research", working_dir=str(paper), artifact_root=str(paper), vertical_state_root=str(state_root)),
+    )
+    assert "No venue has been selected for this paper" in runner.prompt
+    assert "(not selected)" not in runner.prompt
+    # A verdict against the stated standard is a verdict: never a Reviewer backend failure.
+    assert not review.backend_unavailable
+    assert "omitted a valid assessment" not in (review.reason or "")
+    assert review.venue_review["venue"] == UNSELECTED_VENUE
+    assert review.venue_review["recommendation"] == recommendation
+    assert f"Recommendation: {recommendation}" in (paper / "paper/REVIEW.md").read_text()
+    assert review.final_submission_certified is (recommendation == "weak_accept")
