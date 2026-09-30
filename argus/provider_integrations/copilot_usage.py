@@ -197,12 +197,18 @@ def copilot_store_supports_token_billing(path: Path | None) -> bool:
 
 
 def copilot_usage_store_signature() -> list[dict[str, Any]]:
-    """Read-only invalidation key, including uncheckpointed SQLite writes."""
+    """Read-only invalidation key, including uncheckpointed SQLite writes.
+
+    The session-state directory is part of the key because a warm ACP turn's
+    charge lives in a per-session event log that appears when the CLI creates
+    the session, not in the store.
+    """
     return [
         {
             "path": str(path),
             "db": list(_signature(path) or ()),
             "wal": list(_signature(path.with_name(path.name + "-wal")) or ()),
+            "sessions": list(_signature(path.parent / "session-state") or ()),
         }
         for path in copilot_usage_db_candidates()
     ]
