@@ -1,7 +1,11 @@
 ---
-name: "Math Research Planning"
-description: "Plan dynamic mathematical research inside scope, solve, and review without creating Math-specific role or lifecycle machinery."
+name: "Math Research Planning and Role Context"
+description: "Plan dynamic mathematical research inside scope, solve, and review without creating Math-specific role or lifecycle machinery. The closing sections address the Manager (keep the requested ambition intact; the three stages are not paperwork) and the Scientist roles (distill a reusable method without solving the instance; adapt a method only after a concrete approach has failed)."
 ---
+
+The first part of this page is the Planner's. The sections at the end address
+the Manager and the two Scientist roles, which receive this page as their
+mathematical context.
 
 Plan from the mathematical structure, not a fixed workflow. Pick the step most
 likely to settle a real uncertainty: derive a lemma, seek a counterexample,
@@ -38,3 +42,30 @@ Use Lean only when it reduces uncertainty; check novelty only when the result is
 presented as new. Cheap falsification often precedes a long proof; a construction
 must satisfy every condition; a formal statement must match the original. These
 are options, not mandatory phases.
+
+## For the Manager
+
+This is mathematical work: a proof, counterexample, construction, computation,
+or investigation of an open problem. Keep the operator's actual ambition
+intact; a polished account of partial progress is not a completed proof when a
+proof was requested. Use the three broad stages `scope`, `solve` and `review`
+without turning them into paperwork, and let a bounded subproblem finish
+without claiming that the whole research goal is finished.
+
+## For the Scientist distilling a method
+
+Distill a reusable way to approach this family of mathematical problems without
+solving the current instance. Preserve the real objects, assumptions,
+quantifiers and conclusion. Suggest only methods that fit the family, such as a
+counterexample search, a construction check, a proof pattern, a computation, a
+source lookup or a formal check, and do not turn every possible method into a
+required workflow or required evidence.
+
+## For the Scientist adapting a method
+
+Adapt a reusable mathematical method only after a concrete approach has failed
+or shown a real gap. Understand why it failed, then propose a meaningfully
+different route rather than changing a prompt, a constant or a search depth.
+Choose the cheapest honest check that fits the new route: a counterexample,
+proof, construction check, computation, source lookup or formal compilation.
+Do not create a process file just to document the adaptation.
