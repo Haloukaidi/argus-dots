@@ -10,6 +10,7 @@ from __future__ import annotations
 import errno
 import json
 import os
+import re
 import tempfile
 import threading
 import time
@@ -112,8 +113,8 @@ def _usage_writer_active(lock_path: Path) -> bool:
         os.close(fd)
 
 
-def _complete_suffix_call_id(raw: bytes) -> str | None:
-    """Call ID of a complete record concatenated after a truncated prefix."""
+def _complete_suffix_record(raw: bytes) -> tuple[int, dict[str, Any]] | None:
+    """(character offset, record) of a complete record concatenated after a truncated prefix."""
     text = raw.decode("utf-8", errors="replace")
     position = len(text)
     for _ in range(_SUFFIX_PROBE_LIMIT):
@@ -125,8 +126,132 @@ def _complete_suffix_call_id(raw: bytes) -> str | None:
         except ValueError:
             continue
         if isinstance(value, dict):
-            return str(value.get("call_id") or "") or None
+            return position, value
     return None
+
+
+def _complete_suffix_call_id(raw: bytes) -> str | None:
+    """Call ID of a complete record concatenated after a truncated prefix."""
+    found = _complete_suffix_record(raw)
+    if found is None:
+        return None
+    return str(found[1].get("call_id") or "") or None
+
+
+_PREFIX_TEXT_FIELD = re.compile(
+    r'"(call_id|project_id|mission_id|provider|model|run_label|thread_id)"\s*:\s*"((?:[^"\\]|\\.)*)"'
+)
+_PREFIX_NUMBER_FIELD = re.compile(r'"(started_at|completed_at)"\s*:\s*(-?\d+(?:\.\d+)?)')
+
+
+def _truncated_prefix_fields(prefix: str) -> dict[str, Any]:
+    """What a truncated record still says about its call, field by field."""
+    fields: dict[str, Any] = {}
+    for key, value in _PREFIX_TEXT_FIELD.findall(prefix):
+        if key in fields:
+            continue
+        try:
+            fields[key] = json.loads(f'"{value}"')
+        except ValueError:
+            continue
+    for key, value in _PREFIX_NUMBER_FIELD.findall(prefix):
+        if key not in fields:
+            fields[key] = float(value)
+    return fields
+
+
+@dataclass(frozen=True)
+class DamagedJournalLine:
+    """One physical line the repair set aside, and what it still said."""
+
+    line_number: int
+    detail: str
+    prefix_fields: dict[str, Any]
+    recovered_call_id: str | None
+    lost_bytes: int
+
+
+@dataclass(frozen=True)
+class UsageJournalRepair:
+    path: Path
+    damaged_copy: Path
+    kept_records: int
+    damaged: tuple[DamagedJournalLine, ...]
+
+
+def repair_usage_journal(path: Path) -> UsageJournalRepair | None:
+    """Set a journal's damaged lines aside and keep every complete record.
+
+    The caller holds the usage lock, so a final line without its newline is a
+    truncated record, not an append in progress. The original bytes are
+    copied beside the journal first (``<name>.damaged-<utc time>``) and are
+    never touched again: they are the evidence. Every complete record is
+    kept, including one spliced after a truncated prefix. What each truncated
+    prefix still said about its call is returned so the caller can carry the
+    call as a liability; nothing here decides what it cost. Returns ``None``
+    when no line is damaged. An ``OSError`` (a full disk) leaves the journal
+    untouched, so it stays refused.
+    """
+    try:
+        original = path.read_bytes()
+    except OSError:
+        return None
+    rows: list[dict[str, Any]] = []
+    damaged: list[DamagedJournalLine] = []
+    for line_number, raw in enumerate(original.splitlines(keepends=True), start=1):
+        if not raw.strip():
+            continue
+        try:
+            row = json.loads(raw)
+        except (UnicodeDecodeError, ValueError):
+            row = None
+        if isinstance(row, dict):
+            rows.append(row)
+            continue
+        text = raw.decode("utf-8", errors="replace")
+        if row is not None:
+            damaged.append(DamagedJournalLine(
+                line_number, "record is not a JSON object", {}, None, len(raw),
+            ))
+            continue
+        found = _complete_suffix_record(raw)
+        if found is not None:
+            offset, record = found
+            prefix = text[:offset]
+            rows.append(record)
+            detail = "truncated record prefix concatenated with a complete record"
+            recovered = str(record.get("call_id") or "") or None
+        else:
+            prefix = text
+            detail = (
+                "truncated final record without a newline"
+                if not raw.endswith(b"\n") else "malformed record"
+            )
+            recovered = None
+        damaged.append(DamagedJournalLine(
+            line_number, detail, _truncated_prefix_fields(prefix), recovered,
+            len(prefix.encode("utf-8")),
+        ))
+    if not damaged:
+        return None
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    copy = path.with_name(f"{path.name}.damaged-{stamp}")
+    attempt = 0
+    while True:
+        try:
+            fd = os.open(str(copy), os.O_CREAT | os.O_WRONLY | os.O_EXCL, 0o600)
+            break
+        except FileExistsError:
+            attempt += 1
+            copy = path.with_name(f"{path.name}.damaged-{stamp}-{attempt}")
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(original)
+        handle.flush()
+        os.fsync(handle.fileno())
+    _rewrite_usage_rows(path, rows)
+    return UsageJournalRepair(
+        path=path, damaged_copy=copy, kept_records=len(rows), damaged=tuple(damaged),
+    )
 
 
 def _iter_usage_json_rows(path: Path, *, writer_excluded: bool = False) -> Iterator[dict[str, Any]]:
@@ -1061,6 +1186,15 @@ class UsageLedger:
                         portalocker.unlock(fd)
                 finally:
                     os.close(fd)
+
+    def repair_journal(self) -> UsageJournalRepair | None:
+        """Repair this ledger's journal under its lock; see :func:`repair_usage_journal`."""
+        with self._locked():
+            repair = repair_usage_journal(self.path)
+            if repair is not None:
+                with _CALL_ID_CACHE_LOCK:
+                    _CALL_ID_CACHE.pop(str(self.path.resolve()), None)
+            return repair
 
     def _call_ids_unlocked(self) -> set[str]:
         key = str(self.path.resolve())
