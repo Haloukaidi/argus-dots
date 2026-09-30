@@ -105,6 +105,17 @@ class _Backend:
     def run_exec(self, *, prompt: str, options: Any, run_label: str, resume_thread_id=None):
         self.calls.append({"prompt": prompt, "options": options, "run_label": run_label})
         for path, text in self.files:
+            if run_label == "answer-learning":
+                work = Path(options.working_dir)
+                raw = path.as_posix()
+                if "/pages/surveys/" in raw:
+                    path = work / "knowledge" / "pages" / "surveys" / raw.split("/pages/surveys/", 1)[1]
+                elif "/skills/self/" in raw:
+                    path = work / "skills" / raw.split("/skills/self/", 1)[1]
+                elif "/operator/" in raw:
+                    path = work / "operator" / raw.split("/operator/", 1)[1]
+                else:
+                    raise AssertionError(f"unrecognized answer-learning destination {path}")
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8")
         return RunnerResult(
@@ -242,7 +253,7 @@ def test_lesson_page_is_indexed_journaled_announced_and_receipted(roots: _Roots)
         "One round; the venv already carried torch.",
         "- An older lesson",
         str(lesson_path.parent),
-        "Write NOTHING when nothing durable was learned",
+        "Judge novelty against the saved libraries",
         "at most 300 words per page",
         "WROTE: nothing",
     ):
@@ -379,8 +390,9 @@ def test_pages_that_do_not_parse_are_ignored_and_a_failed_call_is_recorded(roots
     assert result["ignored"] == [str(broken)]
     assert result["failure"] == "exit code 1"
     assert _learned(roots.events) == []
-    receipt = json.loads((roots.life / ".argus" / "REFLECTED.json").read_text(encoding="utf-8"))
-    assert receipt["missions"][MISSION]["failure"] == "exit code 1"
+    assert not (roots.life / ".argus" / "REFLECTED.json").exists()
+    from argus.life.answer_learning import learning_status
+    assert learning_status(roots.home, SID)["jobs"][0]["status"] == "failed"
 
 
 def test_a_raising_backend_never_reaches_the_caller(roots: _Roots) -> None:
@@ -433,8 +445,10 @@ def test_survey_page_is_created_indexed_and_recorded(roots: _Roots) -> None:
     assert result["created"] == [str(survey_path)]
     call = backend.calls[0]
     assert call["run_label"] == "answer-learning"
-    assert call["options"].working_dir == str(global_root)
-    assert call["options"].add_dirs == [str(global_root), str(roots.home / "operator")]
+    draft = Path(call["options"].working_dir)
+    assert draft.parent == roots.life / ".learning-drafts"
+    assert call["options"].add_dirs == [str(draft)]
+    assert not draft.exists()
     prompt = call["prompt"]
     assert "现在 torch.compile 覆盖到哪一步了?" in prompt
     assert "- https://example.org/notes" in prompt
@@ -459,7 +473,7 @@ def test_survey_page_is_created_indexed_and_recorded(roots: _Roots) -> None:
     assert record["page_kind"] == "survey"
 
 
-def test_a_rewritten_survey_keeps_its_earlier_text_and_gains_a_dated_update(roots: _Roots) -> None:
+def test_a_corrected_survey_is_current_and_its_previous_version_is_archived(roots: _Roots) -> None:
     global_root = roots.home / "wiki" / "_global"
     survey_path = global_root / "pages" / "surveys" / SURVEY_NAME
     _answer(roots, _Backend([(survey_path, SURVEY)]))
@@ -472,13 +486,11 @@ def test_a_rewritten_survey_keeps_its_earlier_text_and_gains_a_dated_update(root
     result = _answer(roots, _Backend([(survey_path, rewritten)]))
 
     assert result["updated"] == [str(survey_path)]
-    assert result["repaired"] == [str(survey_path)]
-    text = survey_path.read_text(encoding="utf-8")
-    today = datetime.now(timezone.utc).date().isoformat()
-    assert text.startswith(SURVEY.rstrip("\n"))
-    assert f"\n## Update {today}\n" in text
-    assert "Coverage is now nearly complete." in text
-    assert text.count("Coverage widened in the last two releases.") == 1
+    assert result["repaired"] == []
+    assert survey_path.read_text(encoding="utf-8") == rewritten
+    histories = list((survey_path.parent / ".history").glob("*.md"))
+    assert len(histories) == 1
+    assert histories[0].read_text() == SURVEY
     # The existing slug was listed in the prompt so the model could extend it.
     events = _learned(roots.events, page_kind="survey")
     assert len(events) == 1
@@ -509,6 +521,50 @@ def test_answer_learning_lets_the_model_decline_and_writes_nothing(roots: _Roots
     assert not list((roots.home / "wiki" / "_global" / "pages" / "surveys").glob("*.md"))
 
 
+def test_answer_provider_failure_does_not_publish_its_partial_edits(roots: _Roots) -> None:
+    path = roots.home / "wiki" / "_global" / "pages" / "surveys" / SURVEY_NAME
+    _answer(roots, _Backend([(path, SURVEY)]))
+    roots.events.clear()
+    failed = _answer(roots, _Backend([(path, SURVEY.replace("Coverage widened", "Incorrect rewrite"))], exit_code=1))
+    assert failed["failure"]
+    assert failed["created"] == failed["updated"] == []
+    assert path.read_text() == SURVEY
+    assert not _learned(roots.events)
+
+
+def test_corrected_description_reaches_both_index_and_next_recall(roots: _Roots) -> None:
+    from argus.life.knowledge_recall import KnowledgeRoot, MarkdownKnowledgeRecall
+
+    wiki = roots.home / "wiki" / "_global"
+    path = wiki / "pages" / "surveys" / SURVEY_NAME
+    _answer(roots, _Backend([(path, SURVEY)]))
+    corrected = SURVEY.replace("What the current release notes say about compile coverage.",
+                               "Coverage is scoped to the documented backend and version.")
+    _answer(roots, _Backend([(path, corrected)]))
+    assert "Coverage is scoped" in (wiki / "INDEX.md").read_text()
+    assert "What the current release notes say" not in (wiki / "INDEX.md").read_text()
+    recall = MarkdownKnowledgeRecall(roots.life / "test-recall.db", [KnowledgeRoot("Wiki", wiki / "pages", wiki)])
+    assert "Coverage is scoped" in recall.render_context("compile")
+
+
+def test_concurrent_edit_is_preserved_and_not_claimed_as_this_pass_learning(roots: _Roots) -> None:
+    path = roots.home / "wiki" / "_global" / "pages" / "surveys" / SURVEY_NAME
+    _answer(roots, _Backend([(path, SURVEY)]))
+    roots.events.clear()
+    human_correction = SURVEY.replace("Coverage widened", "Operator corrected coverage")
+
+    class Racing(_Backend):
+        def run_exec(self, **kwargs):
+            result = super().run_exec(**kwargs)
+            path.write_text(human_correction)
+            return result
+
+    result = _answer(roots, Racing([(path, SURVEY.replace("Coverage widened", "Draft coverage"))]))
+    assert result["failure"] and not result["created"] and not result["updated"]
+    assert path.read_text() == human_correction
+    assert not _learned(roots.events)
+
+
 def test_answer_learning_respects_its_switch(roots: _Roots, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ARGUS_SKILL_ANSWER_LEARNING", "off")
     backend = _Backend()
@@ -517,6 +573,34 @@ def test_answer_learning_respects_its_switch(roots: _Roots, monkeypatch: pytest.
 
     assert "ARGUS_SKILL_ANSWER_LEARNING" in result["skipped"]
     assert backend.calls == []
+
+
+def test_answer_can_learn_a_method_and_explicit_preference_with_knowledge(roots: _Roots) -> None:
+    survey = roots.home / "wiki" / "_global" / "pages" / "surveys" / SURVEY_NAME
+    skill = roots.life / "skills" / "self" / "check-environment.md"
+    profile = roots.home / "operator" / "profile.md"
+    preference = "---\ntitle: Working preferences\ndescription: Explicit user preference.\nkind: profile\naudience: private\n---\nExplain the mechanism before the formulas.\n"
+    backend = _Backend([(survey, SURVEY), (skill, SKILL), (profile, preference)])
+    result = _answer(roots, backend, operator_text="Explain the mechanism first in future.",
+                     evidence="read existing environment; successful import")
+    assert set(result["created"]) == {str(survey), str(skill), str(profile)}
+    assert _learned(roots.events, page_kind="skill", scope="project")
+    assert _learned(roots.events, page_kind="profile", scope="private")
+    # Rewriting identical files must not masquerade as new learning.
+    roots.events.clear()
+    repeated = _answer(roots, backend)
+    assert repeated["updated"] == []
+    assert _learned(roots.events) == []
+
+
+def test_long_answers_keep_the_writing_boundaries_and_preference_rules(roots: _Roots) -> None:
+    backend = _Backend()
+    _answer(roots, backend, operator_text="request " * 2000, reply="answer " * 6000, evidence="trace " * 6000)
+    prompt = backend.calls[0]["prompt"]
+    assert len(prompt) <= PROMPT_CHAR_LIMIT
+    assert "Only explicit user statements support a lasting preference" in prompt
+    assert "You may write only inside" in prompt
+    assert prompt.endswith("`WROTE: nothing`.")
 
 
 def test_a_vertical_answer_lands_in_the_vertical_wiki(roots: _Roots) -> None:
@@ -813,4 +897,3 @@ def test_both_prompts_keep_the_operator_s_own_affairs_out_of_shared_pages(tmp_pa
     for prompt in (answer, mission):
         assert "keep the operator's own affairs out" in prompt
         assert "read by other projects and other people" in prompt
-

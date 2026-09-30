@@ -73,13 +73,10 @@ def _runner_namespace(cfg: LifeWorkerConfig) -> Any:
     ns.color = None
     ns.verbose = False
     ns.quiet = True
-    # Propagate campaign lifetime metadata so execute() can pass open_ended and
-    # continuous_objective to _decide_stage_transition via SkillLoopConfig.
-    # Without this the Manager stage hook defaults to open_ended=False, which
-    # causes final_stage_completion_decision to overwrite the Manager's own
-    # structured rollback verdict with a bounded completion.
-    ns.open_ended = cfg.continuous_open_ended
-    ns.continuous_objective = cfg.continuous_objective
+    # A resident daemon is not itself an open-ended task. Boot reconciliation
+    # and live reload replace these with the adopted campaign's lifetime.
+    ns.open_ended = cfg.continuous and cfg.continuous_open_ended
+    ns.continuous_objective = cfg.continuous_objective if cfg.continuous else ""
     return ns
 
 
@@ -87,16 +84,14 @@ def _selected_paper_revision(project_root: Path) -> bool:
     """Recognize paper work without enabling a long-horizon campaign."""
     from ..core.pipeline_state import read_pipeline_state
     from ..skills.vertical_select import resolve_vertical_if_decided
-    from ..verticals._base import load_vertical, vertical_is_paper_mission
+    from ..verticals._base import load_vertical_contract
 
     try:
         state = read_pipeline_state(project_root)
         if state.get("current_stage") not in {"paper", "review"}:
             return False
         vertical = resolve_vertical_if_decided(project_root)
-        return vertical is not None and vertical_is_paper_mission(
-            load_vertical(vertical, project_root=project_root)
-        )
+        return vertical is not None and load_vertical_contract(vertical, project_root=project_root).paper_mission
     except Exception:  # noqa: BLE001 - optional context never infers paper work
         return False
 
@@ -234,7 +229,7 @@ def _build_supervisor_config(
         open_ended=cfg.continuous_open_ended,
         paper_mission=paper_mission,
         final_certification_gate=(
-            final_certification and cfg.continuous_open_ended
+            final_certification and init_continuous and cfg.continuous_open_ended
         ),
         continuous_config_provider=continuous_provider,
         manager_pipeline_yield_provider=(lambda: manager_pipeline_yield_requested(runtime_root)),

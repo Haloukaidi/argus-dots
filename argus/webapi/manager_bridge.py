@@ -15,6 +15,7 @@ dispatch, and pending-question operations from their owning modules.
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -44,6 +45,7 @@ from .manager_session_intent import contextualize_operator_turn
 from .manager_state import (
     _chat_state_for,
     _lock_for,
+    answer_learning_backend,
     interrupt_manager_turns,
     manager_control_generation,
 )
@@ -61,64 +63,61 @@ def _schedule_answer_learning(
     global_root: Path | str | None,
     operator_text: str,
     reply: str,
+    turn_id: str = "",
+    evidence: str = "",
 ) -> threading.Thread | None:
-    """Keep a researched chat answer as a survey page, off the reply's thread.
-
-    The answer is already on its way to the operator; nothing here delays it.
-    Whether the exchange taught anything is the model's call, not a rule here.
-    Returns the started thread, or ``None`` when nothing was said, learning is
-    switched off, the Manager runner has no backend, or a
-    previous learning pass for this project is still running.
-    """
+    """Queue every delivered answer durably; an earlier pass never drops a turn."""
+    from ..life.answer_learning import enqueue_answer
     from ..life.reflection import answer_learning_enabled
 
-    if not answer_learning_enabled() or not str(reply or "").strip():
+    if not answer_learning_enabled() or not str(reply or "").strip() or global_root is None:
         return None
     state = _chat_state_for(sid, manager_activity=False)
-    runner = state.get("manager_runner")
-    backend = getattr(runner, "_backend", None)
-    if backend is None or global_root is None:
-        return None
-    active = state.get("_answer_learning_thread")
-    if active is not None and active.is_alive():
-        return None
+    backend = getattr(state.get("manager_runner"), "_backend", None)
     vertical = ""
     from ..skills.vertical_select import resolve_project_vertical
 
     for candidate in (state.get("manager_runner_workdir"), life_dir):
-        if not candidate:
+        if candidate:
+            try:
+                vertical = str(resolve_project_vertical(Path(candidate), life_dir=Path(life_dir)) or "")
+            except Exception:
+                log.debug("answer learning: vertical is undecided", exc_info=True)
+            if vertical:
+                break
+    try:
+        return enqueue_answer(
+            root=Path(global_root), sid=sid, operator_text=operator_text,
+            reply=reply, vertical=vertical, backend=backend, turn_id=turn_id, evidence=evidence,
+            backend_factory=answer_learning_backend,
+        )
+    except Exception:  # learning never prevents delivery of an already completed reply
+        log.exception("could not queue answer learning for %s", sid)
+        return None
+
+
+def _answer_learning_evidence(steps: list[dict[str, Any]], workdir: str | None) -> str:
+    trace = "\n".join(str(step) for step in steps)[-6000:]
+    if not workdir:
+        return trace
+    from ..tools.web_source import source_read_receipts
+
+    paths = []
+    for step in steps:
+        if step.get("tool") != "read" or step.get("status") != "completed":
             continue
         try:
-            vertical = str(resolve_project_vertical(Path(candidate), life_dir=Path(life_dir)) or "")
-        except Exception:  # noqa: BLE001 - an undecided vertical keeps the survey global
-            vertical = ""
-        if vertical:
-            break
-    root = Path(global_root)
-
-    def _learn() -> None:
-        from ..life.event_log import JsonlEventSink
-        from ..life.reflection import reflect_after_answer
-
-        sink = JsonlEventSink(None, life_dir=Path(life_dir))
-        try:
-            reflect_after_answer(
-                runner_backend=backend,
-                global_root=root,
-                life_dir=Path(life_dir),
-                project_id=sid,
-                vertical=vertical,
-                operator_text=operator_text,
-                reply=reply,
-                emit=sink.append,
-            )
-        except Exception:  # noqa: BLE001 - the reply is already delivered
-            log.exception("learning from the answer failed")
-
-    thread = threading.Thread(target=_learn, name="argus-answer-learning", daemon=True)
-    state["_answer_learning_thread"] = thread
-    thread.start()
-    return thread
+            detail = json.loads(step.get("detail", ""))
+            if isinstance(detail, dict) and isinstance(detail.get("path"), str):
+                paths.append(detail["path"])
+        except (TypeError, ValueError):
+            continue
+    receipts = source_read_receipts(paths, Path(workdir))
+    if not receipts:
+        return trace
+    return ("Source snapshots read during this turn (access evidence only; "
+            "NOT independent confirmation of their claims):\n"
+            + json.dumps(receipts, ensure_ascii=False) + "\n" + trace)
 
 
 def _recent_team_replay(
@@ -362,25 +361,16 @@ def _manager_message(
     credential_record = None
 
     def _after_reply(reply: str) -> None:
-        runner = _chat_state_for(sid).get("manager_runner")
-        schedule = getattr(runner, "_schedule_self_learning_review", None)
-        if callable(schedule):
-            try:
-                schedule(objective=operator_text, reply=reply)
-            except Exception as exc:  # noqa: BLE001 - learning never owns the answer
-                from ..life.event_log import JsonlEventSink
-
-                JsonlEventSink(None, life_dir=life_dir).append({
-                    "type": "self.learning.review.failed",
-                    "agent_layer": "self",
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
         _schedule_answer_learning(
             sid,
             life_dir=life_dir,
             global_root=mem.global_root,
             operator_text=operator_text,
             reply=reply,
+            turn_id=turn_id,
+            evidence=_answer_learning_evidence(
+                turn_steps, _chat_state_for(sid).get("manager_runner_workdir"),
+            ),
         )
 
     emitter = _TurnEmitter(
@@ -693,6 +683,21 @@ def _manager_message(
             if _cancelled():
                 return _cancelled_result()
             return config_result
+
+        subject = chat_state.pop("_frontdoor_lookup_subject", "")
+        if subject and not frontdoor_failure and control in {None, "no_dispatch"} and intent is None:
+            from ..manager.subject_lookup import lookup_subject
+
+            workdir = chat_state.get("manager_runner_workdir")
+            if workdir:
+                emitter.phase("正在查证研究对象与来源…" if uses_cjk(operator_text) else "Checking the research subject and sources…")
+                discovery = lookup_subject(subject, Path(workdir))
+                if _cancelled():
+                    return _cancelled_result()
+                send_body += discovery
+                routing_body += discovery
+                chat_state["_frontdoor_skill_vertical"] = ""
+                chat_state["_frontdoor_self_mode"] = "inspect"
 
         public_task = operator_text
         intake_before = None

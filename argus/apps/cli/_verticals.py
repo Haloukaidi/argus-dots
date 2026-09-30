@@ -70,7 +70,7 @@ def _cmd_info(args: argparse.Namespace) -> int:
     for key in (
         "name", "kind", "purpose", "purpose_zh", "version", "installed_version", "enabled",
         "update_available", "requires", "shared", "python_requirements", "missing_python",
-        "tags", "size_bytes", "used_by", "actions", "managed_by_host",
+        "tags", "routing_path", "size_bytes", "used_by", "actions", "managed_by_host",
     ):
         value = row.get(key)
         rendered = ", ".join(map(str, value)) if isinstance(value, list) else value

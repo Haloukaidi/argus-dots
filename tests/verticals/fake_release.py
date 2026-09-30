@@ -25,6 +25,7 @@ from argus.skills.stage_machine import ChecklistItem
 ARGUS_VERTICAL_API_VERSION = {api_version}
 VERTICAL_PURPOSE = "synthetic vertical {name}{marker}"
 VERTICAL_SKILL_PARENTS = {parents!r}
+VERTICAL_ROUTING_PATH = {routing_path!r}
 CHECKLIST_STAGE_ORDER = ("work", "deliver")
 CHECKLIST_ITEMS = {{
     "work": (ChecklistItem("work.output", "Work output exists", "work artifact"),),
@@ -50,12 +51,14 @@ def spec(
     api_version: int = 1,
     skills: bool = True,
     extra_files: dict[str, str] | None = None,
+    routing_path: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     return {
         "name": name, "version": version, "requires": tuple(requires), "parents": tuple(parents),
         "shared": tuple(shared), "python_requirements": tuple(python_requirements),
         "purpose_zh": purpose_zh, "marker": marker, "api_version": api_version, "skills": skills,
         "extra_files": dict(extra_files or {}),
+        "routing_path": routing_path,
     }
 
 
@@ -65,6 +68,7 @@ def archive_members(item: dict[str, Any]) -> dict[str, str]:
         f"argus_verticals/{name}/__init__.py": "",
         f"argus_verticals/{name}/stages.py": STAGES_TEMPLATE.format(
             name=name, parents=tuple(item["parents"]), marker=item["marker"], api_version=item["api_version"],
+            routing_path=item["routing_path"],
         ),
     }
     if item["skills"]:
@@ -106,6 +110,7 @@ def catalog_entry(item: dict[str, Any], data: bytes, *, tag: str, url: str | Non
         "python_requirements": list(item["python_requirements"]),
         "tags": ["synthetic", "test"],
         "skill_parents": list(item["parents"]),
+        "routing_path": list(item["routing_path"]),
         "has_skills": bool(item["skills"]),
         "size_bytes": sum(len(v) for v in archive_members(item).values()),
         "api_version": item["api_version"],

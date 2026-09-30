@@ -59,6 +59,42 @@ def test_direct_stage_prompt_completes_instead_of_advancing() -> None:
     assert "COMPLETE only at the final stage" not in prompt
 
 
+@pytest.mark.parametrize("stage", ["simulation", "delivery", "custom_stage"])
+@pytest.mark.parametrize("action", ["hold", "complete"])
+def test_prompt_target_example_round_trips_as_a_concrete_stage(stage: str, action: str) -> None:
+    prompt = build_stage_decision_prompt(
+        current_stage=stage,
+        next_stage="",
+        earlier_stages=(),
+        checklist_md="Inspect the independently reviewed result.",
+        review=_review(),
+    )
+    target = next(
+        line.strip() for line in prompt.splitlines()
+        if line.strip().startswith("TARGET_STAGE=")
+    )
+    assert target == f"TARGET_STAGE={stage}"
+    assert "TARGET_STAGE=current stage" not in prompt
+    decision = parse_stage_decision(
+        f"ACTION={action}\n{target}\nREASON=The current evidence was independently checked.",
+        current_stage=stage,
+        stage_order=(stage,),
+    )
+    assert decision.action == action
+    assert decision.target_stage == stage
+
+
+def test_literal_target_placeholder_still_fails_closed() -> None:
+    decision = parse_stage_decision(
+        "Decision:\nACTION=complete\nTARGET_STAGE=current stage\n"
+        "REASON=The finite simulation objective is finished.",
+        current_stage="simulation",
+        stage_order=("simulation",),
+    )
+    assert decision.action == "hold"
+    assert decision.diagnostic == "illegal_complete_target"
+
+
 def test_completion_report_prompt_contains_all_stage_information() -> None:
     from argus.roles.prompts.manager import (
         build_project_completion_report_prompt,
@@ -467,13 +503,9 @@ def test_reviewer_certified_intermediate_stage_still_uses_manager_judgment(
 def test_kernel_direct_vertical_has_no_process_completion_hook(
     tmp_path,
 ) -> None:
-    from argus.verticals._base import (
-        load_vertical,
-        vertical_stage_completion_issues,
-    )
+    from argus.verticals._base import load_vertical_contract
 
-    issues = vertical_stage_completion_issues(
-        load_vertical("kernel_engineering"),
+    issues = load_vertical_contract("kernel_engineering").completion_issues(
         stage="optimize",
         project_root=tmp_path,
     )
@@ -493,10 +525,7 @@ def test_final_stage_completion_requires_manager_decision(
     from argus.manager import Manager
     from argus.skills.stage_machine import completion_contract_fingerprint
     from argus.skills.vertical_select import persist_vertical
-    from argus.verticals._base import (
-        load_vertical,
-        vertical_completion_contract_version,
-    )
+    from argus.verticals._base import load_vertical_contract
 
     persist_vertical(tmp_path, "software", workflow_mode="staged")
     state_path = tmp_path / ".argus" / "PIPELINE_STATE.json"
@@ -504,9 +533,7 @@ def test_final_stage_completion_requires_manager_decision(
     state["current_stage"] = "delivery"
     state["stages"] = {"delivery": {"status": "in_progress"}}
     state_path.write_text(json.dumps(state), encoding="utf-8")
-    version = vertical_completion_contract_version(
-        load_vertical("software", project_root=tmp_path)
-    )
+    version = load_vertical_contract("software", project_root=tmp_path).completion_contract_version
     state["stages"]["delivery"].update({
         "completion_contract_version": version,
         "completion_contract_sha256": completion_contract_fingerprint(

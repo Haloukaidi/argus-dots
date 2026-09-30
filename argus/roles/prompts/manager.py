@@ -198,7 +198,15 @@ def build_simple_prompt(
         "sources only when an external technical claim matters. When the operator asks "
         "you to learn, survey or explain a subject, read primary sources on the web "
         "first and cite their URLs in the answer; what you read is kept as shared "
-        "knowledge for later work. For data analysis, "
+        "knowledge for later work. First verify the identity of a named external "
+        "subject; unfamiliarity is not a spelling error or proof it does not exist. "
+        "Use public search before guessing a familiar expansion or asking the user "
+        "to define a publicly discoverable subject. Existing Skills and user interests "
+        "are hints, not evidence of identity. When source evidence contradicts a "
+        "suggested vertical, drop that assumption and use the methods that fit the "
+        "actual subject. A research overview does not require a specialist builder. "
+        "If a skill command is unavailable, use ordinary source tools when sufficient; "
+        "do not search the entire filesystem for old installations. For data analysis, "
         "always follow marginal summaries with time-by-category cross-slices; separate "
         "data facts, inferences, and recommendations, and state derived measures or "
         "proxy assumptions such as treating each row as one order. For fiction or "
@@ -344,6 +352,32 @@ def build_steer_confirmation_prompt(text: str, *, active_mission: bool) -> str:
     )
 
 
+def _vertical_menu(
+    purposes: Mapping[str, str],
+    routing_paths: Mapping[str, tuple[str, ...]] | None,
+) -> str:
+    if not routing_paths:
+        return "\n".join(f"  - `{name}`: {purpose}" for name, purpose in sorted(purposes.items())) or "  (none)"
+    groups: dict[tuple[str, ...], list[str]] = {}
+    for name, purpose in sorted(purposes.items()):
+        path = routing_paths.get(name, ())
+        groups.setdefault(path[:2], []).append(
+            f"  - `{name}`{f' [specialty: {path[2]}]' if len(path) == 3 else ''}: {purpose}"
+        )
+    sections = [
+        "Select by category, then domain, then specialty when its complete deliverable "
+        "fits. Category headings are not selectable verticals. A specialist owns its own "
+        "workflow; knowledge dependencies do not transfer authority or require running "
+        "the parent's stages. Return the exact listed vertical name in this same decision. "
+        "For cross-domain work choose the owner of the requested deliverable and make "
+        "external interface obligations explicit; do not imply automatic cross-vertical "
+        "execution. If the primary deliverable is ambiguous, clarify before dispatch."
+    ]
+    for path, lines in sorted(groups.items()):
+        sections.append(f"### {' / '.join(path) if path else 'Other capabilities'}\n" + "\n".join(lines))
+    return "\n\n".join(sections)
+
+
 def build_fast_vertical_decision_prompt(
     task: str,
     *,
@@ -351,15 +385,10 @@ def build_fast_vertical_decision_prompt(
     domains_with_purpose: dict[str, str] | None = None,
     existing_data_domains: Sequence[str] = (),
     research_target_verticals: Sequence[str] = (),
+    vertical_routing_paths: Mapping[str, tuple[str, ...]] | None = None,
 ) -> str:
     """Render the compact, tool-free first-pass Manager prompt."""
-    menu = (
-        "\n".join(
-            f"  - `{name}`: {purpose}"
-            for name, purpose in sorted(verticals_with_purpose.items())
-        )
-        or "  (none)"
-    )
+    menu = _vertical_menu(verticals_with_purpose, vertical_routing_paths)
     domain_menu = (
         "\n".join(
             f"  - `{name}`: {purpose}"
@@ -441,12 +470,10 @@ def build_vertical_decision_prompt(
     existing_data_domains: Mapping[str, str] | Sequence[str] = (),
     existing_data_domain_summaries: Mapping[str, str] | None = None,
     research_target_verticals: Sequence[str] = (),
+    vertical_routing_paths: Mapping[str, tuple[str, ...]] | None = None,
 ) -> str:
     """Render the grounded vertical and workflow decision prompt."""
-    menu = (
-        "\n".join(f"  - `{name}`: {purpose}" for name, purpose in sorted(verticals_with_purpose.items()))
-        or "  (none)"
-    )
+    menu = _vertical_menu(verticals_with_purpose, vertical_routing_paths)
     domain_menu = (
         "\n".join(
             f"  - `{name}`: {purpose}" for name, purpose in sorted((domains_with_purpose or {}).items())
@@ -840,7 +867,7 @@ def build_stage_decision_prompt(
     allow_rollback: bool = True,
     allow_early_completion: bool = False,
 ) -> str:
-    """Build the Manager's authoritative stage-transition prompt."""
+    """Build the Manager's stage-transition prompt with a concrete target example."""
     # Normalize a stray string to one stage instead of iterating over its characters.
     stages = [earlier_stages] if isinstance(earlier_stages, str) else list(earlier_stages)
     earlier = ", ".join(f"`{stage}`" for stage in stages if str(stage).strip()) or (
@@ -1006,7 +1033,7 @@ def build_stage_decision_prompt(
         + RESEARCHER_VOICE + "\n\n"
         + decision_footer_instruction(
             "ACTION=hold\n"
-            "TARGET_STAGE=current stage\n"
+            f"TARGET_STAGE={current_stage}\n"
             "REASON=one operator-language sentence stating the decisive evidence, "
             "whether the stage moves, and what happens next; do not repeat status tokens"
         )
@@ -1027,7 +1054,7 @@ def build_stage_decision_prompt(
         # executed as a one-step advance, so neither the obedient nor the
         # improvising Manager loses its verdict; this line only keeps the trace
         # exact.
-        "For HOLD and for COMPLETE, set TARGET_STAGE to the current stage.\n\n"
+        f"For HOLD and for COMPLETE, set TARGET_STAGE to `{current_stage}`.\n\n"
         # The objective and the stage's requirements hold across the
         # campaign's decisions; the wait and scope arbitration, the evidence
         # and the Planner note belong to this one decision, so they close the

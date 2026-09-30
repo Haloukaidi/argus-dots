@@ -11,6 +11,8 @@ from fastapi.testclient import TestClient
 from argus.adapters.agent_cli_backend import AgentCliBackend
 from argus.core.session import SessionMeta, write_session_meta
 from argus.core.transcript import append_turn, read_turns
+from argus.daemon import life_worker as daemon_worker
+from argus.life import answer_learning
 from argus.manager import config_intent, front_door
 from argus.webapi import server
 from argus.webapi.daemon_services import DaemonServices
@@ -39,7 +41,7 @@ def test_cancelled_triage_cannot_publish_or_learn_a_late_reply(
 
     def triage(_mem, body, state, *, on_fragment, **_kwargs):
         state["manager_runner"] = SimpleNamespace(
-            _schedule_self_learning_review=lambda **row: learned.append(row),
+            _backend=object(),
         )
         if "Old request" in body and "Current request" not in body:
             on_fragment("delta", {"text": "Output before cancellation"})
@@ -53,10 +55,11 @@ def test_cancelled_triage_cannot_publish_or_learn_a_late_reply(
         return current
 
     monkeypatch.setattr(AgentCliBackend, "run_exec", forbid_provider)
+    monkeypatch.setattr(answer_learning, "enqueue_answer", lambda **row: learned.append(row))
     monkeypatch.setattr(config_intent, "_front_door_classify", lambda *_args, **_kwargs: (None, None, "simple"))
     monkeypatch.setattr(front_door, "manager_triage", triage)
     services = DaemonServices(
-        read_status=server.read_daemon_status,
+        read_status=daemon_worker.read_daemon_status,
         start=lambda *_args, **_kwargs: starts.append(True) or {"rc": 0},
     )
     path = f"/api/projects/{sid}/message" + ("/stream" if streaming else "")
@@ -99,4 +102,8 @@ def test_cancelled_triage_cannot_publish_or_learn_a_late_reply(
         assert [row["text"] for row in read_turns(life) if row["role"] == "argus"] == [
             "Previously settled reply", current,
         ]
-        assert learned == [{"objective": "Current request", "reply": current}]
+        assert [(row["operator_text"], row["reply"]) for row in learned] == [
+            ("Current request", current),
+        ]
+        assert learned[0]["sid"] == sid
+        assert learned[0]["root"] == tmp_path

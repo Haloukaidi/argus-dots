@@ -3,10 +3,6 @@
 methods (config build, mission-context prep, bounded planning, loop
 invocation, outcome-field extraction, stage-transition decision, outcome
 assembly).
-
-Split out of ``_runtime.py`` so that module stays under the maintainability
-line-count target. Every name here is re-exported from ``_runtime.py`` (see
-its module docstring and ``__all__``) so external imports are unaffected.
 """
 
 from __future__ import annotations
@@ -628,15 +624,7 @@ class SkillLoopExecuteMixin:
         ``SkillLoopConfig`` for this mission.
         """
         args = self._args
-        # Lazy proxy: ``_independent_review_required_for_project_root``,
-        # ``_workflow_mode_for_project_root``, and
-        # ``_paper_mission_for_project_root`` (used below) live in
-        # ``_runtime_supervisor`` but are re-exported on — and monkeypatched
-        # directly against — the ``_runtime`` facade module by tests (e.g.
-        # tests/life/test_chat_fast_path.py). Resolving them here at call
-        # time keeps that monkeypatch effective even though this method
-        # lives in a sibling module.
-        from ._runtime import (
+        from ._runtime_supervisor import (
             _independent_review_required_for_project_root,
             _paper_mission_for_project_root,
             _workflow_mode_for_project_root,
@@ -973,10 +961,15 @@ class SkillLoopExecuteMixin:
             )
             from ..manager.plan_mode import draft_plan
             from ..roles.prompts import resolve_role_prompt
-            from ..roles.prompts.planner import preview_request
+            from ..roles.prompts.planner import PLAN_PREVIEW, continuous_request
             from ._runtime_planning_context import bounded_planner_request
 
-            preview_prompt = resolve_role_prompt(preview_request(workdir))
+            preview_prompt = resolve_role_prompt(continuous_request(
+                getattr(config, "vertical_state_root", None) or workdir,
+                operation=PLAN_PREVIEW,
+                include_search_altitude=False,
+                altitude_root=workdir,
+            ))
             if _decided_vertical(config, workdir) == "research":
                 # The research Planner's own cycle plans the campaign minutes
                 # later with the stage playbook, and the idea stage forms its
