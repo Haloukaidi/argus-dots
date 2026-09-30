@@ -232,8 +232,11 @@ class PlannerOrchestrationMixin:
                     f"- gpus: {gpu_summary['total']} on this machine; "
                     f"{gpu_summary['busy']} busy now; "
                     f"{gpu_summary['reserved']} reserved by active tasks; "
-                    f"{gpu_summary['free']} claimable (a task with TASK_GPUS "
-                    "is claimed only when that many are free)"
+                    f"{gpu_summary['free']} claimable. TASK_GPUS=<n> is how many "
+                    "GPUs a task holds while it runs; it is claimed only when that "
+                    "many are free. Arms that can run side by side (model sizes, "
+                    "training methods, seeds) belong in separate parallel-safe tasks "
+                    "with their own TASK_GPUS, not in one task that runs them in turn."
                 )
             # The claim gate also refuses everything while a paused external
             # job declares no owned paths, so those rows block a "free" slot

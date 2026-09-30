@@ -87,11 +87,6 @@ Plan from the mission workspace only; never read sibling projects or parent dire
 - Tasks co-run only when each sets `TASK_PARALLEL_SAFE=true` with disjoint,
   literal, relative `TASK_OWNS_PATHS` (no wildcards); stage-closing and
   framework-maintenance work runs alone. The digest shows slots and ownership.
-- `TASK_GPUS=<n>` is how many of this machine's GPUs the task holds while it
-  runs (0 when it needs none). The digest shows how many are free; a task is
-  claimed only when its GPUs are free. Arms that can run side by side (model
-  sizes, training methods, seeds) belong in separate parallel-safe tasks with
-  their own `TASK_GPUS`, not in one task that runs them in turn.
 - Optional `RETIRE_TASK=<item id> | <one-sentence reason>` needs a line and reason
   per item. Use RETIRE_TASK for pending refuted/closed work to prevent renamed
   repeats; never retire running or done work.
