@@ -24,27 +24,19 @@ DEFAULT_PROJECT_BUILTIN_SKILLS_DIR = "argus_builtin_skills"
 _BUILTIN_SEED_STATE = ".argus-builtin-seeds.json"
 _MOVED_SKILL_MARKER = ".moved-from-global.json"
 _LEGACY_BUILTIN_SEED_HASHES = {
-    "engineer/environment-readiness.md": "f8615f2a465cbe7b2ce838179c24a575baf4fbe6370730035c85cd4dd907de9b",
-    "engineer/training-infrastructure-guide.md": "43d1cbc1017173a5376f2a47642ea3ba5bf007b879ba86737514f8aba28f3f39",
-    "manager/argus-manager-role.md": "dc193f31dca3acd3041544745d97b832725c0e37b55a44bd9a93db5f97a631be",
     "manager/evidence-based-stage-decision.md": "75347a834448d8abb92ae04ad486ab06c595d1fb53cbe3cd24e70b37368515ed",
-    "planner/argus-planner-role.md": "30d16975503a9b41d97c05d622b4d36117677ff9500e65a4556dd2f8c244fb12",
     "reviewer/argus-reviewer-role.md": "bc971a888bfcdc3acaca939b643410f509c328376737377ba8e898f1b4dee925",
     "agent-team-lead.md": "3d7cd66367c1c093503b7985a5c86a6e35331600e746f8e96811b3ef7f3df76f",
     "curator/argus-curator-role.md": "4545b826842c39f54fa9f8f260bfb289e1d54b68403be03a9ade3a2d1172495c",
     "engineer/minimal-coding-agent.md": "18a5cbb3c6f3a937bb493eaf54db3a41637b4c57f324169a4829151105a22e73",
     "engineer/pdf-chat.md": "7debea0fb441b6b1de96dc9041266486430cded6afbffe13e7e2687acaf230e9",
-    "engineer/presentation-master.md": "16fb15d865670dfaad96b0445a7aa0d410660a8f6954ce1d61d5d6df3de5f17f",
     "engineer/project-environment-management.md": "f4b1e8afa92d911b699fbb359a47bf1ad62c6a9dde7f5aaf54ed0324cdfb11c3",
     "engineer/rl-training-collapse-diagnosis.md": "6830af8a4172e28e2f7c760469a4c47955923693826e7c9dadce7e6282854f18",
-    "engineer/semantic-scholar-search.md": "9d4c7db970747e4ab6f5905f64ba189f3dbb79a14d5b7d31c8ebde2c6e498e75",
     "engineer/skill-authoring-guide.md": "95babe92e841066aed028f221b0e009336422048e7461db0676b0bd40980722e",
-    "engineer/stale-world-model.md": "1a461c11c40314a4ccb61bf40204198e5dfa172bfa932ad0aaed9b2165748427",
     "performance-profile-ground-truth.md": "037052a75b63a4e29b05f23652d9a8b8bb9254bc546e9f4f1e06771f11e4faa0",
     "project-venv-package-management.md": "f912af39a3a8c9914dd79abc78946fbb0b134268e560bb8977e84f9a539ac008",
     "reviewer/claim-to-code-trace.md": "6ad0934c355227eb0ec772d52cdc9849ceee20128669c437dd16e23cc9990f0b",
     "reviewer/engineer-process-audit.md": "5227066930458e945c486d628d5ff0c082c9db81e2c8d85827f94ee69c80c741",
-    "reviewer/guiding-the-engineer.md": "4636cfe91844f1416de84e18155f57220b9922076274f362c2f35c0c78233d4b",
     "stale-blocker-verification-probe.md": "9c570afd9abb7ba72c194da754018c1a96ae640f70061b7669afa4021ea490e2",
 }
 _RETIRED_BUILTIN_SEED_HASHES = {
@@ -269,6 +261,124 @@ _RETIRED_BUILTIN_SEED_HASHES = {
     ),
     "engineer/modern-gpu-blackwell-kernel-techniques.md": (
         "e4b21b069c4714e1f41fab19186cc6452d09f87193965ad0931f27e123a11ef8"
+    ),
+    # Merged on 2026-10-01: the same audit found the figure, diagnosis-ladder,
+    # method-card, infrastructure, source-checking, role-banner and wiki
+    # material each written three to five times across sibling files. Each
+    # cluster now lives in one file; these are the absorbed originals.
+    # Research vertical.
+    "engineer/result-to-claim.md": (
+        "f089b08ca0546150b55e594393c1e2a4aa20cc02ed8d77e38a68735913e66c1b"
+    ),
+    "engineer/suspect-the-setup.md": (
+        "44978c6edc4f4dbd126d40336edbb4af7079ef6f062a3cbd4be2ec1ec6494255"
+    ),
+    "engineer/method_card_template.md": (
+        "dc1a6b08dd80155e2f4a6332752d8ef9a12b435bc72f262b5836afba76b9c2d9"
+    ),
+    "engineer/executable-spec.md": (
+        "a5486acdd969b46fd6d464e2b408b43ecea398d6a41d7ea90718dbd10ee63e5b"
+    ),
+    "engineer/delta-on-reference.md": (
+        "236b2b124907bbef2b13ce3fb467503ba28780d64d64cb92478267232714f3ff"
+    ),
+    "engineer/write-for-review.md": (
+        "455ffba88572baf1e0945715cb892b00ab4384baebbede40a77f45b5fc50fce1"
+    ),
+    "engineer/hypothesis-implementation-contract.md": (
+        "5732ec92babec1a2d8f81ff223af8dbc38df3ecb4518acde78ff312e69adb5e3"
+    ),
+    "engineer/implementation-brief.md": (
+        "a48829e84b0b538ee83e869d03f306054ed895eed14fda69bffd1fcbb1a7b8e7"
+    ),
+    "engineer/research-visualization-router.md": (
+        "85dd3779ab694d38b0a80a4451780f1d550b7fff6a706072e93945e30760606f"
+    ),
+    "engineer/research-results-analysis-and-figures.md": (
+        "7cca016207fc39003028c43abab480e26f2f9b418d4ce439b833e532c30b68a6"
+    ),
+    "engineer/paper-illustration-image2.md": (
+        "567c6e25be4d3be443fe25833b7ff958ae2c3afd1207610f3faa62f8f06c7c34"
+    ),
+    "engineer/training-infrastructure-guide.md": (
+        "13db77beee6648eb5d5ab6e0d99c81dfdf142ef130c93ae80944ef546eee6707"
+    ),
+    "engineer/infrastructure-landscape-survey.md": (
+        "045d974fc5ee96077fbfeb4dfd66af3f11c55775cb5f58a1089f3c100e4bc09e"
+    ),
+    "engineer/framework-stand-up-pilot.md": (
+        "828921f48c22fc0edac47b2fb8629f001f9a1422a6a0eb0308a8bf7f6bf8d049"
+    ),
+    "engineer/recipe-anchored-tuning.md": (
+        "1a101849e7276b9370a87728ad540ebe1ccd3463955cc65421741b539ba9a8f0"
+    ),
+    "engineer/claims-against-evidence.md": (
+        "f7edc1fcaac5a573972af565ccb891e3821ef8bc9687bb3aaefca726edbe08f5"
+    ),
+    "engineer/citation-check.md": (
+        "1c865d8b4a38e95b35847f83b54aeac3e9b33f3632ca19e560c6ed2ad2f7093d"
+    ),
+    "engineer/semantic-scholar-search.md": (
+        "b80ebdca7fd1f60a9979dea04437da48f2ef5f29304aca35d28a7ce961bfa1c9"
+    ),
+    "engineer/paper-infrastructure-review.md": (
+        "31775a6b15692a938c75c31f434cb08fbf518616eab2ad08eba643388368b7b5"
+    ),
+    "engineer/paper-exemplar-pdf-learning.md": (
+        "e8435d84ea38da7f24e4ec9304e5c47705d9b14c7228ca61b5049605c2d8b617"
+    ),
+    "reviewer/reading-the-evidence.md": (
+        "b7b445df97f695fddcecde05fa42780a143af569a6d3935d62936020d7381e3a"
+    ),
+    "reviewer/infrastructure-choice-review.md": (
+        "6244075c1903ee733b9bef3995475d743a9b9e5c52975cd0f6f7692fd0055446"
+    ),
+    # Global library.
+    "engineer/stale-world-model.md": (
+        "714994de1046a062cd3ef6a06d80e55bb62aba75e1499aef51645be635064302"
+    ),
+    "engineer/environment-readiness.md": (
+        "726cfbbdc2952d253e800904d8e4bc4749e06c6de1ad8cad445dade753b0c625"
+    ),
+    "engineer/study-and-curate.md": (
+        "7b4ed6295967d305b13b0cadbb83ede8d5906eed81c775523f1426338c3d7561"
+    ),
+    "engineer/wiki-collector.md": (
+        "429e3feb524fecef7022d73998cb086e805251db779c2a200edf56bdcf0b8ff8"
+    ),
+    "reviewer/wiki-curator.md": (
+        "27112369581e1e255660c4a60408e7810abe5a4f6afd28bf2e2b53827a4b6d68"
+    ),
+    "planner/argus-planner-role.md": (
+        "d96d5258ecbfec8ffb7a16672ba812d331c8b24446be6b633df26fbc103f38e7"
+    ),
+    "reviewer/guiding-the-engineer.md": (
+        "0829bb50b5546b07a1b9b3a33cc544254c9ef6c37a3e67a3deccce2d4afa7ee6"
+    ),
+    "manager/argus-manager-role.md": (
+        "b3ac66146051884ec9523daf5d372d65d993687a8a6c9eb9a992a2a25a051cea"
+    ),
+    "engineer/presentation-master.md": (
+        "0e6316ac52ec8b8cf29442498ecbcf52b1dec7991fd0ffba3065e7cca65db4e4"
+    ),
+    # Kernel engineering, software and learning verticals.
+    "engineer/kernel-optimization-knowledge.md": (
+        "95e726bbf4687e3d5f8929c4136e55de30b28aa508a24f357db65d8bebacc4a0"
+    ),
+    "engineer/kernel-environment-first-engineering.md": (
+        "a5e41f397ec10f57bceff7c853f788947464132f82861387f7d81739d3b56700"
+    ),
+    "reviewer/kernel-engineering-review.md": (
+        "43e801e03ffdca459ebeca46f9d8b15119e74d0f6e90522582dcde6e06e4f664"
+    ),
+    "planner/software-project-grounding.md": (
+        "70b38719478858afc0e4e8eb191ac54c70db9ffff304bb593983fca271ddd7c6"
+    ),
+    "engineer/learning-curation.md": (
+        "04b79b844bc15ab1aebd612001f624eb79551028cd14845c3223c5883fa5a59b"
+    ),
+    "reviewer/curation-review.md": (
+        "67ee5918b390ae7f278d983df34f939d30d18800935158a2fad8929dd90d3afa"
     ),
 }
 
