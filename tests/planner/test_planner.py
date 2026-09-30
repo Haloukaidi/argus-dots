@@ -1492,3 +1492,25 @@ def test_parse_numbered_planner_objective_keeps_its_following_lines() -> None:
         "## Claim\nProduce the theorem.\n- one lemma per file"
     )
     assert verdict.new_tasks[0].acceptance_check == "Run the verifier."
+
+
+def test_parse_planner_reads_the_gpus_a_task_holds() -> None:
+    verdict = parse_planner_text(
+        "\n".join([
+            "PROJECT_DONE=false",
+            "REASON=two arms can train side by side",
+            "TASK_KEY=arm-27b",
+            "TASK_DEPS=",
+            "TASK_TITLE=Train the 27B arm",
+            "TASK_OBJECTIVE=Train it.",
+            "TASK_PARALLEL_SAFE=true",
+            "TASK_OWNS_PATHS=runs/27b",
+            "TASK_GPUS=2",
+            "TASK_KEY=writeup",
+            "TASK_DEPS=",
+            "TASK_TITLE=Draft the method section",
+            "TASK_OBJECTIVE=Write it.",
+            "TASK_GPUS=not-a-number",
+        ])
+    )
+    assert [task.gpu_count for task in verdict.new_tasks] == [2, 0]

@@ -226,6 +226,15 @@ class PlannerOrchestrationMixin:
                 f"- mission_slots: {mission_slots} total; "
                 f"{len(running_rows)} running; {free_slots} free"
             )
+            gpu_summary = self.memory.backlog.gpu_summary()
+            if gpu_summary is not None:
+                slot_lines.append(
+                    f"- gpus: {gpu_summary['total']} on this machine; "
+                    f"{gpu_summary['busy']} busy now; "
+                    f"{gpu_summary['reserved']} reserved by active tasks; "
+                    f"{gpu_summary['free']} claimable (a task with TASK_GPUS "
+                    "is claimed only when that many are free)"
+                )
             # The claim gate also refuses everything while a paused external
             # job declares no owned paths, so those rows block a "free" slot
             # exactly like an unowned running mission does.
@@ -270,7 +279,8 @@ class PlannerOrchestrationMixin:
             safe = "true" if getattr(item, "parallel_safe", False) else "false"
             return (
                 f"{base}; parallel_safe={safe}; "
-                f"owns_paths=[{', '.join(owns)}]"
+                f"owns_paths=[{', '.join(owns)}]; "
+                f"gpus={int(getattr(item, 'gpu_count', 0) or 0)}"
             )
 
         # A subagent event wait is bound by matching the Planner's own words
