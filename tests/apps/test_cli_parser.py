@@ -867,3 +867,14 @@ def test_a_bindable_web_port_is_accepted(value: str) -> None:
     """Zero is legal: it asks the kernel for any free port."""
     args = build_parser().parse_args(["--web", "--web-port", value])
     assert args.web_port == int(value)
+
+
+def test_mission_width_accepts_a_count_or_auto() -> None:
+    parser = build_parser()
+    assert parser.parse_args(["--daemon", "--mission-width", "auto"]).mission_width == "auto"
+    assert parser.parse_args(["--daemon", "--mission-width", "3"]).mission_width == 3
+    assert parser.parse_args(["--daemon"]).mission_width == 2
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--daemon", "--mission-width", "-1"])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--daemon", "--mission-width", "many"])

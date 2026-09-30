@@ -891,6 +891,67 @@ class PlanRevisionResult:
     added_ids: tuple[str, ...]
 
 
+# ---------------------------------------------------------------------------
+# GPUs against the backlog
+# ---------------------------------------------------------------------------
+
+_GPU_PROBE_TTL_S = 10.0
+_GPU_PROBE_LOCK = threading.Lock()
+_GPU_PROBE_CACHE: tuple[float, tuple[int, int] | None] | None = None
+_GPU_ACTIVE_STATUSES = frozenset({"running", "paused_external_work"})
+
+
+def _gpu_capacity() -> tuple[int, int] | None:
+    """``(total, busy)`` GPUs on this machine, or ``None`` when none is visible.
+
+    Busy uses the thresholds the GPU lease uses for "not idle": over 5 %
+    utilisation or over 2 GiB in use. The probe is a subprocess and this is
+    consulted on every claim, so its answer is kept for ten seconds.
+    """
+    global _GPU_PROBE_CACHE
+    now = time.monotonic()
+    with _GPU_PROBE_LOCK:
+        cached = _GPU_PROBE_CACHE
+        if cached is not None and now - cached[0] < _GPU_PROBE_TTL_S:
+            return cached[1]
+    from ..tools.gpu_lease import gpu_snapshot
+
+    snapshot = gpu_snapshot()
+    value: tuple[int, int] | None = None
+    if snapshot:
+        busy = sum(
+            1 for gpu in snapshot
+            if gpu["util_pct"] > 5 or gpu["mem_used_mib"] > 2048
+        )
+        value = (len(snapshot), busy)
+    with _GPU_PROBE_LOCK:
+        _GPU_PROBE_CACHE = (now, value)
+    return value
+
+
+def gpu_reservation(items: Iterable[Any]) -> int:
+    """GPUs held by running tasks and by tasks parked on their own jobs."""
+    return sum(
+        max(0, int(getattr(item, "gpu_count", 0) or 0))
+        for item in items
+        if getattr(item, "status", "") in _GPU_ACTIVE_STATUSES
+    )
+
+
+def gpu_capacity_summary(items: Iterable[Any]) -> dict[str, int] | None:
+    capacity = _gpu_capacity()
+    if capacity is None:
+        return None
+    total, busy = capacity
+    reserved = gpu_reservation(list(items))
+    return {
+        "total": total,
+        "busy": busy,
+        "reserved": reserved,
+        "free": max(0, total - max(busy, reserved)),
+    }
+
+
 @dataclass
 class BacklogItem:
     id: str
@@ -995,6 +1056,9 @@ class BacklogItem:
     # workers. The primary worker remains able to execute every backlog item.
     parallel_safe: bool = False
     owns_paths: list[str] = field(default_factory=list)
+    # GPUs this task holds while it runs. A task is claimed only when that
+    # many are free: not busy now and not reserved by another active task.
+    gpu_count: int = 0
     outcome: dict[str, Any] = field(default_factory=dict)
     # Optional durable return receipt; kept separate from public outcome dimensions.
     mission_result: dict[str, Any] | None = None
@@ -1027,6 +1091,7 @@ class BacklogItem:
         execution_workdir: str = "",
         parallel_safe: bool = False,
         owns_paths: list[str] | None = None,
+        gpu_count: int = 0,
         acceptance_check: str = "",
         plan_hypothesis: str = "",
         goal_contribution: str = "",
@@ -1069,6 +1134,7 @@ class BacklogItem:
                 for path in (owns_paths or [])
                 if str(path).strip()
             ],
+            gpu_count=max(0, int(gpu_count or 0)),
             acceptance_check=str(acceptance_check or "").strip(),
             plan_hypothesis=str(plan_hypothesis or "").strip(),
             goal_contribution=str(goal_contribution or "").strip(),
@@ -1173,6 +1239,7 @@ class BacklogItem:
                 for path in (row.get("owns_paths", []) or [])
                 if str(path).strip()
             ],
+            gpu_count=max(0, int(row.get("gpu_count", 0) or 0)),
             outcome=(
                 {str(key): value for key, value in row.get("outcome", {}).items()}
                 if isinstance(row.get("outcome"), dict)
@@ -1400,6 +1467,27 @@ class Backlog:
         :meth:`_cascade_blocked`). Mirrors ``team/task_board._done_ids``.
         """
         return {it.id for it in items if it.status == "done"}
+
+    @staticmethod
+    def _fit_gpus(
+        candidates: list[BacklogItem], items: Iterable[BacklogItem],
+    ) -> list[BacklogItem]:
+        """Drop candidates whose GPUs are not free right now.
+
+        Free means total minus the larger of "busy now" and "reserved by
+        active tasks", so a running task's cards count once whether or not
+        its job has started. With no GPU visible nothing is gated: the
+        Engineer then reports the missing hardware itself.
+        """
+        if not any(getattr(item, "gpu_count", 0) > 0 for item in candidates):
+            return candidates
+        summary = gpu_capacity_summary(items)
+        if summary is None:
+            return candidates
+        return [
+            item for item in candidates
+            if getattr(item, "gpu_count", 0) <= summary["free"]
+        ]
 
     @staticmethod
     def _is_ready(item: BacklogItem, done: set[str]) -> bool:
@@ -2704,9 +2792,15 @@ class Backlog:
             items = self._load()
             history = self._dependency_history(items)
         done = self._done_ids([*history, *items])
-        out = [it for it in items if self._is_ready(it, done)]
+        out = self._fit_gpus([it for it in items if self._is_ready(it, done)], items)
         out.sort(key=lambda it: (it.priority, it.ts))
         return out
+
+    def gpu_summary(self) -> dict[str, int] | None:
+        """This machine's GPUs against the backlog: total, busy, reserved, free."""
+        with self._locked():
+            items = self._load()
+        return gpu_capacity_summary(items)
 
     def next_pending(
         self,
@@ -2730,7 +2824,9 @@ class Backlog:
             history = self._dependency_history(items)
             changed = self._cascade_blocked(items, history=history)
             done = self._done_ids([*history, *items])
-            ready = [item for item in items if self._is_ready(item, done)]
+            ready = self._fit_gpus(
+                [item for item in items if self._is_ready(item, done)], items,
+            )
             if parallel_only or (
                 respect_running
                 and any(

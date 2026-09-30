@@ -1049,3 +1049,61 @@ def test_operator_reply_continuation_starts_streak_tracked(
     stored = next(row for row in b.all() if row.id == continuation.id)
     assert stored.replan_streak_tracked is True
     assert stored.consecutive_replans == 0
+
+
+# ---------------------------------------------------------------------------
+# GPUs against the backlog
+# ---------------------------------------------------------------------------
+
+
+def _gpu_backlog(tmp_path, monkeypatch, capacity):
+    from argus.life import memory as memory_module
+
+    monkeypatch.setattr(memory_module, "_gpu_capacity", lambda: capacity)
+    memory = LifeMemory.open(tmp_path / "life")
+    return memory.backlog
+
+
+def test_a_task_that_holds_gpus_is_claimable_only_while_that_many_are_free(tmp_path, monkeypatch):
+    # Four cards; one is busy with someone else's process right now.
+    backlog = _gpu_backlog(tmp_path, monkeypatch, (4, 1))
+    training = backlog.add(BacklogItem.new(
+        title="train the 27B arm", objective="train", gpu_count=2,
+        parallel_safe=True, owns_paths=["runs/27b"],
+    ))
+    assert [item.id for item in backlog.ready()] == [training.id]
+    claimed = backlog.claim_next()
+    assert claimed is not None and claimed.id == training.id
+    # Reserved 2, busy 1: two cards remain for other work.
+    assert backlog.gpu_summary() == {"total": 4, "busy": 1, "reserved": 2, "free": 2}
+    fits = backlog.add(BacklogItem.new(
+        title="train the small arm", objective="train", gpu_count=2,
+        parallel_safe=True, owns_paths=["runs/small"],
+    ))
+    too_big = backlog.add(BacklogItem.new(
+        title="train the huge arm", objective="train", gpu_count=3,
+        parallel_safe=True, owns_paths=["runs/huge"],
+    ))
+    no_gpu = backlog.add(BacklogItem.new(title="write the related work", objective="write"))
+    assert {item.id for item in backlog.ready()} == {fits.id, no_gpu.id}
+    assert backlog.next_pending(parallel_only=True).id == fits.id
+    # Once the running job actually occupies its cards, "busy" covers them and
+    # nothing is counted twice.
+    monkeypatch.setattr("argus.life.memory._gpu_capacity", lambda: (4, 3))
+    assert backlog.gpu_summary()["free"] == 1
+    assert {item.id for item in backlog.ready()} == {no_gpu.id}
+    assert too_big.id not in {item.id for item in backlog.ready()}
+
+
+def test_without_a_visible_gpu_nothing_is_gated(tmp_path, monkeypatch):
+    backlog = _gpu_backlog(tmp_path, monkeypatch, None)
+    item = backlog.add(BacklogItem.new(title="train", objective="train", gpu_count=8))
+    assert backlog.gpu_summary() is None
+    assert [ready.id for ready in backlog.ready()] == [item.id]
+
+
+def test_gpu_count_survives_the_journal(tmp_path, monkeypatch):
+    backlog = _gpu_backlog(tmp_path, monkeypatch, None)
+    item = backlog.add(BacklogItem.new(title="train", objective="train", gpu_count=2))
+    reloaded = next(row for row in LifeMemory.open(tmp_path / "life").backlog.all() if row.id == item.id)
+    assert reloaded.gpu_count == 2
