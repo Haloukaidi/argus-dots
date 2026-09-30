@@ -55,6 +55,7 @@ from .round_stop_signals import (
     fatal_error_looks_like_model_configuration,
     fatal_error_looks_like_operator_abort_request,
     fatal_error_looks_like_provider_turn_cap,
+    idle_termination_review_decision,
     infrastructure_failure_review_decision,
     model_configuration_review_decision,
     operator_abort_review_decision,
@@ -717,7 +718,12 @@ class RoundExecutionMixin:
                 not watchdog_failure
                 and state.backend_failure_same_cause_streak >= 2
             )
-            review = backend_failure_review_decision(
+            decide = (
+                idle_termination_review_decision
+                if watchdog_failure
+                else backend_failure_review_decision
+            )
+            review = decide(
                 fatal_error=fatal_error,
                 exit_code=engineer_result.exit_code,
                 streak=state.backend_failure_streak,
@@ -729,9 +735,10 @@ class RoundExecutionMixin:
                     round_index=round_index,
                     round_max=supervised_config.max_rounds,
                     text=(
-                        "review: skipped (backend failure) — "
-                        f"{review.reason}"
-                    ),
+                        "review: skipped (silent command stopped) — "
+                        if watchdog_failure
+                        else "review: skipped (backend failure) — "
+                    ) + review.reason,
                     review_skipped=True,
                 ))
             state.rounds.append(RoundRecord(

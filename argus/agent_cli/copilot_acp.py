@@ -166,6 +166,7 @@ class _Turn:
         "allow_persistent",
         "last_activity_at",
         "last_event",
+        "running_tool",
     )
 
     def __init__(
@@ -187,6 +188,9 @@ class _Turn:
         self.allow_persistent = allow_persistent
         self.last_activity_at = time.monotonic()
         self.last_event = "prompt_started"
+        # The title of the tool call in flight, so a silent turn can name the
+        # command it is waiting on when it is reported or stopped.
+        self.running_tool = ""
 
 
 def _terminate_windows_acp_tree(
@@ -579,6 +583,7 @@ class CopilotAcpClient:
             title = str(upd.get("title") or upd.get("kind") or "tool")
             if tool_id:
                 turn.tool_titles[tool_id] = title
+            turn.running_tool = title
             call_data: dict[str, Any] = {
                 "name": title,
                 "arguments": upd.get("rawInput") or {},
@@ -602,6 +607,8 @@ class CopilotAcpClient:
                 if tool_id in turn.tool_done:
                     return
                 turn.tool_done.add(tool_id)
+            if turn.running_tool == title:
+                turn.running_tool = ""
             result_data: dict[str, Any] = {
                 "content": f"{title} ({status})",
                 "name": title,
@@ -988,6 +995,7 @@ class CopilotAcpClient:
                                     "threshold_seconds": int(stalled_idle),
                                     "operator_alert": True,
                                     "likely_blocked": True,
+                                    "running_tool": turn.running_tool,
                                 },
                             )
                         elif stage == TERMINATE_STAGE:
@@ -998,12 +1006,19 @@ class CopilotAcpClient:
                                     "idle_seconds": int(idle_seconds),
                                     "threshold_seconds": int(hard_idle),
                                     "operator_alert": True,
+                                    "running_tool": turn.running_tool,
                                 },
                             )
                             _cancel(
                                 "Forced restart after hard idle timeout "
                                 f"({int(hard_idle)}s without an ACP stream event; "
-                                f"last event: {turn.last_event})"
+                                f"last event: {turn.last_event}"
+                                + (
+                                    f"; running tool: {turn.running_tool}"
+                                    if turn.running_tool
+                                    else ""
+                                )
+                                + ")"
                             )
                             return
                     if idle_timeout > 0 and idle_seconds >= idle_timeout:

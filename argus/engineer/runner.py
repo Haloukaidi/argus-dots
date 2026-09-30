@@ -426,8 +426,14 @@ class SupervisedEngineer(
         on_event: Callable[[dict], None] | None = None,
     ) -> tuple[RunnerResult, int]:
         hard_idle_seconds: int | None = None
+        stalled_idle_seconds: int | None = None
         if supervised_config is not None:
             hard_idle_seconds = int(supervised_config.runner_hard_idle_seconds or 0)
+            # Say which command is silent well before it is stopped, so the
+            # operator's status line can show where the round is stuck.
+            stalled_idle_seconds = (
+                min(600, max(1, hard_idle_seconds // 3)) if hard_idle_seconds > 0 else 0
+            )
         try:
             result = gateway_run_exec(
                 self.engineer_runner,
@@ -455,6 +461,7 @@ class SupervisedEngineer(
                     # watchdog. Do not infer semantic progress from project
                     # mtimes or provider-private session files.
                     external_interrupt_reason_provider=None,
+                    watchdog_stalled_idle_seconds=stalled_idle_seconds,
                     watchdog_hard_idle_seconds=hard_idle_seconds,
                     extension_env=(
                         {
