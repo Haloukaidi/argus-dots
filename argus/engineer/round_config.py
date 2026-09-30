@@ -358,6 +358,9 @@ class SupervisedConfig:
     background_subagent_advisory: bool = field(
         default_factory=lambda: _env_bool(_BG_SUBAGENT_ADVISORY_ENV, True)
     )
+    review_background_launches: bool = field(
+        default_factory=lambda: _env_bool("ARGUS_SKILL_REVIEW_BACKGROUND_LAUNCHES", False)
+    )
     operator_questions_allowed: bool = True
     operator_question_policy_root: Path | None = None
 

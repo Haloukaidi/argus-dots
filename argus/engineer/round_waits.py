@@ -202,6 +202,8 @@ class RoundWaitsMixin:
             return False
         if kind == "subagent" and not supervised_config.background_subagent_advisory:
             return False
+        if status.waitable and not supervised_config.review_background_launches:
+            return False
         if not status.waitable and self._external_work_resume_key(status) not in state.external_work_resumptions:
             # Preserve the upstream result-consumption turn before independent review.
             return False
