@@ -32,6 +32,19 @@ def selected_venue(state_root: Path | str) -> str:
     return str(state.get("target_venue") or state.get("venue") or "").strip()
 
 
+UNSELECTED_VENUE = "the stated standard (no venue selected)"
+
+
+def venue_for_review(state_root: Path | str) -> str:
+    """The selected venue, or the label the final review is judged against when none was selected.
+
+    A project can reach its final review with nothing having set ``target_venue``.
+    The Reviewer then judges against the stated standard and the operator's bar,
+    and its verdict must count: a blank venue field is not a missing verdict.
+    """
+    return selected_venue(state_root) or UNSELECTED_VENUE
+
+
 def selected_acceptance_minimum(state_root: Path | str) -> str:
     """Read the operator's bar, independently of the Reviewer's own rating."""
     from .pipeline_state import read_pipeline_state
@@ -255,8 +268,14 @@ def venue_review_instruction(venue: str, *, minimum: str = "weak_accept") -> str
     minimum_label = minimum.replace("_", " ")
     return (
         "## Final paper acceptance — mandatory operator standard\n"
-        f"Act as an independent reviewer for the currently selected venue: {venue or '(not selected)'}. "
-        "Read its researched criteria and the actual current manuscript, rendered pages, "
+        + (
+            f"Act as an independent reviewer for the currently selected venue: {venue}. "
+            "Read its researched criteria and the actual current manuscript, rendered pages, "
+            if venue and venue != UNSELECTED_VENUE else
+            "No venue has been selected for this paper. Act as an independent reviewer for a "
+            "strong venue in its field, say which standard you applied, and read the actual "
+            "current manuscript, rendered pages, "
+        ) +
         "and claim-critical evidence. Judge novelty, significance, soundness, evidence, "
         "reproducibility, presentation, and fit at that venue. Finishing edits, compiling, "
         "an old certificate, or the Engineer's confidence is not an acceptance decision.\n"
