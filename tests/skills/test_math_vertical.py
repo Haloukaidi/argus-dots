@@ -158,9 +158,12 @@ def test_math_vertical_contains_only_contract_skills_and_metadata() -> None:
         "objective_mode.py",
         "proof_graph.py",
         "proof_graph_check.py",
+        "skills/manager/math-research-manager.md",
         "skills/planner/math-research-planning.md",
         "skills/engineer/math-research-execution.md",
         "skills/reviewer/math-research-review.md",
+        "skills/scientist/math-research-distillation.md",
+        "skills/scientist/math-research-adaptation.md",
     }
 
 

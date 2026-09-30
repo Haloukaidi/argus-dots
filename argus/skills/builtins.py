@@ -361,7 +361,7 @@ _RETIRED_BUILTIN_SEED_HASHES = {
     "engineer/presentation-master.md": (
         "0e6316ac52ec8b8cf29442498ecbcf52b1dec7991fd0ffba3065e7cca65db4e4"
     ),
-    # Kernel engineering, software, math and learning verticals.
+    # Kernel engineering, software and learning verticals.
     "engineer/kernel-optimization-knowledge.md": (
         "95e726bbf4687e3d5f8929c4136e55de30b28aa508a24f357db65d8bebacc4a0"
     ),
@@ -373,15 +373,6 @@ _RETIRED_BUILTIN_SEED_HASHES = {
     ),
     "planner/software-project-grounding.md": (
         "70b38719478858afc0e4e8eb191ac54c70db9ffff304bb593983fca271ddd7c6"
-    ),
-    "manager/math-research-manager.md": (
-        "e228b24cd82e6dee678458b5e32c4e1fc6092151b06c7eee198b158bdd1a1b95"
-    ),
-    "scientist/math-research-distillation.md": (
-        "83a7367798b1ac327861deaa94accf1d77da0e140ebc8da8137442a30a83b09a"
-    ),
-    "scientist/math-research-adaptation.md": (
-        "fd8961cb0155e3fc05428cf0b5dbd6be86ed048636dc657b3b23abbee6495933"
     ),
     "engineer/learning-curation.md": (
         "04b79b844bc15ab1aebd612001f624eb79551028cd14845c3223c5883fa5a59b"

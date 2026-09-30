@@ -608,12 +608,19 @@
     "source": "argus/verticals/math/skills/engineer/math-research-execution.md",
     "sourceSha256": "ddcf8321ce873130c1de3e71b78d816115182813e8a6dfdd4bc89d0fe9629736"
   },
+  "vertical/math/manager/math-research-manager.md": {
+    "title": "数学研究任务协调",
+    "summary": "在通用协调流程中保持研究目标、范围、求解和评审职责，不另造一套权限体系。",
+    "originalName": "Math Research Manager Context",
+    "source": "argus/verticals/math/skills/manager/math-research-manager.md",
+    "sourceSha256": "e228b24cd82e6dee678458b5e32c4e1fc6092151b06c7eee198b158bdd1a1b95"
+  },
   "vertical/math/planner/math-research-planning.md": {
-    "title": "数学研究规划与各角色上下文",
-    "summary": "按数学结构选择下一步并把方法当作选项而非必经阶段；结尾各节分别说明经理的阶段职责以及科学家蒸馏和调整方法时的判断。",
-    "originalName": "Math Research Planning and Role Context",
+    "title": "数学研究规划",
+    "summary": "围绕范围界定、求解和评审安排动态任务，保持原有角色与生命周期规则。",
+    "originalName": "Math Research Planning",
     "source": "argus/verticals/math/skills/planner/math-research-planning.md",
-    "sourceSha256": "60eeed17bae3e891ce89ebca3a2ef203afc5b7d9a5e54be4de5e2494c37549be"
+    "sourceSha256": "e3320bf8a0b986eae0251ce1004962659ab2a9505a2cc73da63c33b94d2799f4"
   },
   "vertical/math/reviewer/math-research-review.md": {
     "title": "数学研究独立评审",
@@ -621,6 +628,20 @@
     "originalName": "Math Research Review",
     "source": "argus/verticals/math/skills/reviewer/math-research-review.md",
     "sourceSha256": "21b7e0f172bbb695ae9950c0e9dd1cdac60ae6aa21df0962a88a1b06ba505251"
+  },
+  "vertical/math/scientist/math-research-adaptation.md": {
+    "title": "改进数学研究方法",
+    "summary": "在评审确认方法失败或技能缺口后，按已有适应阶段调整可复用方法。",
+    "originalName": "Math Research Scientist Adaptation",
+    "source": "argus/verticals/math/skills/scientist/math-research-adaptation.md",
+    "sourceSha256": "fd8961cb0155e3fc05428cf0b5dbd6be86ed048636dc657b3b23abbee6495933"
+  },
+  "vertical/math/scientist/math-research-distillation.md": {
+    "title": "沉淀数学研究方法",
+    "summary": "在首次匹配缺失后整理可复用研究方法，不假定已经失败，也不代替当前任务的执行。",
+    "originalName": "Math Research Skill Distillation",
+    "source": "argus/verticals/math/skills/scientist/math-research-distillation.md",
+    "sourceSha256": "83a7367798b1ac327861deaa94accf1d77da0e140ebc8da8137442a30a83b09a"
   },
   "vertical/research/engineer/ablation-planner.md": {
     "title": "选择有判别力的消融实验",

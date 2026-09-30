@@ -22,9 +22,12 @@ from argus.skills.builtins import (
 )
 
 MATH_SKILLS = {
+    "manager/math-research-manager.md",
     "planner/math-research-planning.md",
     "engineer/math-research-execution.md",
     "reviewer/math-research-review.md",
+    "scientist/math-research-distillation.md",
+    "scientist/math-research-adaptation.md",
 }
 
 RETIRED_BUILTIN_SKILLS = {

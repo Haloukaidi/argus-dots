@@ -491,14 +491,12 @@ def role_banner(role: str) -> str:
     """Load Math context as a Skill for the generic role implementation."""
     role_name = (role or "").strip().lower()
     skill_name = {
-        # The Manager and the two Scientist roles share the planning file,
-        # which addresses each of them in its closing sections.
-        "manager": "planner/math-research-planning.md",
+        "manager": "manager/math-research-manager.md",
         "planner": "planner/math-research-planning.md",
         "engineer": "engineer/math-research-execution.md",
         "reviewer": "reviewer/math-research-review.md",
-        "scientist_create": "planner/math-research-planning.md",
-        "scientist": "planner/math-research-planning.md",
+        "scientist_create": "scientist/math-research-distillation.md",
+        "scientist": "scientist/math-research-adaptation.md",
     }.get(role_name)
     if skill_name is None:
         return ""
