@@ -301,10 +301,15 @@ class RunExecMixin:
         if options.isolate_workdir:
             try:
                 from ..core.sandbox import isolated_workdir_command
+                from .copilot_home import copilot_account_home
 
                 command = isolated_workdir_command(
                     command,
                     working_dir=options.working_dir,
+                    account_home=(
+                        copilot_account_home()
+                        if getattr(self, "backend", None) == BACKEND_COPILOT else None
+                    ),
                 )
             except RuntimeError as exc:
                 return (

@@ -433,6 +433,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     setup_only = (
         bool(getattr(args, "non_interactive", False))
+        or getattr(args, "copilot_home", None) is not None
+        or bool(getattr(args, "copilot_login", False))
         or bool(getattr(args, "trial_url", None))
         or bool(getattr(args, "set_git_global", False))
         or bool(getattr(args, "configure_codex", False))
@@ -440,7 +442,7 @@ def main(argv: list[str] | None = None) -> int:
     if setup_only and not args.setup:
         sys.stderr.write(
             "argus: --non-interactive / --set-git-global / "
-            "--configure-codex / --trial-url require --setup\n"
+            "--configure-codex / --trial-url / --copilot-home / --copilot-login require --setup\n"
         )
         return 2
     readiness_modifier = (
@@ -602,6 +604,8 @@ def main(argv: list[str] | None = None) -> int:
             api_key=getattr(args, "api_key", None),
             api_model=getattr(args, "api_model", None),
             trial_url=getattr(args, "trial_url", None),
+            copilot_home=getattr(args, "copilot_home", None),
+            copilot_login=bool(getattr(args, "copilot_login", False)),
         )
     if getattr(args, "doctor", False):
         return _run_with_path_resolution_errors(lambda: _cmd_doctor(args))

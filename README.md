@@ -133,6 +133,12 @@ prerequisite for the separate Harbor evaluation integration.
 | Qoder CLI | `qoder` | `npm install -g @qoder-ai/qodercli` | `qodercli login` |
 | DeepSeek Harness | `dsh` | `npm install -g @deepseek-ai/dsh` | Configure `DEEPSEEK_API_KEY` or the dsh Models page |
 
+**Separate Copilot account for Argus:** run
+`argus --setup --backend copilot --copilot-home "$HOME/.copilot-argus" --copilot-login`.
+After setup succeeds and existing Argus processes are restarted, ordinary Argus
+launches use that account without changing the caller's login.
+See [account binding, precedence and reset](docs/agent-install.md#dedicated-copilot-account).
+
 <a id="argus-pi-preview"></a>
 <details>
 <summary><strong>Try Argus-Pi: install, connect and roll back</strong></summary>

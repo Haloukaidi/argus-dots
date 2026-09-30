@@ -1179,6 +1179,7 @@ FUNCTION_BODY_UPWARD_ALLOWLIST: frozenset[str] = frozenset({
     "core/role_config.py -> agent_cli",
     "core/sandbox.py -> <root>",
     "core/stage_certificate.py -> skills",
+    "core/usage.py -> agent_cli",
     "core/vault_preflight.py -> tools",
     "daemon/_life_worker_admission.py -> trial",
     "daemon/_life_worker_boot.py -> apps",

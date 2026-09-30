@@ -1504,7 +1504,9 @@ def _legacy_call_threads(project_root: Path) -> dict[str, str]:
 
 
 def _copilot_reconcile_enabled_for(project_root: Path) -> bool:
-    if os.environ.get("COPILOT_HOME", "").strip():
+    from ..agent_cli.copilot_home import copilot_account_home
+
+    if copilot_account_home() is not None or os.environ.get("COPILOT_HOME", "").strip():
         return True
     from .paths import session_states_root
 

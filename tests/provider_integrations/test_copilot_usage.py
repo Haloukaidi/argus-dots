@@ -72,6 +72,48 @@ def _insert(path: Path, *, session: str, model: str, created_at: str, **usage) -
         )
 
 
+def test_dedicated_account_usage_never_reads_ambient_or_personal_stores(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    from argus.core.knob_store import write_persisted_knob
+
+    personal = _db(tmp_path / "personal")
+    chosen = tmp_path / "dedicated"
+    assert write_persisted_knob("ARGUS_SKILL_COPILOT_HOME", str(chosen))
+    monkeypatch.setenv("COPILOT_HOME", str(personal.parent))
+    _insert(
+        personal, session="matching-id", model="gpt-5.5",
+        created_at="2026-07-11T10:00:00Z", total_nano_aiu=99,
+    )
+
+    cursor = capture_copilot_usage_cursor()
+
+    assert cursor.db_path == chosen / "session-store.db"
+    assert cursor.fallback is None
+    assert copilot_usage.copilot_usage_db_candidates() == [cursor.db_path]
+    assert not chosen.exists()
+    assert find_copilot_usage_near(
+        session_id="matching-id", started_at=0,
+        completed_at=datetime(2026, 7, 11, 10, 0, tzinfo=UTC).timestamp(),
+    ) is None
+    dedicated = _db(chosen)
+    _insert(
+        dedicated, session="matching-id", model="gpt-5.5",
+        created_at="2026-07-11T10:00:00Z", total_nano_aiu=7,
+    )
+    usage = read_copilot_usage_since(cursor, session_id="matching-id")
+    assert usage is not None and usage.total_nano_aiu == 7
+
+
+def test_dedicated_sandbox_cursor_uses_private_runtime(tmp_path: Path, monkeypatch) -> None:
+    from argus.core.sandbox import isolated_copilot_home
+
+    monkeypatch.setenv("ARGUS_SKILL_COPILOT_HOME", str(tmp_path / "dedicated"))
+    cursor = capture_copilot_usage_cursor(isolated_workdir=tmp_path / "worktree")
+    assert cursor.db_path == isolated_copilot_home(tmp_path / "worktree") / "session-store.db"
+    assert cursor.fallback is None
+
+
 def test_reads_exact_rows_added_after_cursor(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "copilot"
     path = _db(home)
