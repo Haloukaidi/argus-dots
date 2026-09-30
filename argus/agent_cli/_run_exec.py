@@ -24,6 +24,7 @@ from ._env import (
     _CAPTURE_JSON_EVENTS_ENV,
     _CAPTURE_STDERR_LINES_ENV,
     _CAPTURE_STDOUT_LINES_ENV,
+    _CLI_EXITED_WITHOUT_TURN,
     _DEFAULT_CAPTURE_JSON_EVENTS,
     _DEFAULT_CAPTURE_STDERR_LINES,
     _DEFAULT_CAPTURE_STDOUT_LINES,
@@ -110,6 +111,7 @@ class _StreamState:
     fatal_error: str | None = None
     provider_turns: int = 0
     provider_turn_cap_hit: bool = False
+    model_progress_observed: bool = False
     tool_activity_observed: bool = False
     usage_model: str = ""
     watchdog_terminated: bool = False
@@ -650,6 +652,13 @@ class RunExecMixin:
                     if event is None:
                         continue
                     state.json_event_count += 1
+                    if event.get("type") in {
+                        "turn.started", "turn.completed", "turn.failed",
+                        "item.started", "item.updated", "item.completed",
+                    }:
+                        # Sticky: survives the bounded event capture, so a
+                        # later generic exit is never read as a startup failure.
+                        state.model_progress_observed = True
                     if (
                         provider_turn_cap > 0
                         and not state.watchdog_terminated
@@ -877,7 +886,14 @@ class RunExecMixin:
 
         if state.watchdog_terminated:
             state.turn_failed = True
-            if state.watchdog_reason and state.fatal_error is None:
+            if state.watchdog_reason and (
+                state.fatal_error is None
+                or state.watchdog_reason.startswith("External interrupt:")
+            ):
+                # An interrupt that actually ended the process is the terminal
+                # diagnostic, ahead of an earlier recoverable provider error.
+                # Housekeeping watchdogs (turn allowance, idle restart) only
+                # fill an absent reason.
                 state.fatal_error = state.watchdog_reason
         elif state.turn_completed and not state.turn_failed:
             state.fatal_error = None
@@ -895,9 +911,15 @@ class RunExecMixin:
             # reason usually is; a relay that died inside a container was
             # invisible for hours while the operator saw only "exit code 1".
             state.turn_failed = True
+            receipt = self._exit_receipt(process.returncode, state)
+            if state.model_progress_observed and not receipt:
+                # After observed model progress the record must open with the
+                # runner's own receipt: the stderr lines stay attached for the
+                # operator, but classification reads the receipt, not history.
+                receipt = _CLI_EXITED_WITHOUT_TURN
             state.fatal_error = _incomplete_turn_error(
                 state.stderr_lines,
-                receipt=self._exit_receipt(process.returncode, state),
+                receipt=receipt,
                 log_hint=self._cli_log_hint(),
             )
 
@@ -917,6 +939,7 @@ class RunExecMixin:
             fatal_error=state.fatal_error,
             provider_turns=state.provider_turns,
             provider_turn_cap_hit=state.provider_turn_cap_hit,
+            model_progress_observed=state.model_progress_observed,
             tool_activity_observed=state.tool_activity_observed,
             usage_model=state.usage_model,
             orphan_process_group_id=state.orphan_process_group_id,
