@@ -1144,3 +1144,73 @@ def test_missing_usage_and_unknown_model_are_never_rendered_as_zero(
     assert summary.cost_usd is None
     assert summary.pricing_status == "partial"
     assert format_usage_cost(summary) == "partial"
+
+
+def test_copilot_reconcile_prices_a_pending_acp_turn_from_the_session_event_log(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A warm ``copilot --acp`` turn leaves no store row; the session event log
+    still settles it, so the daemon is not held on a phantom liability."""
+    copilot_home = tmp_path / "copilot"
+    copilot_home.mkdir()
+    monkeypatch.setenv("COPILOT_HOME", str(copilot_home))
+    monkeypatch.setattr(
+        "argus.core.usage._copilot_reconcile_enabled_for", lambda _root: True,
+    )
+    started_at = 1_790_751_193.42
+    completed_at = 1_790_751_200.36
+    events = copilot_home / "session-state" / "acp-1" / "events.jsonl"
+    events.parent.mkdir(parents=True)
+    events.write_text(
+        json.dumps({
+            "type": "session.start",
+            "data": {"sessionId": "acp-1", "selectedModel": "gpt-5.6-sol"},
+            "timestamp": "2026-09-30T06:53:14.415Z",
+        })
+        + "\n"
+        + json.dumps({
+            "type": "session.usage_checkpoint",
+            "data": {"totalNanoAiu": 2_946_700_000, "totalPremiumRequests": 1},
+            "timestamp": "2026-09-30T06:53:19.562Z",
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+    project = tmp_path / "projects" / "p1"
+    project.mkdir(parents=True)
+    ledger = UsageLedger(project, migrate_legacy=False)
+    ledger.append(
+        replace(
+            _record(
+                call_id="acp-turn",
+                project_root=project,
+                mission_id=None,
+                provider="copilot",
+                run_label="manager-classify-fast",
+                started_at=started_at,
+                completed_at=completed_at,
+                premium_requests=1.0,
+                thread_id="acp-1",
+                copilot_token_billing_expected=True,
+            ),
+            cost_usd=None,
+            pricing_status="partial",
+            pricing_tier="copilot_token_pending",
+        )
+    )
+    pending = ledger.records()[0]
+    assert pending.pricing_tier == "copilot_token_pending"
+
+    assert ledger.ensure_copilot_usage_reconciled() == 1
+
+    settled = ledger.records()[0]
+    assert settled.cost_usd == pytest.approx(0.029467)
+    assert settled.pricing_status == "priced"
+    assert settled.pricing_tier == "copilot_token"
+    assert settled.cost_basis == "token"
+    assert settled.total_nano_aiu == 2_946_700_000
+    assert settled.input_tokens is None
+    assert settled.model_usage[0]["usage_event_id"] == 1
+    # A second pass has nothing left to settle.
+    assert ledger.ensure_copilot_usage_reconciled() == 0
