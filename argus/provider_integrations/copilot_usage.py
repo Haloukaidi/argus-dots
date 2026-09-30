@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ..agent_cli.copilot_home import argus_copilot_home
+from ..agent_cli.copilot_home import argus_copilot_home, copilot_account_home
 
 # Copilot records cost in nano-AI units. 1e9 nano-AIU = 1 AI credit and
 # 1 AI credit = $0.01, therefore one USD is 1e11 nano-AIU.
@@ -113,6 +113,9 @@ def copilot_usage_db_candidates() -> list[Path]:
 
     if trial_enabled():
         return [profile_path().parent / "copilot-trial-home" / "session-store.db"]
+    account_home = copilot_account_home()
+    if account_home is not None:
+        return [account_home / "session-store.db"]
     candidates: list[Path] = []
     configured = os.environ.get("COPILOT_HOME", "").strip()
     if configured:
@@ -133,7 +136,9 @@ def copilot_usage_db_candidates() -> list[Path]:
     return out
 
 
-def capture_copilot_usage_cursor() -> CopilotUsageCursor | None:
+def capture_copilot_usage_cursor(
+    *, isolated_workdir: str | Path | None = None,
+) -> CopilotUsageCursor | None:
     # Child execution relocates Copilot using a copy of os.environ. Looking at
     # the parent environment and picking the first existing DB can instead
     # capture the operator's unrelated personal store. Use the intended child
@@ -142,6 +147,13 @@ def capture_copilot_usage_cursor() -> CopilotUsageCursor | None:
 
     if trial_enabled():
         return _capture_cursor(profile_path().parent / "copilot-trial-home" / "session-store.db")
+    account_home = copilot_account_home()
+    if account_home is not None:
+        if isolated_workdir is not None:
+            from ..core.sandbox import isolated_copilot_home
+
+            account_home = isolated_copilot_home(isolated_workdir)
+        return _capture_cursor(account_home / "session-store.db")
     configured = os.environ.get("COPILOT_HOME", "").strip()
     home = Path(configured).expanduser() if configured else argus_copilot_home()
     path = home / "session-store.db"

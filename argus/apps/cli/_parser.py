@@ -386,6 +386,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="authentication mode (model_api is supported with codex)",
     )
     capability_grp.add_argument(
+        "--copilot-home",
+        default=None,
+        metavar="PATH",
+        help="with --setup --backend copilot: persist a dedicated account directory; "
+             "--copilot-home= restores shared-account behavior",
+    )
+    capability_grp.add_argument(
+        "--copilot-login",
+        action="store_true",
+        help="with --setup --backend copilot: run official login in the dedicated account directory",
+    )
+    capability_grp.add_argument(
         "--non-interactive",
         action="store_true",
         help="with --setup: never prompt; requires --backend or --api-url",
