@@ -536,7 +536,25 @@ class Installer:
     def uninstall(self) -> dict:
         self.ensure_no_pending()
         if not self.state["files"]:
+            if self.state.get("release") is not None or self.state.get("last_install") is not None:
+                raise InstallError("Active installation metadata is incomplete; refusing uninstall")
             return {"status": "not_installed"}
+        known = ({r: i["sha256"] for r, i in self.manifest["payload"].items()}
+                 if self.state["release"] == self.manifest["release"]
+                 else self.manifest.get("upgrade_payloads", {}).get(self.state["release"]))
+        if not known or set(self.state["files"]) != set(known):
+            raise InstallError("Uninstall requires complete metadata for a known installed release")
+        for rel, digest in known.items():
+            installed = self.state["files"][rel]["installed"]
+            if installed is None or installed["sha256"] != digest:
+                raise InstallError("Installed metadata differs from the known release: " + rel)
+        last = self.journal(self.state.get("last_install"))
+        if (last["after_state"] != self.state
+                or last.get("kind") not in ("install", "adopt_legacy")
+                or set(last["entries"]) != set(known)
+                or any(item["after"] != self.state["files"][rel]["installed"]
+                       for rel, item in last["entries"].items())):
+            raise InstallError("Installation journal is inconsistent; refusing uninstall")
         self.conflict_check({r: i["installed"] for r, i in self.state["files"].items()})
         planned = {}
         for rel, info in self.state["files"].items():

@@ -98,6 +98,50 @@ class InstallerTest(unittest.TestCase):
             inst.uninstall()
         self.assertEqual((self.root / "argus/apps/entry.py").read_bytes(), self.payload["argus/apps/entry.py"])
 
+    def test_uninstall_rejects_missing_managed_entry(self):
+        self.install()
+        self.edit_state(lambda state: state["files"].pop("docs/dots.md"))
+        with self.installer() as inst, self.assertRaisesRegex(m.InstallError, "complete metadata"):
+            inst.uninstall()
+        for rel, data in self.payload.items():
+            self.assertEqual((self.root / rel).read_bytes(), data)
+
+    def test_uninstall_rejects_empty_active_state(self):
+        self.install()
+        self.edit_state(lambda state: state["files"].clear())
+        with self.installer() as inst, self.assertRaisesRegex(m.InstallError, "incomplete"):
+            inst.uninstall()
+        for rel, data in self.payload.items():
+            self.assertEqual((self.root / rel).read_bytes(), data)
+
+    def test_uninstall_rejects_consistently_incomplete_journal_and_state(self):
+        self.install()
+        with self.installer() as inst:
+            state = copy.deepcopy(inst.state)
+            state["files"].pop("docs/dots.md")
+            path = inst.meta / "transactions" / state["last_install"] / "journal.json"
+            journal = json.loads(path.read_text())
+            journal["after_state"] = state
+            journal["entries"].pop("docs/dots.md")
+            path.write_text(json.dumps(journal))
+            (inst.meta / "state.json").write_text(json.dumps(state))
+        with self.installer() as inst, self.assertRaisesRegex(m.InstallError, "complete metadata"):
+            inst.uninstall()
+        for rel, data in self.payload.items():
+            self.assertEqual((self.root / rel).read_bytes(), data)
+
+    def test_uninstall_rejects_inconsistent_original_journal(self):
+        self.install()
+        with self.installer() as inst:
+            path = inst.meta / "transactions" / inst.state["last_install"] / "journal.json"
+            journal = json.loads(path.read_text())
+            journal["after_state"]["release"] = "different-release"
+            path.write_text(json.dumps(journal))
+        with self.installer() as inst, self.assertRaisesRegex(m.InstallError, "journal"):
+            inst.uninstall()
+        for rel, data in self.payload.items():
+            self.assertEqual((self.root / rel).read_bytes(), data)
+
     def test_unrelated_runtime_and_docs_preserved(self):
         self.put(self.root, "runtime/user-state.json", b'{"keep":true}')
         self.put(self.root, "docs/user.md", b"keep")

@@ -1,0 +1,346 @@
+{
+  "verification_date": "2026-10-02",
+  "release": "dots-portable-2.1.2",
+  "status": "installer_passed_locator_and_normal_handoff_verified_remaining_limits_explicit",
+  "platform_tested": {
+    "system": "Linux",
+    "python": "3.12.14"
+  },
+  "package": {
+    "baseline_files": 727,
+    "payload_files": 37,
+    "modified_baseline_files": 10,
+    "new_files": 27,
+    "legacy_snapshot_files": 8,
+    "supported_upgrade_from": [
+      "dots-portable-2.0.0",
+      "dots-portable-2.1.0",
+      "dots-portable-2.1.1"
+    ],
+    "known_previous_payload_files": {
+      "dots-portable-2.0.0": 20,
+      "dots-portable-2.1.0": 32,
+      "dots-portable-2.1.1": 32
+    },
+    "prior_payload_files_unchanged": 32,
+    "new_payload_entries": 5,
+    "new_production_source_entries": 2,
+    "new_test_source_entries": 3
+  },
+  "installer_stdlib_tests": {
+    "passed": 47,
+    "command": "python -m unittest discover -s tests -v"
+  },
+  "independent_installer_audit": {
+    "passed": 61,
+    "new_upgrade_tests": 19,
+    "prior_installer_safety_tests": 36,
+    "bootstrap_offline_mock_contract_tests": 6,
+    "seconds": 19.82,
+    "cases": [
+      "complete known20 snapshot and metadata verification",
+      "explicit upgrade permission",
+      "six newly modified original backup hashes",
+      "user edits and partial metadata refusal",
+      "corrupt original backup refusal",
+      "forged prior release fingerprint refusal",
+      "write failure rollback",
+      "hard process termination and recovery",
+      "base to2.0 to2.1 rollback and old uninstaller",
+      "base to2.0 to2.1 direct uninstall",
+      "legacy8 to2.0 to2.1 rollback/uninstall",
+      "original modes and unrelated data preservation"
+    ],
+    "phase": "historical 2.1.0 source/upgrade validation; installer core remains unchanged"
+  },
+  "clean_base_cli_upgrade": {
+    "status": "passed",
+    "base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+    "detached_git_clone": true,
+    "cycles": [
+      [
+        "2.0.0 install",
+        "2.1.0 check",
+        "implicit upgrade rejected",
+        "explicit upgrade",
+        "idempotent repeat",
+        "rollback to2.0.0",
+        "old installer check",
+        "old uninstall"
+      ],
+      [
+        "2.0.0 install",
+        "explicit2.1.0 upgrade",
+        "new uninstall"
+      ]
+    ],
+    "upgraded_payload_byte_matches": 32,
+    "new_original_backup_hashes_matched": 6,
+    "rollback_prior_payload_byte_matches": 20,
+    "uninstall_baseline_hashes_restored": 727,
+    "uninstall_new_payload_files_removed": 24,
+    "tracked_git_diff_after_uninstall": "empty",
+    "phase": "historical 2.1.0 acceptance; new 2.1.1 paths recorded separately"
+  },
+  "source_qa": {
+    "summary_file": "SOURCE_VALIDATION.json",
+    "full_python": {
+      "total": 12290,
+      "passed": 12086,
+      "failed": 68,
+      "errors": 0,
+      "skipped": 136,
+      "seconds": 857.84
+    },
+    "remaining_failure_groups": {
+      "procfs_unavailable": 59,
+      "AF_UNIX_denied": 8,
+      "existing_virtualenv_fixture_assumption": 1
+    },
+    "independent_clean_source_original_launcher_test": {
+      "passed": 1,
+      "does_not_change_full_run_counts": true
+    },
+    "typescript_tests_passed": 226,
+    "python_typecheck": {
+      "baseline_errors": 30,
+      "current_errors": 30,
+      "identical_diagnostics": true,
+      "passed": false
+    },
+    "overlapping_focused_counts_are_not_added": true,
+    "phase": "historical complete 2.1.0 run; not rerun wholesale for the 2.1.1 test-only correction"
+  },
+  "static_checks": {
+    "python_compilation": "passed",
+    "ruff_F_E_excluding_E501": "passed",
+    "all_payload_python_ast": "passed"
+  },
+  "not_tested": [
+    "Python 3.11 runtime",
+    "macOS runtime",
+    "WSL runtime",
+    "new receiving Dot native tools",
+    "full native five-role production execution",
+    "production Reviewer OS read-only isolation",
+    "Complete online bootstrap of 2.1.2 payload; same bootstrap script has historical 2.1.0 online acceptance"
+  ],
+  "unsupported": [
+    "native Windows installer",
+    "unknown Argus revision",
+    "unmanaged full20 snapshot without valid installation metadata",
+    "unattended native execution from Python alone"
+  ],
+  "installer_script_sha256": "6b54fa05d11eabe9c7f9d5aa44eeef9954c24f940d0b7bde4e63f3263d5cc0c5",
+  "previous_delivered_zip_sha256": "c0cba66a20e1d84e4288dbe5fe622ffbfb473e3511952572a0b59706df406e32",
+  "source_summary_sha256": "208d52833a681c342a1202fc68bbaad283e0d0e5955b13e57bea4a2692c924ba",
+  "publication": {
+    "scope": "offline2.1.2 build, regression and controlled handoff evidence only; exact new remote commit CI and service restart are separate steps",
+    "remote_push_performed_by_packager": false,
+    "service_restart_performed_by_packager": false,
+    "user_research_task_created_by_packager": false,
+    "daemon_installed": false
+  },
+  "prior_distribution_revision": {
+    "id": "2026-10-02-bootstrap-network-compatibility",
+    "managed_release_unchanged": "dots-portable-2.1.0",
+    "business_payload_files_unchanged": 32,
+    "business_manifest_sha256": "005cbac9b0cb334043412d65f6dd579e2aaee5d39990b074e23c21f2a011a5dd",
+    "previous_bundle_sha256": "1f6b9b1abc9f6dc99f6083be0062e96f95684731ed3a093727f9ee0a205f7a27",
+    "changes": [
+      "Preserve the exact existing platform proxy/CA allowlist for explicit online bootstrap",
+      "Continue excluding model/Git tokens, pip index overrides, arbitrary environment and TLS-disable/config injection",
+      "Redact configured network values and proxy authentication fragments from errors",
+      "Update distribution documentation and validation; no source-module migration needed"
+    ],
+    "bootstrap_script_sha256": "aaec66a4c846a5f1fef01cddc8b890ff252ef6a13ead805f13fbefbee2d0db81",
+    "standard_library_tests_passed": 47,
+    "independent_network_and_redaction_audit": {
+      "passed": 23,
+      "seconds": 0.32,
+      "allowlisted_network_keys": 12,
+      "credential_and_config_injection_negative_cases": "more than 40 simulated variables; no actual secret values recorded"
+    },
+    "online_bootstrap": {
+      "status": "passed",
+      "source": "https://github.com/lbx154/Argus.git",
+      "pinned_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+      "preserved_platform_network_configuration": true,
+      "target_path_with_spaces": true,
+      "fresh_venv": true,
+      "dependencies_installed": true,
+      "final_frozen_script_seconds": 74.4,
+      "model_calls": false
+    },
+    "post_bootstrap_checks": [
+      {
+        "step": "pip-check",
+        "exit_code": 0
+      },
+      {
+        "step": "argus-version",
+        "exit_code": 0
+      },
+      {
+        "step": "dots-help",
+        "exit_code": 0
+      },
+      {
+        "step": "host-import",
+        "exit_code": 0
+      },
+      {
+        "step": "all_payload_hashes",
+        "passed": 32
+      }
+    ],
+    "existing_installations": "2.1.0 remains idempotent; use --upgrade only for the already supported managed 2.0.0 migration",
+    "actual_network_credentials_or_values_saved_in_artifact": false,
+    "phase": "prior 2.1.0 bootstrap network revision; bootstrap code remains unchanged"
+  },
+  "historical_2_0_0_zip_sha256": "0dae589174e4f74b29acdb9569ad5470575e09668c7095ff98aa55806a3fb81c",
+  "historical_2_1_0_source_patch_sha256": "22ffa181c1a9833a9b6f3ea96959dec452adac2a3335e4f61a227683b6b9a354",
+  "previous_release_records": {
+    "test_only_revision": {
+      "payload_changes": [
+        "tests/test_workflow_regression_triage.py"
+      ],
+      "new_payload_sha256": "628f6bfd2753935cc525a65a569f4080ef164b9cbe0b95704549bb0962f21426",
+      "production_code_unchanged": true,
+      "installer_transaction_unchanged": true,
+      "bootstrap_unchanged": true,
+      "source_checks": "FIXTURE_VALIDATION.json",
+      "exact_updated_commit_ci": "pending",
+      "previous_delivered_zip_sha256": "db09a20ccc5d637d124d64fd17e7afaf889f6d2e5b51f0973a3dd23d578a7821",
+      "relative_to": "dots-portable-2.1.0",
+      "maintainer_builder_reproduces_full_manifest_and_upgrade_chain": true,
+      "phase": "historical 2.1.1 record; published commit aa619ebd6ff158c4bda4554c70a2ad96f251aef9 subsequently passed CI; not new 2.1.2 proof"
+    },
+    "installation_audit": {
+      "passed": 22,
+      "seconds": 12.37,
+      "standard_library_tests_passed": 47,
+      "installer_transaction_code_unchanged": true,
+      "cases": [
+        "actual 2.0.0 and 2.1.0 package upgrade sources",
+        "complete previous 20 and 32 file fingerprints",
+        "base and legacy original-backup restoration",
+        "two-generation rollback chain",
+        "modified user file rejection",
+        "forged metadata/hash rejection",
+        "backup corruption rejection",
+        "failure after atomic replacement and recovery"
+      ],
+      "real_cli_complete_git_clone": {
+        "status": "passed",
+        "base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+        "multi_generation_cycle": [
+          "base",
+          "2.0.0 install",
+          "2.1.0 upgrade",
+          "2.1.1 upgrade",
+          "idempotent repeat",
+          "rollback 2.1.0",
+          "rollback 2.0.0",
+          "old uninstall to base"
+        ],
+        "direct_upgrade_uninstall_sources": [
+          "2.0.0",
+          "2.1.0"
+        ],
+        "restored_baseline_hashes": 727,
+        "removed_added_files": 24,
+        "tracked_git_diff": "empty",
+        "known_previous_payloads_verified": [
+          20,
+          32
+        ]
+      },
+      "local_platform": "Linux/Python 3.12; no new cross-platform runtime claim",
+      "phase": "historical2.1.1 package validation"
+    }
+  },
+  "locator_revision": {
+    "summary_file": "LOCATOR-VALIDATION.json",
+    "frozen_fix_patch_sha256": "24fef4df5c98d8c88905c59b18413b65d75a9dca94e735f35b6ab2bbd58c08bb",
+    "related_tests": {
+      "passed": 620,
+      "skipped": 14,
+      "failed": 0,
+      "errors": 0
+    },
+    "independent_focused_tests_passed": 76,
+    "counts_overlap": true,
+    "real_focused_normal_completion_delivery": "passed",
+    "real_focused_cancellation_interference": "inconclusive",
+    "at_most_30_seconds_goal": "not_proven",
+    "old_10_turn_missing_record_timeout": "FAIL_preserved",
+    "background_freeform_hex_paths": "known_unfixed",
+    "production_os_readonly_verified": false,
+    "exact_new_commit_ci": "pending",
+    "host_operation_changes_only_in_outer_guides": true,
+    "permission_and_timeout_changes": false,
+    "source_manifest_file": "LOCATOR-VALIDATION.json",
+    "new_baseline_file_count": 2,
+    "new_test_file_count": 3,
+    "focused_report": "FOCUSED-HANDOFF-RESULTS.zh-CN.md",
+    "operation_guide": "HOST-PRIORITY.zh-CN.md",
+    "historical_trial_summary": "HISTORICAL-NATIVE-TRIALS.zh-CN.md",
+    "historical_four_scene_outcomes": {
+      "A": "implementation25/25 and typed approval succeeded; final-record timeout exit124 remains failed",
+      "B": "same-worker continuation7/7 then16/16 and actual file reads succeeded; shared final-confirmation timeout remains failed",
+      "C": "capacity failure and original shape-assumption assertion retained; authorized one-time retry content checked; successful analysis concurrency not established",
+      "D": "actual interrupt confirmed with exit130; new-request/new-worker recovery exit0 passed"
+    }
+  },
+  "current_release_installation_audit": {
+    "passed": 14,
+    "seconds": 8.71,
+    "standard_library_tests_passed": 47,
+    "api_fixture_upgrade_sources": [
+      "dots-portable-2.0.0",
+      "dots-portable-2.1.0",
+      "dots-portable-2.1.1"
+    ],
+    "cases": [
+      "complete known prior 20/32/32 fingerprints",
+      "base and legacy8 original provenance",
+      "three-generation rollback and old-installer checks",
+      "two new baseline originals backed up with exact original hashes",
+      "original 0640 mode preserved",
+      "post-install user modification refusal",
+      "corrupt original backup refusal",
+      "write-after-replacement failure and recovery"
+    ],
+    "real_cli": {
+      "status": "passed",
+      "base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+      "cycles": [
+        [
+          "base",
+          "2.0.0 install",
+          "2.1.0 upgrade",
+          "2.1.1 upgrade",
+          "2.1.2 upgrade",
+          "idempotent repeat",
+          "rollback2.1.1 and old check",
+          "rollback2.1.0 and old check",
+          "rollback2.0.0 and old check",
+          "old uninstall to base"
+        ],
+        [
+          "fresh2.1.1",
+          "2.1.2 upgrade",
+          "new uninstall to base"
+        ]
+      ],
+      "installed_payload_byte_matches": 37,
+      "new_baseline_original_backup_hashes_verified": 2,
+      "restored_baseline_hashes": 727,
+      "removed_added_files": 27,
+      "tracked_git_diff_after_uninstall": "empty"
+    },
+    "installer_transaction_and_entry_scripts_unchanged": true,
+    "maintainer_builder_reproduced_entire_manifest_and_all_three_upgrade_maps": true
+  }
+}

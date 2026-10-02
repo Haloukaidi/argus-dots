@@ -4,7 +4,8 @@
 
 ## 从哪里开始
 
-- 最新 Reviewer 文件定位符修复：[`2.1.2 变更与边界`](docs/CHANGES-2.1.2.zh-CN.md)
+- 最新2.2.0：[`有限producer接纳`](docs/dots-admission.md)、[`runtime入口与拒绝边界`](docs/dots-runtime-entry.md)、[`便携安装变更`](installers/dots-portable/CHANGES-2.2.0.zh-CN.md)
+- 既有 Reviewer 文件定位符修复：[`2.1.2 变更与边界`](docs/CHANGES-2.1.2.zh-CN.md)
 - 真实交接记录：[`专项结果`](docs/FOCUSED-HANDOFF-RESULTS.zh-CN.md)、[`保留的历史失败`](docs/HISTORICAL-NATIVE-TRIALS.zh-CN.md)
 - Native host 完成交付操作：[`完成确认与停止优先级`](docs/HOST-PRIORITY.zh-CN.md)
 
@@ -22,7 +23,7 @@ portable installer 用于其 manifest 指定的原版 Argus 基准，或从受�
 
 ## 能力与测试边界
 
-这是显式注入 host transport 的源码级集成。原来的九个 CLI 后端和使用方式保留，没有新增 `argus --backend dots` 选项。
+这是显式注入 host transport 的源码级集成。原来的九个 CLI 后端、默认值和使用方式保留；新增独立的 dots runtime 选择，缺少受支持原生 host 或角色能力时会明确拒绝，不会回退到普通 CLI。普通 Web/CLI 当前仍不能运行完整 dots 研究流程，详见 [入口与能力限制](docs/dots-runtime-entry.md)。
 
 需要在线授权 host 才能调用真实 native 工作者。文件队列和提示词不能提供操作系统只读隔离；完整 native 五角色生产流程仍取决于接收环境真正提供所需能力。原 Reviewer 审批权、工具参数校验、停止机制和能力不足时的明确拒绝保留。
 

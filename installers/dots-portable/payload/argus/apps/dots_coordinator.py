@@ -11,14 +11,26 @@ from ..adapters.dots_coordinator import DotsCoordinator
 from ..adapters.dots_file_transport import FileDotsTransport
 
 
-def main(argv: list[str] | None = None, *, role_mode: bool = False) -> int:
+def main(argv: list[str] | None = None, *, role_mode: bool = False, bounded_mode: bool = False) -> int:
+    role_mode = role_mode or bounded_mode
     parser = argparse.ArgumentParser(description=(
         "Journal an explicitly authorized finite native-coordinator task list. "
         "The host, not this process, calls real native tools. No execution isolation is implied."))
     parser.add_argument("--bridge-dir", type=Path, required=True)
     commands = parser.add_subparsers(dest="command", required=True)
-    create = commands.add_parser("create", help="parent enrolls exact already-authorized requests")
-    create.add_argument("request_ids", nargs="+")
+    create = commands.add_parser("create", help="parent enrolls exact requests or an explicit bounded producer scope")
+    if bounded_mode:
+        create.add_argument("--producer", required=True)
+        create.add_argument("--project-root", required=True, type=Path)
+        create.add_argument("--mission", required=True)
+        create.add_argument("--roles", nargs="+", required=True)
+        create.add_argument("--max-requests", type=int, required=True)
+        close = commands.add_parser("close-producer", help="authorized producer seals admission; accepted work still drains")
+        close.add_argument("session_id")
+        close.add_argument("--producer", required=True)
+        close.add_argument("--project-root", required=True)
+    else:
+        create.add_argument("request_ids", nargs="+")
     create.add_argument("--parent", required=True)
     create.add_argument("--coordinator", required=True)
     create.add_argument("--max-concurrency", type=int, default=1)
@@ -61,15 +73,28 @@ def main(argv: list[str] | None = None, *, role_mode: bool = False) -> int:
         tool.add_argument("--arguments-json", help="omit to read one JSON argument object from stdin")
     args = parser.parse_args(argv)
     try:
-        if role_mode:
+        if bounded_mode:
+            from ..adapters.dots_admission import BoundedDotsRoleHost, BoundedRoleFileDotsTransport
+
+            host = BoundedDotsRoleHost(BoundedRoleFileDotsTransport(args.bridge_dir))
+        elif role_mode:
             from ..adapters.dots_role_host import DotsRoleHost, RoleFileDotsTransport
 
             host = DotsRoleHost(RoleFileDotsTransport(args.bridge_dir))
         else:
             host = DotsCoordinator(FileDotsTransport(args.bridge_dir))
         if args.command == "create":
-            result = host.create(args.request_ids, parent_task=args.parent, coordinator_task=args.coordinator,
-                                 max_concurrency=args.max_concurrency, lifetime_seconds=args.lifetime)
+            kwargs = {"parent_task": args.parent, "coordinator_task": args.coordinator,
+                      "max_concurrency": args.max_concurrency, "lifetime_seconds": args.lifetime}
+            if bounded_mode:
+                result = host.create(producer_id=args.producer, project_root=args.project_root,
+                                     mission_id=args.mission, allowed_roles=args.roles,
+                                     max_requests=args.max_requests, **kwargs)
+            else:
+                result = host.create(args.request_ids, **kwargs)
+        elif args.command == "close-producer":
+            result = host.close_producer(args.session_id, producer_id=args.producer,
+                                         project_root=args.project_root)
         elif args.command == "status":
             result = host.status(args.session_id)
         elif args.command == "handoff":

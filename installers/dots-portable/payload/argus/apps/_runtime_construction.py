@@ -657,6 +657,12 @@ def build_dots_life_runner(args: argparse.Namespace, *, transport: Any,
 
 def build_life_runner(args: argparse.Namespace, *, seed_thread_id: str | None = None):
     """Return a ``_MissionRunner``-shaped adapter for the requested backend."""
+    if args.backend != "memory":
+        from ..core.runtime_backend import require_dots_runtime
+
+        transport = getattr(args, "dots_transport", None)
+        if require_dots_runtime(args.backend, transport=transport):
+            return build_dots_life_runner(args, transport=transport, seed_thread_id=seed_thread_id)
     if args.backend == "memory":
         runner = _MemoryRunner()
         workdir, state_root, session_root = _manager_roots(args)

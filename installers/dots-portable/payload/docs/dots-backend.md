@@ -21,9 +21,12 @@ the existing `_SkillLoopRunner`:
 
 The shared backend lane remains Manager-bound, as in the existing runtime.
 Calling `build_dots_life_runner` does not mutate `args.backend` or persist a
-new setting. The ordinary `build_life_runner`, CLI backend list and UI are not
-changed. This explicit Python factory is the integration entry point; the
-ordinary `argus --backend dots` flag is intentionally **not** advertised.
+new setting. The shared `build_life_runner` now recognizes an explicitly
+selected dots runtime with a host-owned `args.dots_transport`, while the nine
+CLI-provider catalog and defaults remain unchanged. Ordinary Web/CLI selection
+reports unavailable until a supported native receiving host enforces the role
+requirements; it never silently falls back to a CLI. See
+[dots-runtime-entry.md](dots-runtime-entry.md) for entry-point behavior and limits.
 
 Every role still calls `core.run_gateway`. Argus still owns mission lifecycle,
 role capsules, completion checks and follow-up feedback. The bridge queue is

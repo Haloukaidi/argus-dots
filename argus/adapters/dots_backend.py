@@ -18,6 +18,7 @@ from typing import Any, Callable, Iterator, Protocol
 
 from ..core.models import RunnerOptions, RunnerResult
 from ..core.role_tool_bridge import ToolBridgeBusy
+from ..core.runtime_backend import DotsCapabilities
 from ..core.stop_kinds import stop_kind_from_external_interrupt
 
 log = logging.getLogger(__name__)
@@ -32,20 +33,6 @@ DOTS_ROLES = frozenset({"manager", "engineer", "reviewer", "planner", "curator"}
 EXECUTION_FIELDS = frozenset({"working_dir", "add_dirs", "skill_paths", "review_output", "live_search",
                               "sandbox_mode", "force_safe_mode", "disable_tools", "output_schema",
                               "isolate_workdir", "full_auto"})
-
-
-@dataclass(frozen=True)
-class DotsCapabilities:
-    """Host-enforced guarantees, not prompt requests or inferred permissions.
-
-    Only a transport whose receiving host really enforces a capability may
-    advertise it. The supervised file bridge advertises none of these.
-    """
-
-    roles: frozenset[str] = DOTS_ROLES
-    options: frozenset[str] = frozenset()
-    resume: bool = False
-    role_tools: bool = False
 
 
 class DotsBridgeError(ValueError):

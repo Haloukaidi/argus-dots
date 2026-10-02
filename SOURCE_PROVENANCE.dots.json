@@ -56,10 +56,10 @@
   "retained_generated_assets": "Original tracked frontend runtime bundles and original tracked project resources are preserved.",
   "bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.1.2",
-    "standalone_archive_sha256": "6046ffd2273f9255e9b7de0760e7b08ee5c25a751c49d2507316dd8b9f0a7280",
+    "version": "2.2.0",
+    "standalone_archive_sha256": "36527e7c1ef9255b924c3b4d29924dda49693ee7eacf7092cfcab7356d6edf41",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 274646
+    "standalone_archive_bytes": 474342
   },
   "post_publication_test_fix": {
     "previous_published_commit": "574877f2bf4c74fed8fe5bb4efe47f017e0a8f8c",
@@ -98,5 +98,40 @@
       "background free-form hex locators outside approved fix",
       "production Reviewer OS isolation and complete five-role acceptance unverified"
     ]
+  },
+  "previous_bundled_portable_installer": {
+    "directory": "installers/dots-portable",
+    "version": "2.1.2",
+    "standalone_archive_sha256": "6046ffd2273f9255e9b7de0760e7b08ee5c25a751c49d2507316dd8b9f0a7280",
+    "integrated_repository_needs_reinstallation": false,
+    "standalone_archive_bytes": 274646
+  },
+  "changed_or_added_from_baseline_recorded_at": "historical2.1.2 source snapshot; current managed list is installers/dots-portable/PAYLOAD_FILES.txt",
+  "patch_sha256_scope": "historical2.1.0 source patch, not the current integrated routing/admission or packaging patch",
+  "runtime_admission_update": {
+    "previous_public_commit": "8bad9aa2a578b26a320092def30db0cd99360920",
+    "runtime_commit": "5d48a1481fbe8a4c3ffcef3d2280dc7dbdaf316f",
+    "admission_native_tested_source_commit": "ded6dec6deac5b820053a02103ccc0a7f98f754a",
+    "integrated_source_commit": "de3d72c7e01cb14200975453d3ab7ca361c38c26",
+    "integrated_source_tree": "7305280e5322595511f4d95cb8f0ad490680cfe5",
+    "integrated_code_patch_sha256": "f40c3965ba87d040e4192a3964be0ec8565d7de954abb877e47995cc7caf17ac",
+    "integrated_code_patch_scope": "35 source/test/frontend/documentation changes relative to the previous public commit; portable packaging is separately validated",
+    "current_managed_payload_files": 64,
+    "current_managed_payload_list": "installers/dots-portable/PAYLOAD_FILES.txt",
+    "current_package_validation": "installers/dots-portable/VALIDATION.json",
+    "current_source_validation": "installers/dots-portable/RUNTIME-ADMISSION-VALIDATION.json",
+    "public_protocol_documentation": [
+      "docs/dots-admission.md",
+      "docs/dots-admission-native-validation.md",
+      "docs/dots-runtime-entry.md"
+    ],
+    "limits": [
+      "Full production five-role research controls and supported receiver remain unavailable; no CLI fallback",
+      "Bounded admission requires an authorized live native coordinator, not a persistent service",
+      "Prior native evidence is two plain-text default-option calls, not full-role or new package-native acceptance",
+      "Tracked frontend bundles were not rebuilt; TypeScript help source is updated",
+      "Actual oldest2.0.0/legacy bundle bytes were unavailable for this packaging rerun; exact maps and generic fixtures retained"
+    ],
+    "exact_updated_commit_ci": "pending publication; local tests and earlier CI do not imply success for the future commit"
   }
 }

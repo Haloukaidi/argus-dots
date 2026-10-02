@@ -370,6 +370,9 @@ class FileDotsTransport:
         The host must actually stop its worker before recording ``cancelled``.
         """
         with self._task_fd(request_id) as fd, self._locked(fd):
+            with self._root_fd() as root:
+                if self._read(root, "admission-" + request_id + ".json") is not None:
+                    raise DotsBridgeError("bounded producer request requires its host API; raw emit is disabled")
             if self._read(fd, "host-claim.json") is not None:
                 raise DotsBridgeError("managed request requires its coordinator API; raw emit is disabled")
             return self._emit_locked(fd, request_id, kind, text=text, worker_id=worker_id, usage=usage)

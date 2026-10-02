@@ -35,6 +35,9 @@ class RoleFileDotsTransport(FileDotsTransport):
 
     capabilities = DotsCapabilities(resume=True, role_tools=True)
 
+    def _host(self) -> DotsRoleHost:
+        return DotsRoleHost(self)
+
     @contextmanager
     def _tool_context(self, request_id: str) -> Iterator[tuple[int, int]]:
         # Same root -> request ordering as coordinator admission and stop.
@@ -47,7 +50,7 @@ class RoleFileDotsTransport(FileDotsTransport):
         if type(sequence) is not int or not 1 <= sequence <= 4096:
             raise DotsBridgeError("invalid tool sequence")
         request = self._request(fd, request_id)
-        host = DotsRoleHost(self)
+        host = self._host()
         claim = host._claim(fd)
         if claim is None:
             raise DotsBridgeError("tool context has no native host claim")

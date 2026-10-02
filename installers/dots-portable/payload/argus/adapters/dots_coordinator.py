@@ -57,6 +57,8 @@ class DotsCoordinator:
     """
 
     protocol_version = _VERSION
+    _session_extra_fields: frozenset[str] = frozenset()
+    _minimum_requests = 1
 
     @staticmethod
     def _supported(request: DotsRequest) -> None:
@@ -87,6 +89,7 @@ class DotsCoordinator:
         with self.transport._root_fd() as root, self.transport._locked(root):
             requests = {}
             for request_id in request_ids:
+                self._check_request_admission(root, request_id)
                 with self.transport._task_fd(request_id) as fd, self.transport._locked(fd):
                     request = self.transport._request(fd, request_id)
                     self._supported(request)
@@ -106,7 +109,7 @@ class DotsCoordinator:
         value = self.transport._read(root, self._name(session_id))
         keys = {"version", "session_id", "parent_task", "coordinator_task", "generation", "created_at",
                 "expires_at", "max_concurrency", "requests", "stopping"}
-        if not isinstance(value, dict) or set(value) != keys or type(value["version"]) is not int or value["version"] != self.protocol_version or value["session_id"] != session_id:
+        if not isinstance(value, dict) or set(value) != keys | self._session_extra_fields or type(value["version"]) is not int or value["version"] != self.protocol_version or value["session_id"] != session_id:
             raise DotsBridgeError("invalid or missing coordinator session")
         _path(value["parent_task"])
         _path(value["coordinator_task"])
@@ -115,7 +118,7 @@ class DotsCoordinator:
         if (type(value["generation"]) is not int or value["generation"] < 1
                 or type(value["max_concurrency"]) is not int or not 1 <= value["max_concurrency"] <= _MAX_CONCURRENCY
                 or type(value["stopping"]) is not bool or not isinstance(value["requests"], dict)
-                or not 1 <= len(value["requests"]) <= _MAX_TASKS):
+                or not self._minimum_requests <= len(value["requests"]) <= _MAX_TASKS):
             raise DotsBridgeError("invalid coordinator session fields")
         for field in ("created_at", "expires_at"):
             if type(value[field]) not in (int, float) or not math.isfinite(value[field]):
@@ -126,7 +129,19 @@ class DotsCoordinator:
             validate_request_id(request_id)
             if not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}", digest):
                 raise DotsBridgeError("invalid enrolled request digest")
+        self._validate_session_extension(value)
         return value
+
+    def _validate_session_extension(self, session: dict[str, Any]) -> None:
+        """Versioned opt-in hosts may validate additional transport metadata."""
+
+    def _done_action(self, session: dict[str, Any], terminal_count: int) -> dict[str, Any]:
+        return {"action": "done", "terminal_count": terminal_count}
+
+    def _check_request_admission(self, root: int, request_id: str,
+                                 session: dict[str, Any] | None = None) -> None:
+        if self.transport._read(root, "admission-" + validate_request_id(request_id) + ".json") is not None:
+            raise DotsBridgeError("bounded producer reservation requires its bounded host")
 
     @contextmanager
     def _owned(self, session_id: str, coordinator_task: str, generation: int) -> Iterator[tuple[int, dict[str, Any]]]:
@@ -159,6 +174,8 @@ class DotsCoordinator:
     def _snapshot(self, fd: int, session: dict[str, Any], request_id: str) -> dict[str, Any]:
         if request_id not in session["requests"]:
             raise DotsBridgeError("request is not in the explicit authorized session")
+        with self.transport._root_fd() as root:
+            self._check_request_admission(root, request_id, session)
         request = self.transport._request(fd, request_id)
         if _digest(request) != session["requests"][request_id]:
             raise DotsBridgeError("enrolled request changed; authorization no longer matches")
@@ -249,7 +266,7 @@ class DotsCoordinator:
                     return {"action": self._dispatch_action(snapshot["request"]), "request_id": request_id,
                             "claim": claim, "request": snapshot["request"]}
             if terminal_count == len(session["requests"]):
-                return {"action": "done", "terminal_count": terminal_count}
+                return self._done_action(session, terminal_count)
             return {"action": "wait", "active_count": len(active), "pending_count": len(pending)}
 
     def _recover_result(self, snapshot: dict[str, Any]) -> dict[str, Any]:

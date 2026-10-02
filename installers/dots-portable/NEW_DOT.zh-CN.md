@@ -39,7 +39,7 @@ Manager、Planner、Engineer、Reviewer、Curator 仍由 Argus 原有职责和�
 
 ## 5. 验收后才能继续
 
-这台接收端先跑一条有限真实 probe，记录真实创建、身份绑定、答案、退出状态；需要续接/typed-tool 时各补一条实际验收。不存在公开 Python native endpoint，也没有 `argus --backend dots` 开关。安装只复用源码，不能自动产生平台能力。
+这台接收端先跑一条有限真实 probe，记录真实创建、身份绑定、答案、退出状态；需要续接/typed-tool 时各补一条实际验收。不存在公开Python native endpoint。2.2.0新增显式 `--backend dots` runtime选择，但普通Web/CLI缺host或原角色控制时会明确拒绝，没有CLI fallback。安装不能自动产生平台能力。
 
 完整命令、参数和状态分支见 `payload/docs/dots-coordinator.md`、`dots-role-host.md`、`dots-backend.md`。这些文档描述公开模块协议；示例占位符必须替换为本次真实值。没有只读隔离、工具约束、provider 配额/成本控制等保证的调用应提前失败，不夸大为完整生产支持。
 
@@ -50,3 +50,13 @@ Manager、Planner、Engineer、Reviewer、Curator 仍由 Argus 原有职责和�
 区分四件事：当前轮marker、下游实际读到文件、原typed action真实ready、最终record且producer consumed。前三者都不能单独代替最后一项。worker仅在本次明确获准的位置写审计内容，final尽量简短；这不授予生产Reviewer写权限。
 
 没有独立final到达时间戳时，不虚报到达延迟。本次正常读取/审批/交付通过，但取消干扰INCONCLUSIVE，≤30秒记录目标未证明；旧超时FAIL保留。细节见 `HOST-PRIORITY.zh-CN.md` 与 `FOCUSED-HANDOFF-RESULTS.zh-CN.md`。若出现已调用action但final未交付，按原journal恢复，不重发action。
+
+## 7. 2.2.0有限producer接纳（显式协议3）
+
+v1/v2显式请求批次仍可用。需要接纳后续依赖调用时，使用 `payload/docs/dots-admission.md` 的协议3：先取得本次有限任务授权，声明一个producer、规范project root、非空mission、角色白名单、总请求数、并发和绝对期限；创建真实在线协调者后再创建scope。
+
+把原producer绑定到该scope，由原Argus gateway按原角色/提示/状态推进调用；第二轮可在消费第一轮后由producer直接接纳，不要求父级逐条转发。只处理该scope明确登记的请求，不扫描queue。空且仍open时是wait，不能当done。producer结束时close-producer；done与每个调用成功/消费仍需分别核验。
+
+原同角色续接、typed action、当前marker、取消/期限优先和完成优先record规则不变。未知执行不盲目重发，不自动新建scope延长任务。工作者结束、宿主消失或会话到期后，持久journal不能替代活着的协调者。
+
+协议3只继承v2的resume/typed-tool能力，execution options仍不支持。正式五角色研究需要的只读、工具禁用、隔离等控制不可删掉；缺失即提前拒绝。不要把两个简单manager-tagged文本调用说成完整Manager/五角色运行。Runtime路由及Web/CLI边界见 `payload/docs/dots-runtime-entry.md`。

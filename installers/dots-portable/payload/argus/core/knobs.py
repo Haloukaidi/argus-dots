@@ -20,6 +20,18 @@ from typing import Mapping
 
 from ..agent_cli.runner_backend import SUPPORTED_BACKENDS
 
+RUNTIME_BACKENDS = (*SUPPORTED_BACKENDS, "dots")
+
+
+def normalize_runtime_backend(raw: str | None) -> str:
+    """Recognize native runtime names without registering a provider CLI."""
+    name = str(raw or "").strip().lower()
+    if name in {"dots", "memory"}:
+        return name
+    from ..agent_cli.runner_backend import normalize_runner_backend
+
+    return normalize_runner_backend(raw)
+
 
 @dataclass(frozen=True)
 class Knob:
@@ -68,7 +80,7 @@ KNOBS: tuple[Knob, ...] = (
         "ARGUS_SKILL_RUNNER_BACKEND",
         "codex",
         "shared agent backend: selected by setup; "
-        + " | ".join(SUPPORTED_BACKENDS),
+        + " | ".join(RUNTIME_BACKENDS),
         "backend",
         cockpit=True,
     ),
@@ -76,7 +88,7 @@ KNOBS: tuple[Knob, ...] = (
         "ARGUS_SKILL_LIFE_BACKEND",
         "codex",
         "legacy shared-backend fallback: "
-        + " | ".join(SUPPORTED_BACKENDS)
+        + " | ".join(RUNTIME_BACKENDS)
         + " | memory (test only)",
         "backend",
     ),
@@ -561,19 +573,9 @@ def normalize_cockpit_knob_value(name: str, value: str) -> str:
         backend = raw.lower()
         if backend == "opencod":
             backend = "opencode"
-        if backend not in {
-            "codex",
-            "claude",
-            "copilot",
-            "cursor",
-            "opencode",
-            "pi",
-            "grok",
-            "qoder",
-            "dsh",
-        }:
+        if backend not in RUNTIME_BACKENDS:
             raise ValueError(
-                f"{name} must be " + ", ".join(SUPPORTED_BACKENDS)
+                f"{name} must be " + ", ".join(RUNTIME_BACKENDS)
             )
         return backend
     if name in _EFFORT_KNOBS:

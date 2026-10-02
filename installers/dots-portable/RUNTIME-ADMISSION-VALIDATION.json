@@ -1,0 +1,107 @@
+{
+  "release": "dots-portable-2.2.0",
+  "verification_date": "2026-10-02",
+  "source_commit": "de3d72c7e01cb14200975453d3ab7ca361c38c26",
+  "source_tree": "7305280e5322595511f4d95cb8f0ad490680cfe5",
+  "previous_public_commit": "8bad9aa2a578b26a320092def30db0cd99360920",
+  "runtime_commit": "5d48a1481fbe8a4c3ffcef3d2280dc7dbdaf316f",
+  "admission_native_source_commit": "ded6dec6deac5b820053a02103ccc0a7f98f754a",
+  "source_regressions": {
+    "runtime_reviewed_broad": {
+      "passed": 2691,
+      "skipped": 8
+    },
+    "integrated_focused": {
+      "passed": 349
+    },
+    "integrated_broad": {
+      "passed": 2805,
+      "skipped": 8
+    },
+    "previously_skipped_node_api_after_build": {
+      "passed": 6,
+      "skipped": 0
+    },
+    "root_typescript_typecheck_and_tests": {
+      "exit_code": 0,
+      "tests_passed": 226
+    },
+    "frontend_web_typecheck": {
+      "exit_code": 0
+    },
+    "frontend_web_tests": {
+      "test_files_passed": 141,
+      "tests_passed": 1534
+    },
+    "independent_runtime_audit": {
+      "selected_tests_passed": 271
+    },
+    "ruff_changed_files": "passed",
+    "git_diff_check": "passed",
+    "note": "Counts are separate, overlapping suites and must not be summed as unique tests."
+  },
+  "skip_accounting": {
+    "original_integrated_broad_skipped": 8,
+    "previously_skipped_node_api_separate_rerun_passed": 6,
+    "remaining_native_windows_junction_not_run": 2,
+    "does_not_rewrite_original_counts": true,
+    "counts_overlap_and_must_not_be_added": true
+  },
+  "prior_failures_preserved": [
+    {
+      "classification": "test environment dependency missing",
+      "detail": "Five pairing tests initially lacked the optional qrcode package; after installing the declared optional dependency the final broad runs passed."
+    },
+    {
+      "classification": "existing timing assumption, not modified",
+      "detail": "An existing daemon test observed an empty provider.pid immediately after file creation. The first failure remains recorded; isolated retry and both final broad runs passed without altering that test."
+    }
+  ],
+  "bounded_native_evidence": {
+    "source_report": "payload/docs/dots-admission-native-validation.md",
+    "tested_commit": "ded6dec6deac5b820053a02103ccc0a7f98f754a",
+    "integrated_admission_files_match_tested_source": [
+      "argus/adapters/dots_admission.py",
+      "argus/apps/dots_admission.py",
+      "argus/adapters/dots_coordinator.py",
+      "argus/adapters/dots_file_transport.py",
+      "argus/adapters/dots_role_host.py",
+      "argus/apps/dots_coordinator.py",
+      "tests/test_dots_admission.py"
+    ],
+    "native_worker_count": 1,
+    "native_spawn_count": 1,
+    "same_worker_followup_count": 1,
+    "gateway_exit_codes": [
+      0,
+      0
+    ],
+    "both_consumed": true,
+    "second_request_created_only_after_first_consumption": true,
+    "parent_per_request_relay_required": false,
+    "unlisted_request_untouched": true,
+    "producer_closed_admission_and_all_native_tasks_ended": true,
+    "new_native_trial_for_package": false,
+    "requested_execution_options": "default plain text only",
+    "full_five_role_production_acceptance": false,
+    "enforced_os_readonly_or_tools_disabled": false,
+    "real_native_cancellation_races_or_crash_recovery_tested": false,
+    "usage_and_cost": "unknown",
+    "automatic_service_wakeup_or_persistent_host": false
+  },
+  "role_controls": {
+    "ordinary_web_cli_dots": "unavailable_without_supported_host_and_required_controls",
+    "cli_fallback_for_explicit_dots": false,
+    "model_effort_values_preserved": true,
+    "execution_capabilities_added": false,
+    "host_transport_persisted_across_daemon_processes": false
+  },
+  "limits": [
+    "No full research task was launched or submitted by this packaging work",
+    "Live bounded coordinator is required; journals are not a persistent service",
+    "Original frontend bundles were not rebuilt; only tracked TypeScript help source is updated",
+    "No new native or Windows/macOS/WSL runtime tests in this packaging task",
+    "Prior version and focused subset results are not a new full-suite or exact future-public-commit CI result"
+  ],
+  "integrated_patch_sha256": "f40c3965ba87d040e4192a3964be0ec8565d7de954abb877e47995cc7caf17ac"
+}
