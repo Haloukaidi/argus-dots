@@ -454,11 +454,69 @@ class InstallerTest(unittest.TestCase):
         self.assertFalse(result["production_reviewer_isolation_verified"])
 
     def test_bootstrap_env_does_not_forward_credentials(self):
-        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "no", "GIT_SSH_COMMAND": "no", "GIT_CONFIG_COUNT": "1", "PIP_INDEX_URL": "no"}):
+        secrets = {
+            "OPENAI_API_KEY": "no", "GITHUB_TOKEN": "no", "GH_TOKEN": "no",
+            "ANTHROPIC_API_KEY": "no", "AWS_SECRET_ACCESS_KEY": "no",
+            "GIT_SSH_COMMAND": "no", "GIT_CONFIG_COUNT": "1", "PIP_INDEX_URL": "no",
+            "PIP_EXTRA_INDEX_URL": "no", "PYTHONPATH": "no", "UNRELATED_SETTING": "no",
+            "GIT_SSL_NO_VERIFY": "1", "PIP_TRUSTED_HOST": "untrusted.invalid",
+            "GIT_CONFIG_KEY_0": "http.extraHeader", "GIT_CONFIG_VALUE_0": "no",
+        }
+        with mock.patch.dict(os.environ, secrets):
             env = bootstrap.clean_env(self.top)
-        for key in ("OPENAI_API_KEY", "GIT_SSH_COMMAND", "GIT_CONFIG_COUNT", "PIP_INDEX_URL"):
+        for key in secrets:
             self.assertNotIn(key, env)
         self.assertEqual(env["GIT_TERMINAL_PROMPT"], "0")
+
+    def test_bootstrap_preserves_exact_network_environment(self):
+        network = {name: "fixture-" + name for name in bootstrap.NETWORK_ENV}
+        network["HTTPS_PROXY"] = "http://fixture-user:fixture-pass@proxy.invalid:8080"
+        with mock.patch.dict(os.environ, network, clear=True):
+            env = bootstrap.clean_env(self.top)
+        for name, value in network.items():
+            self.assertEqual(env[name], value)
+        with mock.patch.dict(os.environ, {}, clear=True):
+            env = bootstrap.clean_env(self.top)
+        self.assertFalse(set(bootstrap.NETWORK_ENV) & set(env))
+
+    def test_bootstrap_space_paths_are_single_arguments(self):
+        destination = self.top / "Argus with spaces"
+        calls = []
+
+        def fake_run(args, **kwargs):
+            calls.append((args, kwargs))
+            if "init" in args:
+                Path(args[-1]).mkdir()
+            stdout = bootstrap.COMMIT if "rev-parse" in args else ""
+            return mock.Mock(stdout=stdout)
+
+        with mock.patch.object(bootstrap.subprocess, "run", side_effect=fake_run), \
+             mock.patch.object(bootstrap.shutil, "which", return_value="/usr/bin/git"), \
+             mock.patch.object(bootstrap, "Installer"), \
+             contextlib.redirect_stdout(io.StringIO()):
+            result = bootstrap.main(["--target", str(destination), "--allow-network", "--venv", "--install-deps"])
+        self.assertEqual(result, 0)
+        venv_args = next(args for args, _ in calls if "venv" in args)
+        self.assertEqual(venv_args[-1], str(destination / ".venv-dots"))
+        pip_args = next(args for args, _ in calls if "pip" in args)
+        self.assertEqual(pip_args[0], str(destination / ".venv-dots/bin/python"))
+        self.assertEqual(pip_args[-1], str(destination))
+        self.assertTrue(all(not kwargs.get("shell") for _, kwargs in calls))
+
+    def test_bootstrap_failure_redacts_network_settings(self):
+        proxy = "http://fixture-user:fixture%2Dpassword@proxy.invalid:8080"
+        failure = bootstrap.subprocess.CalledProcessError(
+            1, ["git", "fetch"], stderr=proxy + " fixture-user fixture-password fixture%2Dpassword /fixture/ca.pem")
+        output = io.StringIO()
+        with mock.patch.dict(os.environ, {"HTTPS_PROXY": proxy, "SSL_CERT_FILE": "/fixture/ca.pem"}, clear=True), \
+             mock.patch.object(bootstrap.subprocess, "run", side_effect=failure), \
+             mock.patch.object(bootstrap.shutil, "which", return_value="/usr/bin/git"), \
+             contextlib.redirect_stderr(output):
+            result = bootstrap.main(["--target", str(self.top / "new"), "--allow-network"])
+        self.assertEqual(result, 2)
+        for value in (proxy, "fixture-user", "fixture-password", "fixture%2Dpassword", "/fixture/ca.pem"):
+            self.assertNotIn(value, output.getvalue())
+        self.assertIn("network setting redacted", output.getvalue())
 
 if __name__ == "__main__":
     unittest.main()

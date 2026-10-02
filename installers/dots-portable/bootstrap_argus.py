@@ -14,15 +14,25 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from urllib.parse import unquote, urlsplit
 
 from install_dots import InstallError, Installer, no_symlink
 
 REPOSITORY = "https://github.com/lbx154/Argus.git"
 COMMIT = "9cfe9129fd90511c3a1865844ec7dfda1b5d1008"
+NETWORK_ENV = (
+    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+    "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+    "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE",
+)
 
 
 def clean_env(home: Path) -> dict:
     return {
+        # Retain the host's configured network route and trust roots. Never log
+        # these values: an existing proxy URL may contain proxy authentication.
+        # Keep the allowlist exact; model/Git credentials and pip indexes stay out.
+        **{name: os.environ[name] for name in NETWORK_ENV if name in os.environ},
         "PATH": os.defpath,
         "HOME": str(home),
         "XDG_CONFIG_HOME": str(home),
@@ -35,6 +45,24 @@ def clean_env(home: Path) -> dict:
         "PIP_CONFIG_FILE": os.devnull,
         "PIP_DISABLE_PIP_VERSION_CHECK": "1",
     }
+
+
+def safe_network_error(text: str) -> str:
+    """Keep configured proxy/CA values and proxy authentication out of errors."""
+    private = {os.environ[name] for name in NETWORK_ENV if os.environ.get(name)}
+    for name in NETWORK_ENV:
+        if "proxy" not in name.lower() or name.lower() == "no_proxy":
+            continue
+        try:
+            proxy = urlsplit(os.environ.get(name, ""))
+            for value in (proxy.username, proxy.password):
+                if value:
+                    private.update((value, unquote(value)))
+        except ValueError:
+            pass  # A malformed URL is still removed verbatim above.
+    for value in sorted(private, key=len, reverse=True):
+        text = text.replace(value, "[network setting redacted]")
+    return text
 
 
 def main(argv=None) -> int:
@@ -87,9 +115,9 @@ def main(argv=None) -> int:
         print(json.dumps({"status": "bootstrapped", "source": str(target), "commit": COMMIT, "venv": a.venv, "dependencies_installed": a.install_deps, "native_tools": "not_verified"}))
         return 0
     except (InstallError, OSError, subprocess.CalledProcessError) as e:
-        print("bootstrap: " + str(e), file=sys.stderr)
+        print("bootstrap: " + safe_network_error(str(e)), file=sys.stderr)
         if isinstance(e, subprocess.CalledProcessError) and e.stderr:
-            print(e.stderr[-3000:], file=sys.stderr)
+            print(safe_network_error(e.stderr)[-3000:], file=sys.stderr)
         if target.exists():
             print("Pinned source was created and is retained. An optional venv/setup step may be incomplete; no global configuration was changed.", file=sys.stderr)
         return 2

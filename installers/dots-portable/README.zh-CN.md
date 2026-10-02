@@ -1,5 +1,7 @@
 # Argus dots 便携模块 2.1.0
 
+分发包修订：2026-10-02 bootstrap 网络兼容修复。受管模块版本仍为 2.1.0，32 个业务 payload 与升级链不变；已安装的 2.1.0 不需要重新迁移，重复安装仍幂等。
+
 把这份 ZIP 解压后交给另一台机器上的 Dot，就能复用同一套模块，不需要重写适配器。安装程序只使用 Python 标准库，不联网；专用协调子 agent 由接收端 Dot 在有真实工具、有限任务授权时启动。
 
 ## 已有 Argus：一条命令
@@ -39,9 +41,9 @@ python install_dots.py --argus-dir /absolute/path/to/Argus --upgrade
 python bootstrap_argus.py --target /absolute/new/Argus --allow-network --venv --install-deps
 ```
 
-这一步明确联网：从固定官方 GitHub 仓库抓取并验证上面的 commit，在新目录装 dots，建立该目录独立 `.venv-dots`，再由该 venv 的 pip 安装本地 Argus 源码及其声明的依赖。不覆盖已有目录，不读已有 Git 凭据，不改全局 Python/插件配置。依赖可能下载并执行标准构建流程；Argus 上游依赖没有完整锁定，不能宣称传递依赖可重复构建。
+这一步明确联网：从固定官方 GitHub 仓库抓取并验证上面的 commit，在新目录装 dots，建立该目录独立 `.venv-dots`，再由该 venv 的 pip 安装本地 Argus 源码及其声明的依赖。不覆盖已有目录，不读已有 Git 凭据，不改全局 Python/插件配置。仅继承明确允许的既有 proxy/CA 网络配置，保证当前平台路由和信任根可用；不继承模型 API key、Git token、pip index、Git 配置注入或关闭 TLS 验证的开关。proxy/CA 配置值不写入分发包；安装器不主动记录这些值，错误输出会过滤配置值及 proxy 认证片段。依赖可能下载并执行标准构建流程；Argus 上游依赖没有完整锁定，不能宣称传递依赖可重复构建。
 
-只要源码时去掉 `--venv --install-deps`；只建空 venv 时保留 `--venv`、去掉 `--install-deps`。需要系统 `git`。bootstrap 的外网 GitHub/pip 下载未在此包验收中实际执行；已验证固定来源/commit、隔离环境和拒绝缺少显式开关。下载受限时，不改来源，可先取得相同固定源码后用离线安装命令。
+只要源码时去掉 `--venv --install-deps`；只建空 venv 时保留 `--venv`、去掉 `--install-deps`。需要系统 `git`。bootstrap 的真实在线 GitHub/pip 路径已在本轮 Linux 验收执行：含空格的新目录、固定来源/commit、独立 venv 和依赖安装完成，随后通过 pip check、目录外导入和 bridge 帮助命令；精确记录见 `VALIDATION.json`。缺少显式网络开关仍会拒绝。下载受限时，不改来源，可先取得相同固定源码后用离线安装命令。
 
 ## 交给新 Dot
 
@@ -88,7 +90,7 @@ python install_dots.py --argus-dir /path/to/Argus --adopt-legacy
 
 ## 验证范围与平台
 
-- installer/host check：44 项标准库测试通过；独立升级/安全/bootstrap 验证 61 项通过，见 `VALIDATION.json`
+- installer/host check：47 项标准库测试通过；原升级/安全验证 61 项通过，本次网络白名单/脱敏独审另有 23 项通过，见 `VALIDATION.json`
 - 全库 Python：12086 passed、68 failed、136 skipped、0 errors（12290 项，857.84 秒），没有提前停止。失败为59项 procfs 环境要求、8项 AF_UNIX 被拒、1项已有 venv 导致的原测试前提；最后一项原测试在无 venv 干净树独立复跑1/1通过，不改写全库计数
 - TypeScript npm check 的构建、类型检查和226项测试通过；Python类型检查仍有与原基准完全相同的30项诊断，不能称为全绿。完整统计/跳过原因见 `SOURCE_VALIDATION.json` 和 `payload/docs/workflow-validation-2026-10-02.zh-CN.md`
 - 真正 native 有限协调、同角色两轮续接、dummy typed action/reply 已在原验收环境成功；完整五角色/生产 Reviewer 隔离未验收

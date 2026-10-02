@@ -1,3 +1,18 @@
+> **本仓库已整合 dots。** 请先读 [dots 集成入口](README.dots.zh-CN.md) 和 [新 Dot 手册](installers/dots-portable/NEW_DOT.zh-CN.md)。下方保留的原版安装命令下载上游 Argus，不包含本 fork 的 dots 集成。
+>
+> 在 Linux/macOS 的独立环境安装本仓库源码（需要 Python 3.11+、Git；macOS 尚未实机验收）：
+>
+> ```sh
+> git clone https://github.com/Haloukaidi/argus-dots.git
+> cd argus-dots
+> python3 -m venv .venv-dots
+> ".venv-dots/bin/python" -m pip install -e .
+> ".venv-dots/bin/argus" --version
+> ".venv-dots/bin/python" -m argus.apps.dots_bridge --help
+> ```
+>
+> 当前源码已包含 dots，不要再向此目录运行 portable installer。后续 bridge/host 示例也使用同一个 `.venv-dots/bin/python`；示例中的 `.venv/bin/python` 指已有上游环境的解释器。原 Argus 运行设置可能还需 Node.js 22.12+ 和已登录的受支持 CLI。真实 native dots 执行需要在线授权 host；安装不会产生 native 工具或 Reviewer 操作系统隔离能力。详见 [能力与限制](docs/dots-backend.md)。
+
 <div align="center">
 
 <picture>

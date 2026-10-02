@@ -4,7 +4,7 @@
 
 ## 从哪里开始
 
-- 原 Argus 的安装和用法：`README.zh-CN.md`
+- 本 fork 的独立环境安装：[`README.zh-CN.md` 顶部 dots 入口](README.zh-CN.md)；其下原版安装章节用于原 Argus，不会安装本 fork
 - dots 适配器入口和能力约束：`docs/dots-backend.md`
 - 有限 host 协调及续接：`docs/dots-coordinator.md`、`docs/dots-role-host.md`
 - 本轮修复、验证结果和未通过项：`docs/workflow-validation-2026-10-02.zh-CN.md`

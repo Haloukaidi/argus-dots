@@ -52,7 +52,7 @@
   "bundled_portable_installer": {
     "directory": "installers/dots-portable",
     "version": "2.1.0",
-    "standalone_archive_sha256": "1f6b9b1abc9f6dc99f6083be0062e96f95684731ed3a093727f9ee0a205f7a27",
+    "standalone_archive_sha256": "db09a20ccc5d637d124d64fd17e7afaf889f6d2e5b51f0973a3dd23d578a7821",
     "integrated_repository_needs_reinstallation": false
   }
 }

@@ -1,3 +1,18 @@
+> **This fork includes the dots integration.** Start with [the dots guide](README.dots.zh-CN.md) and [the receiving Dot handbook](installers/dots-portable/NEW_DOT.zh-CN.md). The upstream installation commands below install upstream Argus, not this fork.
+>
+> To install this source checkout in an isolated environment on Linux/macOS (Python 3.11+, Git; macOS has not been runtime-tested here):
+>
+> ```sh
+> git clone https://github.com/Haloukaidi/argus-dots.git
+> cd argus-dots
+> python3 -m venv .venv-dots
+> ".venv-dots/bin/python" -m pip install -e .
+> ".venv-dots/bin/argus" --version
+> ".venv-dots/bin/python" -m argus.apps.dots_bridge --help
+> ```
+>
+> This checkout already includes dots. Do not rerun the portable installer on it. Use the same `.venv-dots/bin/python` in the bridge/host examples; those examples' `.venv/bin/python` refers to an existing upstream environment. Runtime setup may also require Node.js 22.12+ and an authenticated supported CLI. Native dots execution requires an authorized online host; the installation does not provide native tools or Reviewer OS isolation. See [capabilities and limits](docs/dots-backend.md).
+
 <div align="center">
 
 <picture>
