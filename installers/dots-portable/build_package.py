@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+"""Maintainer-only local packager. Never run against an unreviewed payload."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import shutil
+import subprocess
+
+BASE = "9cfe9129fd90511c3a1865844ec7dfda1b5d1008"
+p = argparse.ArgumentParser()
+p.add_argument("--base-repo", type=Path, required=True)
+p.add_argument("--payload-dir", type=Path, required=True)
+p.add_argument("--legacy-dir", type=Path, required=True)
+p.add_argument("--release", default="dots-portable-2.1.0")
+p.add_argument("--previous-package", type=Path, help="Directory containing the exact previously delivered manifest.json")
+a = p.parse_args()
+root = Path(__file__).resolve().parent
+files = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", BASE], cwd=a.base_repo, text=True).splitlines()
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+base = {}
+for name in files:
+    if ((name.startswith(("argus/", "argus_skill/")) and name.endswith(".py")) or name in ("argus_doctor.py", "pyproject.toml") or name.startswith("packages/contracts/schemas/")):
+        base[name] = digest(subprocess.check_output(["git", "show", f"{BASE}:{name}"], cwd=a.base_repo))
+payload = {}
+for source in sorted(a.payload_dir.rglob("*")):
+    if source.is_file():
+        rel = source.relative_to(a.payload_dir).as_posix()
+        target = root / "payload" / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+        target.chmod(0o644)
+        payload[rel] = {"sha256": digest(source.read_bytes()), "mode": 0o644}
+legacy = {f.relative_to(a.legacy_dir).as_posix(): digest(f.read_bytes()) for f in sorted(a.legacy_dir.rglob("*")) if f.is_file()}
+manifest = {"schema": 1, "release": a.release, "base_commit": BASE, "base_repository": "https://github.com/lbx154/Argus", "base": base, "payload": payload, "legacy": legacy, "upgrade_from": []}
+if a.previous_package:
+    previous = json.loads((a.previous_package / "manifest.json").read_text())
+    if previous["base_commit"] != BASE:
+        raise SystemExit("Previous package uses a different base")
+    manifest["upgrade_from"] = [previous["release"]]
+    manifest["upgrade_payloads"] = {previous["release"]: {r: i["sha256"] for r, i in previous["payload"].items()}}
+(root / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
+print(json.dumps({"baseline_files": len(base), "payload_files": len(payload), "legacy_files": len(legacy)}))

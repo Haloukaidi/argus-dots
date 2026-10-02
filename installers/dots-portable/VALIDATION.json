@@ -1,0 +1,132 @@
+{
+  "verification_date": "2026-10-02",
+  "release": "dots-portable-2.1.0",
+  "status": "installer_passed_source_has_documented_environment_and_fixture_failures",
+  "platform_tested": {
+    "system": "Linux",
+    "python": "3.12.14"
+  },
+  "package": {
+    "baseline_files": 727,
+    "payload_files": 32,
+    "modified_baseline_files": 8,
+    "new_files": 24,
+    "legacy_snapshot_files": 8,
+    "supported_upgrade_from": [
+      "dots-portable-2.0.0"
+    ],
+    "known_previous_payload_files": 20,
+    "frozen_production_and_test_payload_hashes_matched": 26
+  },
+  "installer_stdlib_tests": {
+    "passed": 44,
+    "command": "python -m unittest discover -s tests -v"
+  },
+  "independent_installer_audit": {
+    "passed": 61,
+    "new_upgrade_tests": 19,
+    "prior_installer_safety_tests": 36,
+    "bootstrap_offline_mock_contract_tests": 6,
+    "seconds": 19.82,
+    "cases": [
+      "complete known20 snapshot and metadata verification",
+      "explicit upgrade permission",
+      "six newly modified original backup hashes",
+      "user edits and partial metadata refusal",
+      "corrupt original backup refusal",
+      "forged prior release fingerprint refusal",
+      "write failure rollback",
+      "hard process termination and recovery",
+      "base to2.0 to2.1 rollback and old uninstaller",
+      "base to2.0 to2.1 direct uninstall",
+      "legacy8 to2.0 to2.1 rollback/uninstall",
+      "original modes and unrelated data preservation"
+    ]
+  },
+  "clean_base_cli_upgrade": {
+    "status": "passed",
+    "base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+    "detached_git_clone": true,
+    "cycles": [
+      [
+        "2.0.0 install",
+        "2.1.0 check",
+        "implicit upgrade rejected",
+        "explicit upgrade",
+        "idempotent repeat",
+        "rollback to2.0.0",
+        "old installer check",
+        "old uninstall"
+      ],
+      [
+        "2.0.0 install",
+        "explicit2.1.0 upgrade",
+        "new uninstall"
+      ]
+    ],
+    "upgraded_payload_byte_matches": 32,
+    "new_original_backup_hashes_matched": 6,
+    "rollback_prior_payload_byte_matches": 20,
+    "uninstall_baseline_hashes_restored": 727,
+    "uninstall_new_payload_files_removed": 24,
+    "tracked_git_diff_after_uninstall": "empty"
+  },
+  "source_qa": {
+    "summary_file": "SOURCE_VALIDATION.json",
+    "full_python": {
+      "total": 12290,
+      "passed": 12086,
+      "failed": 68,
+      "errors": 0,
+      "skipped": 136,
+      "seconds": 857.84
+    },
+    "remaining_failure_groups": {
+      "procfs_unavailable": 59,
+      "AF_UNIX_denied": 8,
+      "existing_virtualenv_fixture_assumption": 1
+    },
+    "independent_clean_source_original_launcher_test": {
+      "passed": 1,
+      "does_not_change_full_run_counts": true
+    },
+    "typescript_tests_passed": 226,
+    "python_typecheck": {
+      "baseline_errors": 30,
+      "current_errors": 30,
+      "identical_diagnostics": true,
+      "passed": false
+    },
+    "overlapping_focused_counts_are_not_added": true
+  },
+  "static_checks": {
+    "python_compilation": "passed",
+    "ruff_F_E_excluding_E501": "passed",
+    "all_payload_python_ast": "passed"
+  },
+  "not_tested": [
+    "macOS runtime",
+    "WSL runtime",
+    "online bootstrap GitHub fetch",
+    "online pip dependency installation",
+    "new receiving Dot native tools",
+    "full native five-role production execution",
+    "production Reviewer OS read-only isolation"
+  ],
+  "unsupported": [
+    "native Windows installer",
+    "unknown Argus revision",
+    "unmanaged full20 snapshot without valid installation metadata",
+    "unattended native execution from Python alone"
+  ],
+  "installer_script_sha256": "6b54fa05d11eabe9c7f9d5aa44eeef9954c24f940d0b7bde4e63f3263d5cc0c5",
+  "previous_delivered_zip_sha256": "0dae589174e4f74b29acdb9569ad5470575e09668c7095ff98aa55806a3fb81c",
+  "source_summary_sha256": "208d52833a681c342a1202fc68bbaad283e0d0e5955b13e57bea4a2692c924ba",
+  "source_patch_sha256": "22ffa181c1a9833a9b6f3ea96959dec452adac2a3335e4f61a227683b6b9a354",
+  "publication": {
+    "scope": "offline installer build and validation only; separate repository publication is outside this record",
+    "remote_push_performed_by_packager": false,
+    "public_deploy_performed_by_packager": false,
+    "daemon_installed": false
+  }
+}

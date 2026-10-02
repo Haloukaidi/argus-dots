@@ -1,0 +1,109 @@
+"""Finite authorized native-host handoffs; never a daemon or agent API."""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from ..adapters.dots_backend import MAX_PAYLOAD_BYTES, DotsBridgeError
+from ..adapters.dots_coordinator import DotsCoordinator
+from ..adapters.dots_file_transport import FileDotsTransport
+
+
+def main(argv: list[str] | None = None, *, role_mode: bool = False) -> int:
+    parser = argparse.ArgumentParser(description=(
+        "Journal an explicitly authorized finite native-coordinator task list. "
+        "The host, not this process, calls real native tools. No execution isolation is implied."))
+    parser.add_argument("--bridge-dir", type=Path, required=True)
+    commands = parser.add_subparsers(dest="command", required=True)
+    create = commands.add_parser("create", help="parent enrolls exact already-authorized requests")
+    create.add_argument("request_ids", nargs="+")
+    create.add_argument("--parent", required=True)
+    create.add_argument("--coordinator", required=True)
+    create.add_argument("--max-concurrency", type=int, default=1)
+    create.add_argument("--lifetime", type=float, default=600)
+    status = commands.add_parser("status", help="inspect without dispatch or takeover")
+    status.add_argument("session_id")
+    handoff = commands.add_parser("handoff", help="parent replaces a stopped coordinator; never redispatches")
+    handoff.add_argument("session_id")
+    handoff.add_argument("--parent", required=True)
+    handoff.add_argument("--previous-generation", type=int, required=True)
+    handoff.add_argument("--coordinator", required=True)
+    for name in ("next", "bind", "record", "stop", "abandon"):
+        command = commands.add_parser(name)
+        command.add_argument("session_id")
+        command.add_argument("--owner", required=True, help="actual native coordinator task_name")
+        command.add_argument("--generation", type=int, required=True)
+        if name in {"bind", "record", "abandon"}:
+            command.add_argument("request_id")
+        if name in {"bind", "record"}:
+            command.add_argument("--worker-id", required=True, help="actual ID returned/observed by native tools")
+        if name == "bind":
+            command.add_argument("--worker-task", required=True, help="actual canonical child task_name")
+        if name == "record":
+            command.add_argument("kind", choices=("completed", "failed", "cancelled"))
+            command.add_argument("--worker-status", required=True, choices=("completed", "failed", "interrupted", "idle"))
+            command.add_argument("--text", help="actual result; omit to read stdin")
+        if name == "abandon":
+            command.add_argument("--spawn-status", choices=("not_created",), required=True)
+            command.add_argument("--text", help="actual native tool failure that confirms no worker was created; omit for stdin")
+    if role_mode:
+        commands.choices["record"].add_argument("--turn-request-id", required=True)
+        tool = commands.add_parser("request-tool", help="explicit native tool action or retry/read its same saved reply")
+        tool.add_argument("session_id")
+        tool.add_argument("request_id")
+        tool.add_argument("call_id")
+        tool.add_argument("name")
+        tool.add_argument("--owner", required=True)
+        tool.add_argument("--generation", type=int, required=True)
+        tool.add_argument("--worker-id", required=True)
+        tool.add_argument("--arguments-json", help="omit to read one JSON argument object from stdin")
+    args = parser.parse_args(argv)
+    try:
+        if role_mode:
+            from ..adapters.dots_role_host import DotsRoleHost, RoleFileDotsTransport
+
+            host = DotsRoleHost(RoleFileDotsTransport(args.bridge_dir))
+        else:
+            host = DotsCoordinator(FileDotsTransport(args.bridge_dir))
+        if args.command == "create":
+            result = host.create(args.request_ids, parent_task=args.parent, coordinator_task=args.coordinator,
+                                 max_concurrency=args.max_concurrency, lifetime_seconds=args.lifetime)
+        elif args.command == "status":
+            result = host.status(args.session_id)
+        elif args.command == "handoff":
+            result = host.handoff(args.session_id, parent_task=args.parent,
+                                  previous_generation=args.previous_generation, coordinator_task=args.coordinator)
+        else:
+            kwargs = {"coordinator_task": args.owner, "generation": args.generation}
+            if args.command == "request-tool":
+                raw = args.arguments_json if args.arguments_json is not None else sys.stdin.read(MAX_PAYLOAD_BYTES + 1)
+                if len(raw.encode()) > MAX_PAYLOAD_BYTES:
+                    raise DotsBridgeError("tool arguments exceed the 1 MiB safety limit")
+                arguments = json.loads(raw)
+                result = host.request_tool(args.session_id, args.request_id, call_id=args.call_id,
+                                           name=args.name, arguments=arguments, worker_id=args.worker_id, **kwargs)
+            elif args.command == "bind":
+                result = host.bind(args.session_id, args.request_id, worker_id=args.worker_id,
+                                   worker_task=args.worker_task, **kwargs)
+            elif args.command in {"record", "abandon"}:
+                text = args.text if args.text is not None else sys.stdin.read(MAX_PAYLOAD_BYTES + 1)
+                if args.command == "record":
+                    if role_mode:
+                        kwargs["turn_request_id"] = args.turn_request_id
+                    result = host.record(args.session_id, args.request_id, worker_id=args.worker_id,
+                                         worker_status=args.worker_status, kind=args.kind, text=text, **kwargs)
+                else:
+                    result = host.abandon(args.session_id, args.request_id, spawn_status=args.spawn_status, text=text, **kwargs)
+            else:
+                result = getattr(host, args.command)(args.session_id, **kwargs)
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+    except (DotsBridgeError, OSError, ValueError) as exc:
+        print("dots coordinator blocked: " + str(exc), file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

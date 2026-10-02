@@ -1,0 +1,327 @@
+{
+  "schema_version": 1,
+  "verification_date": "2026-10-02",
+  "base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+  "status": "completed_with_environment_and_existing_fixture_failures",
+  "environment": {
+    "system": "Linux",
+    "python": "3.12.14",
+    "node": "v24.19.0",
+    "git": "git version 2.52.0",
+    "packages": {
+      "pytest": "9.1.1",
+      "ruff": "0.16.10",
+      "hatchling": "1.32.4",
+      "numpy": "2.5.3",
+      "qrcode": "8.2",
+      "pymupdf": "1.28.2",
+      "mypy": "1.20.2"
+    },
+    "network_models_used": false,
+    "docker_used": false,
+    "gpu_used": false,
+    "platform_constraints_verified_after_single_approved_probe": [
+      "AF_UNIX socket creation returns EPERM",
+      "PR-gate child enumeration procfs entry unavailable"
+    ]
+  },
+  "full_python_regression": {
+    "total": 12290,
+    "passed": 12086,
+    "failed": 68,
+    "errors": 0,
+    "skipped": 136,
+    "pytest_reported_seconds": 857.84,
+    "junit_seconds": 856.904,
+    "maxfail": null,
+    "command": "python -m pytest --junitxml=final-suite.xml"
+  },
+  "remaining_failure_groups": [
+    {
+      "count": 59,
+      "category": "platform_requirement_unavailable",
+      "area": "PR-gate owned-process cleanup",
+      "cause": "The required procfs children entry is unavailable",
+      "supported_single_approval_probe": "still fails; cleanup was not bypassed"
+    },
+    {
+      "count": 8,
+      "category": "platform_requirement_denied",
+      "area": "trial AF_UNIX socket integration",
+      "cause": "AF_UNIX socket creation returns EPERM",
+      "supported_single_approval_probe": "still fails; system security was not changed"
+    },
+    {
+      "count": 1,
+      "category": "existing_test_fixture_assumption",
+      "test": "tests/release_tools/test_build_release.py::test_frontend_python_launcher_explains_a_missing_interpreter",
+      "cause": "Clearing PATH does not remove the existing checkout virtualenv; downstream Node lookup fails instead of entering the missing-Python branch",
+      "hermetic_equivalent": "passed; original assertion and product behavior preserved",
+      "original_test_clean_source_rerun": {
+        "passed": 1,
+        "failed": 0,
+        "seconds": 0.1,
+        "source_contains_venv": false,
+        "external_test_interpreter": true,
+        "original_test_and_assertions_changed": false,
+        "does_not_replace_full_run_statistics": true
+      }
+    }
+  ],
+  "skip_reasons": [
+    {
+      "reason": "Copilot CLI required for real client smoke test",
+      "count": 4
+    },
+    {
+      "reason": "Explicit local Pi bundle and Unix sockets required",
+      "count": 1
+    },
+    {
+      "reason": "Jacobian MCP not installed",
+      "count": 2
+    },
+    {
+      "reason": "Native asset smoke is opt-in",
+      "count": 1
+    },
+    {
+      "reason": "Pi CLI required for real client smoke test",
+      "count": 1
+    },
+    {
+      "reason": "PowerShell is required to execute the Windows CI build step",
+      "count": 4
+    },
+    {
+      "reason": "Requires the built Windows native adapter (build-native-tools.ps1)",
+      "count": 3
+    },
+    {
+      "reason": "Set ARGUS_PI_TEST_CLI to exercise the actual Pi agent loop",
+      "count": 1
+    },
+    {
+      "reason": "Set ARGUS_PI_TEST_CLI to validate the actual bundled Pi loader",
+      "count": 2
+    },
+    {
+      "reason": "Set ARGUS_TEST_PI_DIR to the pinned local Pi source for real CLI integration",
+      "count": 4
+    },
+    {
+      "reason": "Windows ELAN executable contract",
+      "count": 1
+    },
+    {
+      "reason": "Windows PLATON consent boundary",
+      "count": 1
+    },
+    {
+      "reason": "Windows PLATON setup",
+      "count": 12
+    },
+    {
+      "reason": "Windows backend build entry point",
+      "count": 10
+    },
+    {
+      "reason": "Windows file sharing",
+      "count": 1
+    },
+    {
+      "reason": "Windows force-stop implementation",
+      "count": 1
+    },
+    {
+      "reason": "Windows host operation",
+      "count": 1
+    },
+    {
+      "reason": "Windows independent inherited pipes",
+      "count": 1
+    },
+    {
+      "reason": "Windows installer metadata API",
+      "count": 9
+    },
+    {
+      "reason": "Windows junction security test",
+      "count": 2
+    },
+    {
+      "reason": "Windows native payload requirement",
+      "count": 1
+    },
+    {
+      "reason": "Windows plugin host compatibility",
+      "count": 2
+    },
+    {
+      "reason": "Windows signal semantics",
+      "count": 1
+    },
+    {
+      "reason": "Windows-only installer preparation",
+      "count": 2
+    },
+    {
+      "reason": "argus-verticals checkout not found (set ARGUS_VERTICALS_REPO)",
+      "count": 2
+    },
+    {
+      "reason": "collection skipped",
+      "count": 3
+    },
+    {
+      "reason": "could not import 'matplotlib': No module named 'matplotlib'",
+      "count": 13
+    },
+    {
+      "reason": "could not import 'matplotlib.colors': No module named 'matplotlib'",
+      "count": 1
+    },
+    {
+      "reason": "explicit local Docker probe",
+      "count": 16
+    },
+    {
+      "reason": "native PowerShell 5.1 regression",
+      "count": 1
+    },
+    {
+      "reason": "native PowerShell expression preflight regression",
+      "count": 1
+    },
+    {
+      "reason": "native PowerShell integration test",
+      "count": 1
+    },
+    {
+      "reason": "native Restricted-policy launcher regression",
+      "count": 1
+    },
+    {
+      "reason": "native Windows durable worker",
+      "count": 2
+    },
+    {
+      "reason": "native Windows process tree",
+      "count": 2
+    },
+    {
+      "reason": "no Lean toolchain on this host",
+      "count": 6
+    },
+    {
+      "reason": "pdflatex and/or the AAAI 2026 kit (aaai2026.sty/.bst) are unavailable",
+      "count": 1
+    },
+    {
+      "reason": "real Windows executable lock",
+      "count": 2
+    },
+    {
+      "reason": "requires Windows file-sharing semantics",
+      "count": 1
+    },
+    {
+      "reason": "requires native Windows Job Objects",
+      "count": 13
+    },
+    {
+      "reason": "set ARGUS_PI_TEST_CLI and build Node packages for the local native-CLI fixture",
+      "count": 1
+    },
+    {
+      "reason": "the shipped digest is refreshed by the release build, not by each commit",
+      "count": 1
+    }
+  ],
+  "independent_focused_review": {
+    "passed": 277,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 10.513,
+    "included_in_full_python_total": true,
+    "independent_real_git_matrix_passed": 17
+  },
+  "typescript": {
+    "command": "npm run check",
+    "build": "passed",
+    "typecheck": "passed",
+    "tests": 226,
+    "passed": 226,
+    "failed": 0,
+    "skipped": 0
+  },
+  "python_typecheck": {
+    "command": "python -m mypy --no-incremental --follow-imports=silent",
+    "configured_source_files": 108,
+    "baseline_errors": 30,
+    "current_errors": 30,
+    "identical_diagnostics": true,
+    "result": "not green; pre-existing errors remain"
+  },
+  "static_validation": {
+    "ruff_changed_and_added_python": "passed",
+    "compileall": "passed",
+    "git_diff_whitespace": "passed",
+    "source_patch_applies_to_base": "passed"
+  },
+  "freeze_verification": {
+    "python_source_and_test_files": 1568,
+    "changed_during_full_run": 0
+  },
+  "fixes": [
+    {
+      "area": "parallel Reviewer cancellation",
+      "provenance": "pre-existing original code",
+      "change": "Copy each task context independently; retain existing interrupt and role boundaries"
+    },
+    {
+      "area": "busy tool-bridge cancellation",
+      "provenance": "pre-existing original code",
+      "change": "Seven normal and one authenticated control handler; at most six business operations; original validation and bounded shutdown preserved"
+    },
+    {
+      "area": "Git errors and repository identity",
+      "provenance": "pre-existing original code",
+      "change": "Explicit launch, safety, damaged-reference and lock errors; real unborn/no-repository no-op retained; verify worktree before remote identity"
+    },
+    {
+      "area": "Git and persisted path identity",
+      "provenance": "pre-existing original code",
+      "change": "Exact byte-path decoding and JSON roundtrip; preserve trailing characters and prevent writes to transformed neighbor paths"
+    },
+    {
+      "area": "campaign persistence",
+      "provenance": "pre-existing original code",
+      "change": "Independent atomic temporary writes; preserve previous record on write failure; narrow corrupt-path recovery"
+    },
+    {
+      "area": "dots model defaults and learning callers",
+      "provenance": "dots integration gap",
+      "change": "Non-CLI model default resolution and empty-string-to-null model normalization only; preserve explicit models, effort and capability gates"
+    }
+  ],
+  "important_limits": [
+    "Offline controlled backends are not real provider or native isolation acceptance",
+    "No external model calls, paid API calls, credentials, remote push, Docker or GPU used by this test run",
+    "Windows path and encoding checks are simulations on Linux, not native Windows validation",
+    "Full native five-role production execution and Reviewer OS read-only isolation remain unverified",
+    "Incomplete control headers may return busy under overload; an authenticated slow body can occupy the single control slot until its existing socket timeout",
+    "The existing Manager answer-learning test has a timing assumption; it passed in the final full run",
+    "Counts from focused and repeated checks overlap and must not be added to the full Python total",
+    "Portable-installer validation is recorded separately in its versioned validation file"
+  ],
+  "post_full_run_validation": {
+    "original_launcher_test_in_clean_source": {
+      "passed": 1,
+      "failed": 0,
+      "seconds": 0.1,
+      "original_test_unchanged": true
+    }
+  }
+}
