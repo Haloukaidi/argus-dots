@@ -1,7 +1,7 @@
 {
   "verification_date": "2026-10-02",
-  "release": "dots-portable-2.1.0",
-  "status": "installer_passed_source_has_documented_environment_and_fixture_failures",
+  "release": "dots-portable-2.1.1",
+  "status": "installer_passed_test_fixture_correction_verified_exact_commit_ci_pending",
   "platform_tested": {
     "system": "Linux",
     "python": "3.12.14"
@@ -13,10 +13,16 @@
     "new_files": 24,
     "legacy_snapshot_files": 8,
     "supported_upgrade_from": [
-      "dots-portable-2.0.0"
+      "dots-portable-2.0.0",
+      "dots-portable-2.1.0"
     ],
-    "known_previous_payload_files": 20,
-    "frozen_production_and_test_payload_hashes_matched": 26
+    "known_previous_payload_files": {
+      "dots-portable-2.0.0": 20,
+      "dots-portable-2.1.0": 32
+    },
+    "prior_payload_files_unchanged": 31,
+    "updated_payload_test_files": 1,
+    "prior_frozen_production_test_payload_hashes_unchanged": 25
   },
   "installer_stdlib_tests": {
     "passed": 47,
@@ -42,7 +48,7 @@
       "legacy8 to2.0 to2.1 rollback/uninstall",
       "original modes and unrelated data preservation"
     ],
-    "phase": "initial 2.1.0 source/upgrade validation; installer core and all business payloads unchanged in network revision"
+    "phase": "historical 2.1.0 source/upgrade validation; installer core remains unchanged"
   },
   "clean_base_cli_upgrade": {
     "status": "passed",
@@ -70,7 +76,8 @@
     "rollback_prior_payload_byte_matches": 20,
     "uninstall_baseline_hashes_restored": 727,
     "uninstall_new_payload_files_removed": 24,
-    "tracked_git_diff_after_uninstall": "empty"
+    "tracked_git_diff_after_uninstall": "empty",
+    "phase": "historical 2.1.0 acceptance; new 2.1.1 paths recorded separately"
   },
   "source_qa": {
     "summary_file": "SOURCE_VALIDATION.json",
@@ -98,7 +105,8 @@
       "identical_diagnostics": true,
       "passed": false
     },
-    "overlapping_focused_counts_are_not_added": true
+    "overlapping_focused_counts_are_not_added": true,
+    "phase": "historical complete 2.1.0 run; not rerun wholesale for the 2.1.1 test-only correction"
   },
   "static_checks": {
     "python_compilation": "passed",
@@ -120,16 +128,15 @@
     "unattended native execution from Python alone"
   ],
   "installer_script_sha256": "6b54fa05d11eabe9c7f9d5aa44eeef9954c24f940d0b7bde4e63f3263d5cc0c5",
-  "previous_delivered_zip_sha256": "0dae589174e4f74b29acdb9569ad5470575e09668c7095ff98aa55806a3fb81c",
+  "previous_delivered_zip_sha256": "db09a20ccc5d637d124d64fd17e7afaf889f6d2e5b51f0973a3dd23d578a7821",
   "source_summary_sha256": "208d52833a681c342a1202fc68bbaad283e0d0e5955b13e57bea4a2692c924ba",
-  "source_patch_sha256": "22ffa181c1a9833a9b6f3ea96959dec452adac2a3335e4f61a227683b6b9a354",
   "publication": {
     "scope": "offline installer build and validation only; separate repository publication is outside this record",
     "remote_push_performed_by_packager": false,
     "public_deploy_performed_by_packager": false,
     "daemon_installed": false
   },
-  "distribution_revision": {
+  "prior_distribution_revision": {
     "id": "2026-10-02-bootstrap-network-compatibility",
     "managed_release_unchanged": "dots-portable-2.1.0",
     "business_payload_files_unchanged": 32,
@@ -183,6 +190,65 @@
       }
     ],
     "existing_installations": "2.1.0 remains idempotent; use --upgrade only for the already supported managed 2.0.0 migration",
-    "actual_network_credentials_or_values_saved_in_artifact": false
+    "actual_network_credentials_or_values_saved_in_artifact": false,
+    "phase": "prior 2.1.0 bootstrap network revision; bootstrap code remains unchanged"
+  },
+  "test_only_revision": {
+    "payload_changes": [
+      "tests/test_workflow_regression_triage.py"
+    ],
+    "new_payload_sha256": "628f6bfd2753935cc525a65a569f4080ef164b9cbe0b95704549bb0962f21426",
+    "production_code_unchanged": true,
+    "installer_transaction_unchanged": true,
+    "bootstrap_unchanged": true,
+    "source_checks": "FIXTURE_VALIDATION.json",
+    "exact_updated_commit_ci": "pending",
+    "previous_delivered_zip_sha256": "db09a20ccc5d637d124d64fd17e7afaf889f6d2e5b51f0973a3dd23d578a7821",
+    "relative_to": "dots-portable-2.1.0",
+    "maintainer_builder_reproduces_full_manifest_and_upgrade_chain": true
+  },
+  "historical_2_0_0_zip_sha256": "0dae589174e4f74b29acdb9569ad5470575e09668c7095ff98aa55806a3fb81c",
+  "historical_2_1_0_source_patch_sha256": "22ffa181c1a9833a9b6f3ea96959dec452adac2a3335e4f61a227683b6b9a354",
+  "current_release_installation_audit": {
+    "passed": 22,
+    "seconds": 12.37,
+    "standard_library_tests_passed": 47,
+    "installer_transaction_code_unchanged": true,
+    "cases": [
+      "actual 2.0.0 and 2.1.0 package upgrade sources",
+      "complete previous 20 and 32 file fingerprints",
+      "base and legacy original-backup restoration",
+      "two-generation rollback chain",
+      "modified user file rejection",
+      "forged metadata/hash rejection",
+      "backup corruption rejection",
+      "failure after atomic replacement and recovery"
+    ],
+    "real_cli_complete_git_clone": {
+      "status": "passed",
+      "base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+      "multi_generation_cycle": [
+        "base",
+        "2.0.0 install",
+        "2.1.0 upgrade",
+        "2.1.1 upgrade",
+        "idempotent repeat",
+        "rollback 2.1.0",
+        "rollback 2.0.0",
+        "old uninstall to base"
+      ],
+      "direct_upgrade_uninstall_sources": [
+        "2.0.0",
+        "2.1.0"
+      ],
+      "restored_baseline_hashes": 727,
+      "removed_added_files": 24,
+      "tracked_git_diff": "empty",
+      "known_previous_payloads_verified": [
+        20,
+        32
+      ]
+    },
+    "local_platform": "Linux/Python 3.12; no new cross-platform runtime claim"
   }
 }

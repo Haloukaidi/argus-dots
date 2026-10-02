@@ -51,8 +51,17 @@
   "retained_generated_assets": "Original tracked frontend runtime bundles and original tracked project resources are preserved.",
   "bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.1.0",
-    "standalone_archive_sha256": "db09a20ccc5d637d124d64fd17e7afaf889f6d2e5b51f0973a3dd23d578a7821",
-    "integrated_repository_needs_reinstallation": false
+    "version": "2.1.1",
+    "standalone_archive_sha256": "c0cba66a20e1d84e4288dbe5fe622ffbfb473e3511952572a0b59706df406e32",
+    "integrated_repository_needs_reinstallation": false,
+    "standalone_archive_bytes": 237645
+  },
+  "post_publication_test_fix": {
+    "previous_published_commit": "574877f2bf4c74fed8fe5bb4efe47f017e0a8f8c",
+    "test_file": "tests/test_workflow_regression_triage.py",
+    "test_sha256": "628f6bfd2753935cc525a65a569f4080ef164b9cbe0b95704549bb0962f21426",
+    "production_code_unchanged": true,
+    "validation_report": "docs/ci-overload-cancellation-validation-2026-10-02.md",
+    "exact_updated_commit_ci": "pending; local checks are not a full-CI success claim"
   }
 }

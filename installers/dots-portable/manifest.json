@@ -863,17 +863,18 @@
     },
     "tests/test_workflow_regression_triage.py": {
       "mode": 420,
-      "sha256": "c6e6d697328c50af1d4a219ccb1f718234d256e36eea3b8340b512632f770d49"
+      "sha256": "628f6bfd2753935cc525a65a569f4080ef164b9cbe0b95704549bb0962f21426"
     },
     "tests/test_workflow_reviewer_faults.py": {
       "mode": 420,
       "sha256": "e92743ac9891adda103222a43a670e8761eaca932c778d52055a61ecd5aaafbb"
     }
   },
-  "release": "dots-portable-2.1.0",
+  "release": "dots-portable-2.1.1",
   "schema": 1,
   "upgrade_from": [
-    "dots-portable-2.0.0"
+    "dots-portable-2.0.0",
+    "dots-portable-2.1.0"
   ],
   "upgrade_payloads": {
     "dots-portable-2.0.0": {
@@ -897,6 +898,40 @@
       "tests/test_dots_coordinator.py": "4d3b485536b25c795618ce9c4582a815327f9ea5eda514f93ef1fcadef4b4a1b",
       "tests/test_dots_file_transport.py": "aad944aa0385282aaab7e4a6096f44e6ff35b06ee47600b246d1ab41d4e05308",
       "tests/test_dots_role_host.py": "2c5ffff78b24e582a72cae65230c0f0ebaec645b8c3151db0183af3c7371032d"
+    },
+    "dots-portable-2.1.0": {
+      "argus/adapters/dots_backend.py": "120fe5676ed4d775d7bb220963047aa2c501fecbadd42b42c12a1427f1402aec",
+      "argus/adapters/dots_coordinator.py": "0326d9b0926cc17aa85ec620dddba24baac0af843fa94f290487777a191fa755",
+      "argus/adapters/dots_file_transport.py": "4604dd5186bb7645639ce2b3fe707e5b4c9cf7a6d8b21da85ef224f940c15e3c",
+      "argus/adapters/dots_role_host.py": "a24984e5fa873836514ea7e07bfd8d72318f94ecf929ee4a00a9fe75694af4c3",
+      "argus/apps/_runtime_construction.py": "077d7eca7e38740145198232a2cd7ce6a2f6dd406439c990eff9818322361881",
+      "argus/apps/dots_bridge.py": "db2f7eca09edfb0b0d95fd3032d5a0f98eee00c9020783e70684179b58f8bd53",
+      "argus/apps/dots_coordinator.py": "7643d5dfdf37db7bcf5fcefab9b66e817800f06708a4c96533202069b7ea398f",
+      "argus/apps/dots_role_host.py": "95572104e145edc002e4a32ce3de2b13a3c860edd7502d6b21e5b2ea3a3088b6",
+      "argus/apps/dots_tool_probe.py": "b25c423dfa2db5aa11de751d39e1b16a9e0bcaedf23661aa4e79bd7c480d8c4b",
+      "argus/core/campaign_workdir.py": "9d0561611ff8124d532af95ed5412380bd314134af535a84b90255018e82c048",
+      "argus/core/knobs.py": "e0f52080f0cb9fef1ec1b091d5f1050ee9dbce59d1bf0623bc6dedf60e17671f",
+      "argus/core/project.py": "c0c2312074e125d4baa2a415d6824ba8dbd75dc6af9b13fff6c2879ce64cbbb7",
+      "argus/core/role_tool_bridge.py": "8ba2aeac7537106f1fe77840eb633326f60af3373dfaf3c30b6e4550f4054cd1",
+      "argus/reviewer/_core.py": "290e2b142083223a46cc21881f2734090c936ee6762f487f60e1e6111658d459",
+      "argus/reviewer/tools.py": "27e1c22fffd43c5c9c3ae8a1446206bfa2e257d0b60897e8944b748c9f99e5da",
+      "argus/skills/round_checkpoint.py": "97522642e1cf16caf8bd9ce241f1c831c2fc6e4a7f45dec4f384e60fc1032791",
+      "docs/dots-backend.md": "31d4d4d2970f91ab17d5feaf5c0e5e880a0a96ba8be3b50c390ebf6b00f15144",
+      "docs/dots-coordinator.md": "9be180e930a2a949e540d24c728116d18bd952fe425bb2e136864fe3e0d3fe2b",
+      "docs/dots-native-validation.md": "29d168b524f72b962dbad558d80fde33803cdbd22ec5cc629d16a2f071ca1bc0",
+      "docs/dots-next-stage-design.md": "fa864bfacc1d8bccb3617c3410619f59ec40bc11e09e4d3e4bd46dff031529f2",
+      "docs/dots-role-host.md": "d97469c1e45a567c0509745c4c731c890549a37f91f2e024b9dff9a9917db2b7",
+      "docs/workflow-validation-2026-10-02.zh-CN.md": "1582f822e7f529ea55cc2a3bec08c9d2c9fad5b635b91701f18e23efeb6f3598",
+      "tests/test_dots_backend.py": "f0d63c2581c20f0181f7bda10150a3ddb99adb93f8bb90fa0f7803cdf46d1b3a",
+      "tests/test_dots_cancellation_ack.py": "16ff1c559314d7612a3d2a5e5d35f7bebe304626f367996d2277d3b23981a36c",
+      "tests/test_dots_coordinator.py": "4d3b485536b25c795618ce9c4582a815327f9ea5eda514f93ef1fcadef4b4a1b",
+      "tests/test_dots_file_transport.py": "aad944aa0385282aaab7e4a6096f44e6ff35b06ee47600b246d1ab41d4e05308",
+      "tests/test_dots_role_host.py": "2c5ffff78b24e582a72cae65230c0f0ebaec645b8c3151db0183af3c7371032d",
+      "tests/test_workflow_dots_lifecycle.py": "1fa28a52c8b7ab6c8bfc0fbbfc54f80ec411bb5503f420b63df33dab57d29137",
+      "tests/test_workflow_dots_model_defaults.py": "c9a6577dc0844e4d23c16793b6011cf2bde24c89a9c0255a623058786de7a761",
+      "tests/test_workflow_git_path_faults.py": "0c74929685b0f86969246713cd5e6745aba3d30f62ebe3bc13baafe4477586c6",
+      "tests/test_workflow_regression_triage.py": "c6e6d697328c50af1d4a219ccb1f718234d256e36eea3b8340b512632f770d49",
+      "tests/test_workflow_reviewer_faults.py": "e92743ac9891adda103222a43a670e8761eaca932c778d52055a61ecd5aaafbb"
     }
   }
 }

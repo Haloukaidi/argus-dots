@@ -48,16 +48,7 @@ def test_cancel_keeps_reserved_path_during_busy_response_teardown(monkeypatch):
         return {"ok": True}
 
     def post_work(bridge):
-        connection = http.client.HTTPConnection(*bridge.server.server_address, timeout=5)
-        try:
-            connection.request("POST", "/work", b"{}", {
-                "Authorization": "Bearer " + bridge.environment["ARGUS_PLUGIN_TEST_TOKEN"],
-            })
-            response = connection.getresponse()
-            response.read()
-            return response.status
-        finally:
-            connection.close()
+        return _wire_request(bridge, path="/work")[0]
 
     with CallBoundBridge(dispatch, env_prefix="ARGUS_PLUGIN_TEST") as bridge:
         handler = bridge.server.RequestHandlerClass
@@ -65,8 +56,9 @@ def test_cancel_keeps_reserved_path_during_busy_response_teardown(monkeypatch):
 
         def finish_after_observable_response(self):
             nonlocal cleaning
-            # The six fake operations are still blocked, so only the two
-            # already-sent overflow responses can reach this point.
+            # The six fake operations are still blocked. The overflow with
+            # the seventh normal slot reaches cleanup; the other is rejected
+            # before a handler starts.
             if self.path == "/work" and not release_operations.is_set():
                 with guard:
                     cleaning += 1
@@ -187,18 +179,90 @@ def _saturated_bridge(monkeypatch, *, cancel_operation="cancel", cancel_dispatch
 
 
 def _wire_request(bridge, *, path="/cancel", body=b"{}", token=None, extra_headers=(), declared_size=None):
-    connection = http.client.HTTPConnection(*bridge.server.server_address, timeout=5)
-    try:
-        connection.putrequest("POST", path)
-        connection.putheader("Authorization", "Bearer " + (token or bridge.environment["ARGUS_PLUGIN_TEST_TOKEN"]))
-        connection.putheader("Content-Length", str(len(body) if declared_size is None else declared_size))
-        for name, value in extra_headers:
-            connection.putheader(name, value)
-        connection.endheaders(body)
-        response = connection.getresponse()
-        return response.status, response.read()
-    finally:
-        connection.close()
+    headers = [
+        f"POST {path} HTTP/1.1",
+        f"Host: {bridge.server.server_address[0]}:{bridge.server.server_address[1]}",
+        "Authorization: Bearer " + (token or bridge.environment["ARGUS_PLUGIN_TEST_TOKEN"]),
+        "Content-Length: " + str(len(body) if declared_size is None else declared_size),
+        *(f"{name}: {value}" for name, value in extra_headers),
+    ]
+    with socket.create_connection(bridge.server.server_address, timeout=5) as stream:
+        # Remove http.client's separate header/body writes from status tests.
+        # Early overload rejection is allowed before a delayed body arrives.
+        stream.sendall("\r\n".join(headers).encode() + b"\r\n\r\n" + body)
+        with http.client.HTTPResponse(stream) as response:
+            response.begin()
+            return response.status, response.read()
+
+
+@pytest.mark.parametrize("failure,stage", [
+    (BrokenPipeError("body write interrupted"), "request"),
+    (ConnectionResetError("body write interrupted"), "request"),
+    (http.client.RemoteDisconnected("closed before response"), "response"),
+    (ConnectionResetError("response read interrupted"), "read"),
+])
+def test_bridge_request_reports_transport_failure_without_retry(monkeypatch, failure, stage):
+    calls = []
+
+    class Connection:
+        def request(self, *_args):
+            calls.append("request")
+            if stage == "request":
+                raise failure
+
+        def getresponse(self):
+            if stage == "response":
+                raise failure
+            return self
+
+        def read(self, _size):
+            raise failure
+
+        def close(self):
+            calls.append("close")
+
+    monkeypatch.setattr(http.client, "HTTPConnection", lambda *_args, **_kwargs: Connection())
+    with pytest.raises(ValueError, match="^role tool is busy or closing; retry during the active turn$") as error:
+        bridge_request("ARGUS_PLUGIN_TEST", "work", {}, env={
+            "ARGUS_PLUGIN_TEST_PORT": "1", "ARGUS_PLUGIN_TEST_TOKEN": "test-only-capability",
+        })
+    assert error.value.__cause__ is failure
+    assert calls == ["request", "close"]
+
+
+def test_bridge_request_rejects_work_when_overload_closes_before_body(monkeypatch):
+    with _saturated_bridge(monkeypatch) as (bridge, state):
+        closed = threading.Event()
+        original_shutdown = bridge.server.shutdown_request
+        original_send = http.client.HTTPConnection.send
+        body_attempts = 0
+
+        def shutdown_then_signal(request):
+            original_shutdown(request)
+            if threading.current_thread() is bridge.thread:
+                closed.set()
+
+        def body_after_close(connection, data):
+            nonlocal body_attempts
+            if data == b"{}":
+                body_attempts += 1
+                assert closed.wait(3), "overload socket was not closed before the body write"
+            return original_send(connection, data)
+
+        monkeypatch.setattr(bridge.server, "shutdown_request", shutdown_then_signal)
+        with monkeypatch.context() as client_patch:
+            client_patch.setattr(http.client.HTTPConnection, "send", body_after_close)
+            # Depending on the socket stack, the caller can observe either the
+            # parsed 503 or the mapped transport failure; neither is success.
+            with pytest.raises(ValueError, match="^role tool is busy"):
+                bridge_request("ARGUS_PLUGIN_TEST", "work", {}, env=bridge.environment)
+        assert body_attempts == 1
+        assert state["active"] == MAX_ACTIVE_OPERATIONS
+        assert state["handlers"] == MAX_HANDLER_THREADS - 1
+        assert state["cancelled"] == []
+        assert bridge_request("ARGUS_PLUGIN_TEST", "cancel", {}, env=bridge.environment) == {"cancelled": True}
+        assert state["cancelled"] == [{}]
+        assert state["peak_handlers"] == MAX_HANDLER_THREADS
 
 
 @pytest.mark.parametrize("kwargs,expected", [

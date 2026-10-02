@@ -1,0 +1,41 @@
+{
+  "status": "test_only_fix_frozen_remote_ci_pending",
+  "modified_files": [
+    "tests/test_workflow_regression_triage.py"
+  ],
+  "test_sha256": "628f6bfd2753935cc525a65a569f4080ef164b9cbe0b95704549bb0962f21426",
+  "production_bridge_sha256": "8ba2aeac7537106f1fe77840eb633326f60af3373dfaf3c30b6e4550f4054cd1",
+  "added_test_cases": 5,
+  "removed_test_cases": 0,
+  "original_regression": {
+    "passed": 100,
+    "failed": 0
+  },
+  "real_early_close_regression": {
+    "passed": 100,
+    "failed": 0
+  },
+  "focused": {
+    "passed": 32
+  },
+  "independent_full_file": {
+    "passed": 26
+  },
+  "independent_adversarial": {
+    "passed": 7
+  },
+  "related": {
+    "passed": 511,
+    "skipped": 18,
+    "failed_environment": 1,
+    "reason": "AF_UNIX socket creation denied; also fails in unchanged v2"
+  },
+  "lint": "passed",
+  "python": "3.12.14",
+  "limits": [
+    "pytest-xdist unavailable locally",
+    "Python3.11 exact updated commit CI pending",
+    "No new macOS/Windows validation"
+  ],
+  "patch_sha256": "c64245cd4daae00c00c28e67fc78a6de8594e0f560e5b8ba46f68cb632027a31"
+}

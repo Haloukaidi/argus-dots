@@ -12,7 +12,7 @@ p = argparse.ArgumentParser()
 p.add_argument("--base-repo", type=Path, required=True)
 p.add_argument("--payload-dir", type=Path, required=True)
 p.add_argument("--legacy-dir", type=Path, required=True)
-p.add_argument("--release", default="dots-portable-2.1.0")
+p.add_argument("--release", default="dots-portable-2.1.1")
 p.add_argument("--previous-package", type=Path, help="Directory containing the exact previously delivered manifest.json")
 a = p.parse_args()
 root = Path(__file__).resolve().parent
@@ -38,7 +38,11 @@ if a.previous_package:
     previous = json.loads((a.previous_package / "manifest.json").read_text())
     if previous["base_commit"] != BASE:
         raise SystemExit("Previous package uses a different base")
-    manifest["upgrade_from"] = [previous["release"]]
-    manifest["upgrade_payloads"] = {previous["release"]: {r: i["sha256"] for r, i in previous["payload"].items()}}
+    # Preserve earlier exact-source migration identities, then add the direct
+    # predecessor. A test-only payload change still requires a new release.
+    upgrades = dict(previous.get("upgrade_payloads", {}))
+    upgrades[previous["release"]] = {r: i["sha256"] for r, i in previous["payload"].items()}
+    manifest["upgrade_from"] = sorted(upgrades)
+    manifest["upgrade_payloads"] = upgrades
 (root / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
 print(json.dumps({"baseline_files": len(base), "payload_files": len(payload), "legacy_files": len(legacy)}))
