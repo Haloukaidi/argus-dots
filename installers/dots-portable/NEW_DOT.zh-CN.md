@@ -15,7 +15,7 @@
 1. 用兼容环境的 Python 运行 `argus.apps.dots_bridge`，仅发布授权的请求，保留 producer，取得真实 request ID
 2. 通过真实 native 工具启动一个专用协调子 agent，给它原任务边界、实际 queue 和解释器路径；实际身份返回前不要编造 worker/session ID
 3. 用 `argus.apps.dots_coordinator create`（v1）或 `argus.apps.dots_role_host create`（v2）登记这份确切请求列表，并给协调者返回的 session/owner/generation。不得扫描任意 queue 自动执行新任务
-4. 协调者循环处理 `next` 的动作：`spawn` 调真实创建并 `bind` 真实身份；`wait` 有界等待；完成后 `record` 原始真实输出；`done` 后汇报各请求结果并结束
+4. 协调者先处理已到达且仍有效的当前轮final：下一可用工具执行先 `record` 并确认producer消费，再做报告或新接纳；取消/过期仍优先拒绝晚到成功。随后才循环处理 `next` 的动作：`spawn` 调真实创建并 `bind` 真实身份；`wait` 有界等待；完成后 `record` 原始真实输出；`done` 后汇报各请求结果并结束
 
 v1 适合有限纯文本请求。v2 显式选择 `--host-protocol v2`，支持以下续接和 typed-tool 协议。每会话 1–64 请求、最多 5 worker 槽、最长 3600 秒；它们只是模块上限，必须按接收平台实际空闲槽设置更小值，并预留父级和协调者容量。
 
@@ -42,3 +42,11 @@ Manager、Planner、Engineer、Reviewer、Curator 仍由 Argus 原有职责和�
 这台接收端先跑一条有限真实 probe，记录真实创建、身份绑定、答案、退出状态；需要续接/typed-tool 时各补一条实际验收。不存在公开 Python native endpoint，也没有 `argus --backend dots` 开关。安装只复用源码，不能自动产生平台能力。
 
 完整命令、参数和状态分支见 `payload/docs/dots-coordinator.md`、`dots-role-host.md`、`dots-backend.md`。这些文档描述公开模块协议；示例占位符必须替换为本次真实值。没有只读隔离、工具约束、provider 配额/成本控制等保证的调用应提前失败，不夸大为完整生产支持。
+
+## 6. 完成交付优先（2.1.2操作增补）
+
+专用协调者仅做dispatch/bind/record/stop与真实状态核对；测试、源码分析、artifact加工和报告交给主持任务。不要因分析报告而拖延已经到达的有效final。多个事项按最早deadline处理，不增加权限或timeout。
+
+区分四件事：当前轮marker、下游实际读到文件、原typed action真实ready、最终record且producer consumed。前三者都不能单独代替最后一项。worker仅在本次明确获准的位置写审计内容，final尽量简短；这不授予生产Reviewer写权限。
+
+没有独立final到达时间戳时，不虚报到达延迟。本次正常读取/审批/交付通过，但取消干扰INCONCLUSIVE，≤30秒记录目标未证明；旧超时FAIL保留。细节见 `HOST-PRIORITY.zh-CN.md` 与 `FOCUSED-HANDOFF-RESULTS.zh-CN.md`。若出现已调用action但final未交付，按原journal恢复，不重发action。

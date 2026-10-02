@@ -12,7 +12,7 @@ p = argparse.ArgumentParser()
 p.add_argument("--base-repo", type=Path, required=True)
 p.add_argument("--payload-dir", type=Path, required=True)
 p.add_argument("--legacy-dir", type=Path, required=True)
-p.add_argument("--release", default="dots-portable-2.1.1")
+p.add_argument("--release", default="dots-portable-2.1.2")
 p.add_argument("--previous-package", type=Path, help="Directory containing the exact previously delivered manifest.json")
 a = p.parse_args()
 root = Path(__file__).resolve().parent

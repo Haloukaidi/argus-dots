@@ -1,31 +1,23 @@
-# 能力与验收矩阵（portable 2.1.1）
+# 能力与验收矩阵（portable 2.1.2）
 
-表中的真实 native 协调、续接及 dummy typed-action 证据来自 2.0.0 阶段；2.1.0新增工作流QA使用受控后端，不把它称作重新完成的原生生产验收。
-
-| 目标 | 当前实现 / 证据 | 仍有限制 |
+| 范围 | 当前证据 | 限制 |
 |---|---|---|
-| 原 Argus 五角色接入 | 显式 factory；原职责、capsule、反馈和 dispatcher 保留；定向工作流验证通过 | 没有完整五角色原生生产链路实测 |
-| 专用原生协调 worker | 有限显式任务清单；真实 spawn/bind/结果/中断验收 | 必须有在线、已授权宿主；不扫描任意新文件 |
-| 去重、并发、退出恢复 | 先落意图、真实 worker 映射、generation 接管、摘要校验、原结果恢复 | 未知执行不会自动重跑，需实际证据核对 |
-| 同角色稳定续轮 | 真实一次 spawn + 一次 followup，同 worker 记忆复述通过 | 同角色/mission/parent，单活跃调用；列表缺失不是未执行证明 |
-| Typed 审查动作通道 | 原生 worker 实际 CLI 调用；schema 错误反馈后修正；原 dispatcher 两次观察 | 普通 final 文本/JSON不能批准；这不是 read-only Reviewer 验收 |
-| 取消确认 | 真实 running→interrupted；有界 ack；阻止晚到输出 | native stop不代表任意OS进程/已启动callback已停；无settlement会保持阻塞 |
-| 生产 Reviewer OS只读/工具限定 | 不声明；仍保留原能力检查并 fail-closed | 当前原生平台未提供所需可验证硬限制 |
-| 默认后端与原 CLI | 默认provider不变；保留原9个CLI模型语义，补齐dots非CLI默认模型与空字符串规范 | 不静默换provider，也不注册不存在的dots CLI后端 |
-| 实际源码修复 | 本版32文件payload：8个原版文件修改、24新增；含Git/路径/状态、Reviewer context及工具桥取消修复 | 固定基准与局部授权范围；源码修复没有增加native平台权限 |
-| 便携升级与恢复 | 受管2.0.0完整20文件或2.1.0完整32文件hash、实际文件、原始备份与元数据核验；显式--upgrade；真实升级/回滚/卸载通过 | 用户后改或未知/不完整安装拒绝，不提供force覆盖 |
-| 用量、费用、配额 | 未知值保持unknown，presence=false | 未接入真实provider usage/费用预占/持久I/O账目 |
-| 自动长期接收服务 | 没有 | 未安装常驻服务、外部agent或公网监听；有限会话最长3600秒 |
-| 文件安全 | POSIX私有目录、no-follow、原子发布、锁与完整性审计 | 不防同UID恶意重写全部文件；未做其他平台验收 |
+| Reviewer locator | 两生产文件修复；summary实际文件、固定source-cache目录及合法显式state-root日志定位符保留 | 原全局清理/凭据保护/权限门禁不变；background自由文本hex路径仍未修 |
+| 相关回归 | 37测试文件634项：620通过、14显式Docker跳过；独审76通过 | 子集重叠；不是新commit全库或容器隔离通过 |
+| 本次真实交接 | 实际读取两个32-hex目录内文件，原typed审批恰1次，两个producer exit0且consumed | 仅本次正常完成交付通过，不是全角色生产OS隔离 |
+| 取消干扰 | 另一任务在action-ready前自然完成 | INCONCLUSIVE，未执行stop/interrupt，不能标为取消竞争通过 |
+| final交付延迟 | prepared→record保守上界50.918秒，消费距deadline7.532秒 | 无独立arrival戳，≤30秒目标未证明；没有自动实时保证 |
+| 旧批次失败 | 原10-turn中审批后漏record导致超时 | FAIL保留，新成功不覆盖历史 |
+| Host操作 | 专用协调者先record有效final并确认消费，报告分析分离、最早deadline优先 | 只改手册，不加权限、不延timeout、不重发不确定action |
+| 迁移与恢复 | 37payload，原32完整保留；2.0.0旧20、2.1.0旧32、2.1.1旧32精确映射及legacy8 | 用户后改/未知版本/备份异常拒绝，无force |
+| 安装/启动 | 固定727基准；三入口脚本和事务保持；历史Linux在线bootstrap已通过 | 新host工具必须实际存在，安装不能授予native能力 |
+| 默认角色/provider | Argus原五角色职责、typed dispatcher和原9CLI语义保留 | 不注册不存在的dots CLI，不静默切provider |
+| 用量与运行控制 | 未知用量继续unknown；会话有限，不安装daemon | 未提供完整provider费用控制或长期自动接收服务 |
 
-历史2.1.0全库测试口径：Python无提前停止，12086 passed / 68 failed / 136 skipped / 0 errors，共12290项，857.84秒。剩余失败为59项procfs环境要求、8项AF_UNIX被拒、1项已有venv导致的原测试前提。最后一项原测试在无venv干净树独立复跑1/1通过，仍保留原全库失败计数。
+本版相对原Argus是10个原文件修改、27个新增文件，合计37payload。相对2.1.1仅增加授权两生产快照和三测试，原32项不变。
 
-npm check的构建、类型检查和226项测试通过。Python类型检查仍有与原基准完全相同的30项诊断，未宣称全绿。277项相关检查属于全库子集，不能重复相加。安装器另有47项标准库测试和原61项升级/安全独审通过；历史2.1.0网络白名单/脱敏独审23项通过，含真实固定基准升级/恢复循环。
+当前检查详见 `VALIDATION.json`、`LOCATOR-VALIDATION.json` 和 `FOCUSED-HANDOFF-RESULTS.zh-CN.md`。安装47项标准库测试、14项迁移独审与真实三代回滚CLI结果单列，不与业务子集累加。
 
-精确环境、跳过原因和证据边界见 `SOURCE_VALIDATION.json` 与 `VALIDATION.json`。真实native证据与fixture测试分别列示，不能互相替代。
+历史2.1.0完整Python运行12086 passed / 68 failed / 136 skipped / 0 errors，Python类型检查仍30项既有诊断；历史2.1.1纯测试回归及旧CI均不当作2.1.2全库通过。此前native协调、续接及dummy typed-action证据也有各自明确范围。
 
-分发包网络修订已验证真实Linux在线bootstrap（含空格路径、固定commit、独立venv及pip依赖），仅保留既有proxy/CA白名单，错误输出脱敏；该网络修订的bootstrap脚本在2.1.1保持不变。
-
-2.1.1仅改变一项测试payload，新增5项测试；生产与安装事务不变。原回归和真实早关连接分别100/100通过，focused32通过；较广检查511通过、18跳过、1项原有AF_UNIX环境失败。上述重复/子集计数不能累加；新的远端Python3.11并行CI仍待验证，见FIXTURE_VALIDATION.json。
-
-本版2.1.1安装与升级：47项标准库及22项独审通过，含两代回滚、两个来源直接升级后卸载、原始备份和用户后改冲突；真实完整Git clone恢复727基准哈希，24新增文件移除，tracked diff为空。
+源码locator修复、文件读取、typed审批、最终消费是不同事实。OS只读隔离、未授权roots、跨平台/跨环境传输和无法观测的到达时间都不由成功文件路径自动证明。

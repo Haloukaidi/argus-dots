@@ -1,0 +1,94 @@
+{
+  "release": "dots-portable-2.1.2",
+  "verification_date": "2026-10-02",
+  "reviewed_source_baseline_commit": "aa619ebd6ff158c4bda4554c70a2ad96f251aef9",
+  "reviewed_source_baseline_tree": "25b5042f2e0c14e4d93a83b97bb98b877b5521da",
+  "installer_base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+  "changed_source_files": {
+    "argus/core/model_visible_text.py": "51036573e3019852b7da4c8aec45d4543167d3a53569997adc0ea6cea7df67cd",
+    "argus/roles/prompts/reviewer.py": "7fb28d6ac2f35f349be22b7e982e3e43a0427432aa35472bd430e166a4a5df78",
+    "tests/core/test_reviewer_artifact_locators.py": "1b56aa1c39a3feeeadb74fb142311620f4e739e8ef92ccd1135365d11bec55a7",
+    "tests/test_reviewer_artifact_handoff.py": "32f5e00d8350dfa7290e2497f1198080f08b4746bcca44f00e3ff03911c23c67",
+    "tests/test_reviewer_host_locators.py": "2e2ea4f921139d80064e7d6c3462267acc4551b4f38589227a5758bca079f949"
+  },
+  "patch_sha256": "24fef4df5c98d8c88905c59b18413b65d75a9dca94e735f35b6ab2bbd58c08bb",
+  "related_regression": {
+    "files": 37,
+    "total": 634,
+    "passed": 620,
+    "skipped": 14,
+    "failed": 0,
+    "errors": 0,
+    "seconds": 34.491,
+    "skip_reason": "explicit local Docker probes"
+  },
+  "independent_focused_tests": {
+    "passed": 76,
+    "overlaps_related_regression": true
+  },
+  "static_checks": {
+    "ruff": "passed",
+    "diff_whitespace": "passed",
+    "changed_python_ast": "passed"
+  },
+  "scope": {
+    "protects": [
+      "explicit existing summary file locators",
+      "fixed source-cache directory under configured workdir",
+      "host log files under configured workdir or explicit state root"
+    ],
+    "global_sanitizer_default_unchanged": true,
+    "credential_redaction_unchanged": true,
+    "typed_approval_unchanged": true,
+    "execution_permissions_unchanged": true,
+    "background_freeform_hex_paths": "known_unfixed_default_sanitizer_preserved",
+    "unauthorized_roots": "not_admitted"
+  },
+  "real_focused_handoff": {
+    "status": "normal_completion_delivery_passed_with_unproven_concurrency_and_latency_goals",
+    "native_roles": [
+      "dedicated coordinator",
+      "Reviewer",
+      "Planner"
+    ],
+    "actual_files_read": 2,
+    "hex_path_length": 32,
+    "original_review_actions_dispatch_count": 1,
+    "producer_count": 2,
+    "producer_exit_codes": [
+      0,
+      0
+    ],
+    "cancel_interference": "INCONCLUSIVE: Planner completed naturally before action-ready; no stop/interrupt performed",
+    "final_prepared_to_record_upper_bound_seconds": 50.918,
+    "independent_final_arrival_timestamp_available": false,
+    "at_most_30_second_delivery_goal": "not_proven",
+    "deadline_margin_seconds": 7.532,
+    "producer_timeout_seconds": 500,
+    "timeout_changed": false,
+    "previous_10_turn_missing_record_timeout": "FAIL_preserved",
+    "full_production_reviewer_os_isolation_verified": false,
+    "shareable_report": "FOCUSED-HANDOFF-RESULTS.zh-CN.md",
+    "source_report_sha256": "7018c8363ce7430250630b965af36459637ab64b69f06cda4adce3583d167287",
+    "producer_results": [
+      {
+        "exit_code": 0,
+        "terminal": "completed",
+        "closed": "consumed"
+      },
+      {
+        "exit_code": 0,
+        "terminal": "completed",
+        "closed": "consumed"
+      }
+    ]
+  },
+  "limits": [
+    "New exact-commit remote CI pending",
+    "No new Windows/macOS runtime validation",
+    "No complete native five-role production acceptance",
+    "Background free-text hex locators remain outside the approved fix",
+    "No automatic real-time delivery guarantee"
+  ],
+  "publication_scope": "Local validation snapshot; remote publication and service restart are separate authorized steps"
+}

@@ -9,10 +9,12 @@ argus/apps/dots_role_host.py
 argus/apps/dots_tool_probe.py
 argus/core/campaign_workdir.py
 argus/core/knobs.py
+argus/core/model_visible_text.py
 argus/core/project.py
 argus/core/role_tool_bridge.py
 argus/reviewer/_core.py
 argus/reviewer/tools.py
+argus/roles/prompts/reviewer.py
 argus/skills/round_checkpoint.py
 docs/dots-backend.md
 docs/dots-coordinator.md
@@ -20,11 +22,14 @@ docs/dots-native-validation.md
 docs/dots-next-stage-design.md
 docs/dots-role-host.md
 docs/workflow-validation-2026-10-02.zh-CN.md
+tests/core/test_reviewer_artifact_locators.py
 tests/test_dots_backend.py
 tests/test_dots_cancellation_ack.py
 tests/test_dots_coordinator.py
 tests/test_dots_file_transport.py
 tests/test_dots_role_host.py
+tests/test_reviewer_artifact_handoff.py
+tests/test_reviewer_host_locators.py
 tests/test_workflow_dots_lifecycle.py
 tests/test_workflow_dots_model_defaults.py
 tests/test_workflow_git_path_faults.py

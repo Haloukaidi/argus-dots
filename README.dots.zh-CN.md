@@ -4,6 +4,10 @@
 
 ## 从哪里开始
 
+- 最新 Reviewer 文件定位符修复：[`2.1.2 变更与边界`](docs/CHANGES-2.1.2.zh-CN.md)
+- 真实交接记录：[`专项结果`](docs/FOCUSED-HANDOFF-RESULTS.zh-CN.md)、[`保留的历史失败`](docs/HISTORICAL-NATIVE-TRIALS.zh-CN.md)
+- Native host 完成交付操作：[`完成确认与停止优先级`](docs/HOST-PRIORITY.zh-CN.md)
+
 - 本 fork 的独立环境安装：[`README.zh-CN.md` 顶部 dots 入口](README.zh-CN.md)；其下原版安装章节用于原 Argus，不会安装本 fork
 - dots 适配器入口和能力约束：`docs/dots-backend.md`
 - 有限 host 协调及续接：`docs/dots-coordinator.md`、`docs/dots-role-host.md`

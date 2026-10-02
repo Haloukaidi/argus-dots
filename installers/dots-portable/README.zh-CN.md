@@ -1,65 +1,58 @@
-# Argus dots 便携模块 2.1.1
+# Argus dots 便携模块 2.1.2
 
-本版只修正一个回归测试文件，生产源码和安装事务保持不变。因为该测试属于32项payload、内容哈希已经变化，受管版本明确升为2.1.1；已有2.0.0或2.1.0安装需显式升级，不以同一版本名覆盖不同内容。
+本版修复Reviewer交接中合法hex文件路径被清理的问题，并补充完成结果优先记录的操作手册。37项payload包含相对原版的10个文件修改和27个新增文件；旧2.1.1的32项逐字节保留。
 
-把这份 ZIP 解压后交给另一台机器上的 Dot，就能复用同一套模块，不需要重写适配器。安装程序只使用 Python 标准库，不联网；专用协调子 agent 由接收端 Dot 在有真实工具、有限任务授权时启动。
+安装程序只使用Python标准库，不联网。它不能增加Dot原本没有的native工具，也不能自动变成无人值守的Argus provider。
 
-## 已有 Argus：一条命令
+## 已有固定原版Argus：一条命令
 
-先停止这个目录中正在运行的 Argus、producer 和协调任务。请使用 Python 3.11+；部分机器命令名是 `python3`。
+先停止所有使用这个源码目录的Argus、producer及协调任务。需要Python 3.11+，部分机器命令名为python3。
 
 ```sh
 python install_dots.py --argus-dir /absolute/path/to/Argus
 ```
 
-目标必须是源码目录，兼容官方 `lbx154/Argus` 的固定基准：
-`9cfe9129fd90511c3a1865844ec7dfda1b5d1008`。仅版本号 `0.1.8` 相同不够；若目录带 Git 元数据，还须 HEAD 精确指向该 commit（支持 detached、refs 和 worktree）。
+仅支持官方原基准 `9cfe9129fd90511c3a1865844ec7dfda1b5d1008`，不是任意同名0.1.8版本。有Git元数据时HEAD须精确匹配；无.git源码快照以727项基准Python/配置/schema哈希识别。全部37项payload和目标路径在写入前检查。
 
-安装前验证 727 个基准 Python/配置/schema 文件的 SHA256，拒绝未知新增 core Python 文件，并检查全部 32 个 payload 文件。本版本替换 8 个原文件、增加 24 个文件（包括已授权的原版工作流修复和回归测试），默认 provider、凭据、全局插件、用户任务和运行状态不变。已有源码里的非目标文档/运行数据可以保留；基准 core 有用户改动时安全拒绝，不擅自合并或覆盖。无 `.git` 的固定源码快照也可用。
+原core或受管文件有用户改动时拒绝覆盖，不擅自合并。默认provider、凭据、全局插件和用户运行数据不变。成功JSON中的 `self_check=hashes_and_python_syntax` 只表示源码自检；`native_tools=not_verified` 不代表新机器的native运行已验证。
 
-成功 JSON 的 `self_check=hashes_and_python_syntax` 仅代表本地源码哈希/语法通过。`native_tools=not_verified` 表示没有验证这台机器/这个 Dot 的 native 能力，不能解释成完整 Argus 五角色生产流程已可运行。
+如果拿到完整集成的argus-dots仓库，其源码已经包含修复；不要对该仓库自身再次运行此固定原版补丁安装器。仓库内安装器入口始终是 `installers/dots-portable/`，ZIP目录才带版本号。
 
-运行依赖已经在当前 Argus 环境中时，继续使用原解释器。模块不默认创建 venv、不运行模型 setup/doctor，也不安装常驻服务。
-
-## 已装 portable 2.0.0 / 2.1.0：显式升级
+## 已装portable 2.0.0 / 2.1.0 / 2.1.1：显式升级
 
 ```sh
 python install_dots.py --argus-dir /absolute/path/to/Argus --upgrade
 ```
 
-先停止使用此源码目录的所有任务。2.1.1 会核对对应旧版完整20或32文件清单/已知哈希、实际文件、原始备份及事务元数据；任一用户后改、缺项或损坏都会在写入前拒绝。只改 release 字符串不能通过升级。`--check` 可先做不修改源码的升级预检；普通安装命令不会擅自升级已有版本。
+核对相应旧版的完整20或32文件清单、已知哈希、实际文件、原始备份和事务记录。任一后改、缺项或损坏都在写入前拒绝。只更改版本字符串不能绕过验证。普通安装命令不会擅自升级；可先用 `--check` 预检。
 
-本次唯一payload差异是测试请求helper与5项异常映射/真实早关连接用例；既有生产修复保持原样。详见 `CHANGES-2.1.1.zh-CN.md` 和 `CI-FIX-REPORT.md`。旧2.0.0及2.1.0 ZIP应保留为历史。
+`--rollback` 恢复这次升级前的确切版本，多代升级可沿记录继续回滚。`--uninstall` 恢复首次安装前的base或8文件legacy状态。新修改的两个原版文件也会备份和恢复。未知手工集成、缺少合法安装元数据的完整快照不会被自动接管；保留该目录，另用固定干净基准。
 
-升级后，用本2.1.1安装器的 `--rollback` 恢复这次升级前的完整2.1.0或2.0.0；多代升级可沿原记录继续回滚。`--uninstall` 恢复首次安装之前的原基准。若首次是从最初 8 文件补丁迁入，则卸载恢复那个旧补丁状态。新增修复文件也逐一恢复。保留两代备份，不影响 venv 和用户运行数据。
-
-手工拷过完整20或32文件却没有合法安装元数据的目录不属于可升级安装；保留原目录，另用固定干净基准。不会把未知手工安装自动登记为可信旧版。
-
-## 没有 Argus：可选联网 bootstrap
+## 没有Argus：可选联网bootstrap
 
 ```sh
 python bootstrap_argus.py --target /absolute/new/Argus --allow-network --venv --install-deps
 ```
 
-这一步明确联网：从固定官方 GitHub 仓库抓取并验证上面的 commit，在新目录装 dots，建立该目录独立 `.venv-dots`，再由该 venv 的 pip 安装本地 Argus 源码及其声明的依赖。不覆盖已有目录，不读已有 Git 凭据，不改全局 Python/插件配置。仅继承明确允许的既有 proxy/CA 网络配置，保证当前平台路由和信任根可用；不继承模型 API key、Git token、pip index、Git 配置注入或关闭 TLS 验证的开关。proxy/CA 配置值不写入分发包；安装器不主动记录这些值，错误输出会过滤配置值及 proxy 认证片段。依赖可能下载并执行标准构建流程；Argus 上游依赖没有完整锁定，不能宣称传递依赖可重复构建。
+显式从官方固定仓库抓取并验证原commit，在新目录安装本模块，建立独立 `.venv-dots`，再由该venv的pip安装本地源码及依赖。不覆盖已有目录，不改全局环境。只要源码时去掉后两个开关；只建空venv时保留 `--venv`。需要系统git。
 
-只要源码时去掉 `--venv --install-deps`；只建空 venv 时保留 `--venv`、去掉 `--install-deps`。需要系统 `git`。bootstrap 的真实在线 GitHub/pip 路径已在2.1.0网络分发修订的Linux验收执行（当前bootstrap脚本逐字节不变）：含空格的新目录、固定来源/commit、独立 venv 和依赖安装完成，随后通过 pip check、目录外导入和 bridge 帮助命令；精确记录见 `VALIDATION.json`。缺少显式网络开关仍会拒绝。下载受限时，不改来源，可先取得相同固定源码后用离线安装命令。
+仅继承明确允许的既有proxy/CA网络配置；模型/Git token、pip index、Git配置注入及关闭TLS验证开关仍排除。实际网络配置不打包；错误输出会过滤配置值和proxy认证片段。上游传递依赖未全部锁定，不能宣称可重复构建。
 
-## 交给新 Dot
+该bootstrap脚本与2.1.0网络修订逐字节相同；当时在Linux含空格新路径实际完成固定commit、venv、pip依赖安装，pip check、目录外导入和bridge帮助检查通过。历史在线验收不是本版新locator代码的完整生产运行证明。
 
-把 `NEW_DOT.zh-CN.md` 与 ZIP 一起交给它，并明确本次要完成的任务、允许的文件/工具、停止条件。手册包含有限协调任务、续接、typed-tool 回包、取消和恢复流程。
+## 交给新Dot
 
-新 Dot 必须读取它当前实际工具清单，写出 JSON 字符串数组后检查：
+一并交给它 `NEW_DOT.zh-CN.md`，明确本次有限任务、允许的文件/工具、外部动作及停止条件。接收端从其当前实际工具清单写出JSON字符串数组后运行：
 
 ```sh
 python check_host.py --tools-file /path/to/actual-current-tools.json
 ```
 
-缺少真实 spawn/followup/status/interrupt/命令执行工具就非零退出。这个清单检查不能证明工具实际执行成功；每台新主机仍须做一次获授权的真实有限 probe。模块不能给 Dot 增加原本没有的 native 工具，更不能用 Python 伪造它们。
+缺少真实创建/续接/状态/打断/命令执行工具时非零退出。清单检查不等于执行证明，每个新host仍需获授权的真实有限probe。不存在 `argus --backend dots` 开关；使用原源码factory及bridge/host协议。
 
-普通 Argus CLI 没有 `--backend dots`。运行集成使用公开源码工厂 `build_dots_life_runner` 或文档中的 bridge/host 命令。完整五角色生产运行仍受接收 host 实际能力限制，尤其 Reviewer 的只读隔离、工具约束和 provider 用量/预算控制并未由此包补齐。
+2.1.2手册要求专用协调者先记录有效当前final并确认producer消费，测试/报告分析另做；按最早deadline处理。审批ready不等于最终交付，不改变权限、timeout、取消或过期语义，也不承诺自动实时延迟。见 `HOST-PRIORITY.zh-CN.md`。
 
-## 检查、重复安装、恢复与移除
+## 恢复与卸载
 
 ```sh
 python install_dots.py --argus-dir /path/to/Argus --check
@@ -68,37 +61,31 @@ python install_dots.py --argus-dir /path/to/Argus --rollback
 python install_dots.py --argus-dir /path/to/Argus --uninstall
 ```
 
-- 同版本重复执行是幂等检查，不重复覆盖
-- `--check` 不改源码，但会创建私有安装锁目录
-- 不可识别版本/本地 core 改动/目标文件冲突在全量预检阶段拒绝
-- 文件分别原子替换，整棵源码不是单一原子切换，因此必须先停止使用该目录的进程
-- 备份和事务写在目标 `.argus-dots-install`，权限 0700。普通异常自动回退；进程/断电中断后执行 `--recover`。不要删备份
-- `--rollback` 回到最近一次安装或升级之前；`--uninstall` 回到第一次受管安装之前。只还原本安装管理的文件，保留备份、独立 venv、用户状态和额外文件
-- 安装后用户改过受管文件，恢复/回滚/卸载会拒绝冲突，不强制清理；先自行保存差异、恢复对应受管版本，再重试。不存在 `--force`
-- 拒绝目标、备份或祖先路径 symlink，拒绝受管文件 hardlink/特殊文件。遵循普通本地单用户信任边界，不能抵御同 UID 恶意进程并发替换文件
-- 新版本只有在 manifest 明列旧受管版本时才可升级；不会拿任意新 payload 覆盖旧安装
+- 同版本重复安装幂等；check不改源码，但会创建私有锁目录
+- 文件分别原子替换，整棵源码不是单一原子切换，操作前必须停止使用该目录的任务
+- `.argus-dots-install` 保存0700权限的备份和事务；普通异常自动回退，中断后用recover。不要删除备份
+- 恢复仅作用于受管文件，保留备份、venv和用户状态；用户后改冲突时拒绝，没有force开关
+- 拒绝symlink祖先/目标、hardlink及特殊受管文件；遵循普通单用户信任边界，不防同UID恶意并发重写
 
-### 已安装最初 8 文件源码补丁
-
-仅当 8 个旧快照全部逐字节匹配时允许显式迁移：
+最初8文件源码补丁，仅完整已知快照可显式迁入：
 
 ```sh
 python install_dots.py --argus-dir /path/to/Argus --adopt-legacy
 ```
 
-这会备份旧 8 文件安装并升级到当前 32 文件。此时卸载/回滚恢复原先的 8 文件安装，而非把它误当成本安装创建的数据删除。任何旧文件后改都会拒绝。手工装过其他完整版本且没有安装记录的目录也拒绝；保留该目录，另用干净基准。
+此时升级为37文件；卸载恢复迁入前的8文件状态，不把它误当成本安装创建的数据删除。
 
-## 验证范围与平台
+## 验证与明确限制
 
-- 本版安装器：47项标准库测试、22项实际升级/恢复独审通过；真实两代回滚、两个来源直接升级后卸载均恢复基准。历史2.1.0另有61项升级/安全与23项网络独审，记录分列于 `VALIDATION.json`
-- 历史2.1.0完整Python运行：12086 passed、68 failed、136 skipped、0 errors（12290 项，857.84 秒），没有提前停止。失败为59项 procfs 环境要求、8项 AF_UNIX 被拒、1项已有 venv 导致的原测试前提；最后一项原测试在无 venv 干净树独立复跑1/1通过，不改写全库计数
-- 本次2.1.1纯测试修正：原回归100/100、真实早关连接100/100、focused32通过；较广相关范围511 passed、18 skipped、1项原有AF_UNIX环境拒绝，未称为全绿。完整记录见 `FIXTURE_VALIDATION.json`；更新commit的Python3.11并行CI仍待验证
-- 2.1.0阶段TypeScript npm check 的构建、类型检查和226项测试通过；Python类型检查仍有与原基准完全相同的30项诊断，不能称为全绿。完整统计/跳过原因见 `SOURCE_VALIDATION.json` 和 `payload/docs/workflow-validation-2026-10-02.zh-CN.md`
-- 真正 native 有限协调、同角色两轮续接、dummy typed action/reply 已在原验收环境成功；完整五角色/生产 Reviewer 隔离未验收
-- 安装器本地实测 Linux + Python 3.12。POSIX 设计适用于 Linux/macOS，但本包没有 macOS 实机结果
-- 原生 Windows 明确拒绝。WSL 可作为待验证的 POSIX 路径，尚未实测，不宣称通过
-- 无打包 venv、凭据、运行会话或实际 worker IDs；本次离线包验收不包含远端发布步骤，另行发布状态以实际交付说明为准
+- 新locator相关回归：620 passed、14显式Docker skips、0失败/错误；独审76通过，计数重叠不相加，详见 `LOCATOR-VALIDATION.json`
+- 真实focused：两个文件实际读到、原typed审批恰1次、两个producer exit0且consumed，本次正常完成交付通过
+- 取消干扰因另一任务先自然结束而INCONCLUSIVE；缺独立arrival戳，50.918秒保守上界不能证明≤30秒目标；距deadline仅7.532秒。旧10-turn漏record超时FAIL仍保留；旧四场景及其接口断言/容量限制见 `HISTORICAL-NATIVE-TRIALS.zh-CN.md`，新批次见 `FOCUSED-HANDOFF-RESULTS.zh-CN.md`
+- background_context自由文本hex路径仍已知未修，不开放未授权roots；完整生产Reviewer OS只读隔离和全五角色native运行仍未验
+- 安装器47项标准库测试、14项独审与真实三代回滚/卸载通过，见 `VALIDATION.json`；历史2.1.0全库12086 passed / 68 failed / 136 skipped及30项既有Python类型诊断不改写成新版本全绿
+- 2.1.1已发布commit `aa619ebd6ff158c4bda4554c70a2ad96f251aef9` 的CI成功属于旧版本；历史报告里的pending是当时快照。2.1.2精确新commit CI仍须另验
+- 实测Linux/Python3.12。安装器Python3.11运行、macOS和WSL未在本轮验证；原生Windows拒绝
+- 无打包venv、凭据、raw运行日志、实际worker IDs或用户研究prompt；本离线包构建不执行远端发布或服务重启
 
-离线运行安装器测试：`python -m unittest discover -s tests -v`
+标准库自检：`python -m unittest discover -s tests -v`
 
-上游 Argus 使用 MIT 许可证，见 `LICENSE.Argus`。本包的 manifest/SHA256 用于完整性检查，不是可信发布者数字签名；应从你信任的发送方取得整个 ZIP。
+固定上游MIT许可见 `LICENSE.Argus`。SHA256用于完整性校验，不是发布者数字签名，请从可信发送方取得完整包。

@@ -16,10 +16,12 @@
     "argus/apps/dots_tool_probe.py",
     "argus/core/campaign_workdir.py",
     "argus/core/knobs.py",
+    "argus/core/model_visible_text.py",
     "argus/core/project.py",
     "argus/core/role_tool_bridge.py",
     "argus/reviewer/_core.py",
     "argus/reviewer/tools.py",
+    "argus/roles/prompts/reviewer.py",
     "argus/skills/round_checkpoint.py",
     "docs/dots-backend.md",
     "docs/dots-coordinator.md",
@@ -27,11 +29,14 @@
     "docs/dots-next-stage-design.md",
     "docs/dots-role-host.md",
     "docs/workflow-validation-2026-10-02.zh-CN.md",
+    "tests/core/test_reviewer_artifact_locators.py",
     "tests/test_dots_backend.py",
     "tests/test_dots_cancellation_ack.py",
     "tests/test_dots_coordinator.py",
     "tests/test_dots_file_transport.py",
     "tests/test_dots_role_host.py",
+    "tests/test_reviewer_artifact_handoff.py",
+    "tests/test_reviewer_host_locators.py",
     "tests/test_workflow_dots_lifecycle.py",
     "tests/test_workflow_dots_model_defaults.py",
     "tests/test_workflow_git_path_faults.py",
@@ -51,10 +56,10 @@
   "retained_generated_assets": "Original tracked frontend runtime bundles and original tracked project resources are preserved.",
   "bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.1.1",
-    "standalone_archive_sha256": "c0cba66a20e1d84e4288dbe5fe622ffbfb473e3511952572a0b59706df406e32",
+    "version": "2.1.2",
+    "standalone_archive_sha256": "6046ffd2273f9255e9b7de0760e7b08ee5c25a751c49d2507316dd8b9f0a7280",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 237645
+    "standalone_archive_bytes": 274646
   },
   "post_publication_test_fix": {
     "previous_published_commit": "574877f2bf4c74fed8fe5bb4efe47f017e0a8f8c",
@@ -62,6 +67,36 @@
     "test_sha256": "628f6bfd2753935cc525a65a569f4080ef164b9cbe0b95704549bb0962f21426",
     "production_code_unchanged": true,
     "validation_report": "docs/ci-overload-cancellation-validation-2026-10-02.md",
-    "exact_updated_commit_ci": "pending; local checks are not a full-CI success claim"
+    "exact_updated_commit_ci": {
+      "commit": "aa619ebd6ff158c4bda4554c70a2ad96f251aef9",
+      "status": "success",
+      "run_url": "https://github.com/Haloukaidi/argus-dots/actions/runs/36970442387"
+    }
+  },
+  "reviewer_locator_update": {
+    "reviewed_baseline_commit": "aa619ebd6ff158c4bda4554c70a2ad96f251aef9",
+    "patch_sha256": "24fef4df5c98d8c88905c59b18413b65d75a9dca94e735f35b6ab2bbd58c08bb",
+    "changed_source_files_sha256": {
+      "argus/core/model_visible_text.py": "51036573e3019852b7da4c8aec45d4543167d3a53569997adc0ea6cea7df67cd",
+      "argus/roles/prompts/reviewer.py": "7fb28d6ac2f35f349be22b7e982e3e43a0427432aa35472bd430e166a4a5df78",
+      "tests/core/test_reviewer_artifact_locators.py": "1b56aa1c39a3feeeadb74fb142311620f4e739e8ef92ccd1135365d11bec55a7",
+      "tests/test_reviewer_artifact_handoff.py": "32f5e00d8350dfa7290e2497f1198080f08b4746bcca44f00e3ff03911c23c67",
+      "tests/test_reviewer_host_locators.py": "2e2ea4f921139d80064e7d6c3462267acc4551b4f38589227a5758bca079f949"
+    },
+    "public_reports": [
+      "docs/CHANGES-2.1.2.zh-CN.md",
+      "docs/FOCUSED-HANDOFF-RESULTS.zh-CN.md",
+      "docs/HOST-PRIORITY.zh-CN.md",
+      "docs/HISTORICAL-NATIVE-TRIALS.zh-CN.md",
+      "docs/LOCATOR-VALIDATION.json"
+    ],
+    "new_exact_commit_ci": "pending at assembly; local and focused results do not imply full-CI success",
+    "remaining_limits": [
+      "focused cancellation interference INCONCLUSIVE",
+      "no independent final-arrival timestamp; at-most-30-second goal unproven",
+      "historical four-scenario failures retained",
+      "background free-form hex locators outside approved fix",
+      "production Reviewer OS isolation and complete five-role acceptance unverified"
+    ]
   }
 }
