@@ -56,10 +56,10 @@
   "retained_generated_assets": "Original tracked frontend runtime bundles and original tracked project resources are preserved.",
   "bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.3.3",
-    "standalone_archive_sha256": "ebdb90adf02babdfe60f8e79aa38d43d73970973d546f4f37208c2c57ab1a7cf",
+    "version": "2.3.4",
+    "standalone_archive_sha256": "fa53a693abe00a0497f9d133797c50da881e91681cf7a2244bfe839621505e48",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 643555
+    "standalone_archive_bytes": 690072
   },
   "post_publication_test_fix": {
     "previous_published_commit": "574877f2bf4c74fed8fe5bb4efe47f017e0a8f8c",
@@ -101,10 +101,10 @@
   },
   "previous_bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.3.2",
-    "standalone_archive_sha256": "881dba611bae723f0bf6a244b60e75e328e675406c90c099b9f2fca17cd3a33c",
+    "version": "2.3.3",
+    "standalone_archive_sha256": "ebdb90adf02babdfe60f8e79aa38d43d73970973d546f4f37208c2c57ab1a7cf",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 603865
+    "standalone_archive_bytes": 643555
   },
   "changed_or_added_from_baseline_recorded_at": "historical2.1.2 source snapshot; current managed list is installers/dots-portable/PAYLOAD_FILES.txt",
   "patch_sha256_scope": "historical2.1.0 source patch, not the current integrated routing/admission or packaging patch",
@@ -163,6 +163,13 @@
       "standalone_archive_sha256": "337cb00e1e36e8e5ec8507023b7850e7c935056fdf691fd4a0be5f68369a3497",
       "integrated_repository_needs_reinstallation": false,
       "standalone_archive_bytes": 590144
+    },
+    {
+      "directory": "installers/dots-portable",
+      "version": "2.3.2",
+      "standalone_archive_sha256": "881dba611bae723f0bf6a244b60e75e328e675406c90c099b9f2fca17cd3a33c",
+      "integrated_repository_needs_reinstallation": false,
+      "standalone_archive_bytes": 603865
     }
   ],
   "supervised_approximate_update": {
@@ -346,6 +353,64 @@
     "limits": [
       "targeted offline validation does not establish native research completion",
       "invalid existing state is not silently rewritten or accepted",
+      "new exact published commit fullCI pending",
+      "cross-platform installer and new onlinebootstrap not rerun"
+    ],
+    "exact_updated_commit_ci": "pending publication; local tests and prior CI do not prove the new commit",
+    "published_commit_ci": {
+      "commit": "cf8e8452b50cd44f2c3037774a2e2264ea17ca59",
+      "status": "success",
+      "all_four_checks": "success",
+      "run_url": "https://github.com/Haloukaidi/argus-dots/actions/runs/37124949722"
+    }
+  },
+  "manager_stage_artifact_context_update": {
+    "recorded_at_release": "2.3.4",
+    "source_baseline_commit": "cf8e8452b50cd44f2c3037774a2e2264ea17ca59",
+    "source_commit": "521fd95de999ac25f7a7998a49cd679ac8888bf7",
+    "source_tree": "89dac66632457f5413af673501aa78068fadb5e5",
+    "source_delta": [
+      "argus/manager/_stage_ops.py",
+      "argus/roles/prompts/manager.py",
+      "tests/manager/test_stage_decider.py",
+      "tests/roles/test_prompt_catalog.py"
+    ],
+    "source_files_sha256": {
+      "argus/manager/_stage_ops.py": "1901a9d3888a247d7df0c00fefc07cd9236c5abb68a6ae786c74c6e3110ab561",
+      "argus/roles/prompts/manager.py": "c6c915bf18d69de518f51c2fc6c64485610137bd65a95eb096dd5f0b731e6138",
+      "tests/manager/test_stage_decider.py": "6547ae9359e5154d6b0389d8e98e544ebd7a5e785125f7d88d4845d46f68dcc1",
+      "tests/roles/test_prompt_catalog.py": "6f187e56847c5c3db354c2357a4eb24620e42bca9910f822c0db11408b7364dd"
+    },
+    "current_payload_list": "installers/dots-portable/PAYLOAD_FILES.txt",
+    "current_validation": "installers/dots-portable/VALIDATION.json",
+    "source_validation": "installers/dots-portable/STAGE-ARTIFACT-VALIDATION.json",
+    "managed_payload_files": 95,
+    "baseline_hashes": 735,
+    "prior91_payload_bytes_unchanged": true,
+    "prior733_baseline_values_unchanged": true,
+    "new_original_test_baselines": [
+      "tests/manager/test_stage_decider.py",
+      "tests/roles/test_prompt_catalog.py"
+    ],
+    "fix": "Pass the existing execution_workdir as altitude_root when constructing Manager stage decision context, preserving original state/checklist authority",
+    "same_root_omitted_argument_and_stage_authority_preserved": true,
+    "permissions_timeouts_scheduling_and_approvals_unchanged": true,
+    "three_installer_entry_scripts_unchanged": true,
+    "current_checks": {
+      "source_reported_targeted_passed": 1037,
+      "source_reported_targeted_skipped": 4,
+      "independent_changed_modules_passed": 66,
+      "installed_source_changed_modules_passed": 66,
+      "installer_standard_library_passed": 57,
+      "eight_actual_historical_package_verification_cases_passed": 12,
+      "independent_package_migration_guard_cases_passed": 77
+    },
+    "counts_overlap_and_are_not_cumulative": true,
+    "limits": [
+      "broader source counts supported by source task report and completed log; exact invocation and skip reasons not retained for packaging",
+      "installed tests cover only the two changed modules,not the full broader source selection",
+      "existing Python3.12 virtualenv plus available host NumPy dependency path used; no service virtualenv dependency installation",
+      "targeted offline validation does not establish native research completion or change running processes",
       "new exact published commit fullCI pending",
       "cross-platform installer and new onlinebootstrap not rerun"
     ],

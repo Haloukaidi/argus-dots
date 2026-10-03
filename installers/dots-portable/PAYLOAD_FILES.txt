@@ -31,12 +31,14 @@ argus/core/role_tool_bridge.py
 argus/core/runtime_backend.py
 argus/daemon/_life_worker_run.py
 argus/daemon/state.py
+argus/manager/_stage_ops.py
 argus/manager/_vertical_ops.py
 argus/manager/config_intent.py
 argus/manager/front_door.py
 argus/manager/runtime_config.py
 argus/reviewer/_core.py
 argus/reviewer/tools.py
+argus/roles/prompts/manager.py
 argus/roles/prompts/reviewer.py
 argus/skills/round_checkpoint.py
 argus/webapi/daemon_lifecycle.py
@@ -65,6 +67,8 @@ tests/apps/test_cli_parser.py
 tests/conftest.py
 tests/core/test_reviewer_artifact_locators.py
 tests/manager/test_manager.py
+tests/manager/test_stage_decider.py
+tests/roles/test_prompt_catalog.py
 tests/skills/test_workflow_profiles.py
 tests/test_architecture_invariants.py
 tests/test_dots_admission.py

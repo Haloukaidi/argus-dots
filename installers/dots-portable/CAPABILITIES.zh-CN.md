@@ -1,4 +1,4 @@
-# 能力矩阵（2.3.3）
+# 能力矩阵（2.3.4）
 
 | 范围 | 实现与证据 | 限制 |
 |---|---|---|
@@ -22,3 +22,5 @@
 2.3.2新增有限host请求预算和显式profile lease。默认请求预算300秒，显式值有限且≤3600；每个请求受原sessionexpiry截断。显式lease1..90秒仅控制续租时长，默认legacy30秒和原1..60秒覆盖保持兼容；续租不延长session或request。不改变权限、strict/v3、不自动后台续租、不重放既有调用。
 
 2.3.3仅修正无命名workflow profiles时的原Manager提示字段。原validator仍拒绝虚构profile或requested stages；已命名profile与保存状态保持。此源码修复不证明任何真实研究任务已完成，新commit完整CI需独立验证。
+
+2.3.4把原Manager阶段上下文接到既有execution_workdir/altitude_root读取流程，解决split-state布局下的产物假缺失。state、checklist、阶段决策权限与任务限制不变。此离线回归不证明任何正在运行的研究已完成，也不改变运行中进程的源码。详见 `STAGE-ARTIFACT-VALIDATION.json`。

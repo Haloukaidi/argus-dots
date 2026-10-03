@@ -1,4 +1,4 @@
-# Argus dots 便携模块 2.3.3
+# Argus dots 便携模块 2.3.4
 
 2.3.0已加入显式 `supervised-approx-v1` 与协议4，把原Web前门、daemon及角色流程绑定到在线、获授权的有限native host。严格dots默认、原九个CLI provider及Reviewer typed审批保留；选择dots不会静默回退CLI。
 
@@ -6,7 +6,9 @@
 
 2.3.2新增host-owned请求预算与显式profile lease时长。request_timeout_seconds仍默认300秒，只允许大于0且不超过3600的有限数值；实际请求期限取所选预算与原session期限的较早者。可显式声明1..90秒lease；未声明保持legacy默认30秒与原显式1..60秒支持。严格模式、协议3、角色权限和停止规则不变。详见 `CHANGES-2.3.2.zh-CN.md`。
 
-本版仅修正原Manager的active-route提示：当vertical没有命名workflow profiles且未保存profile时，显示空字段并要求省略或留空，不再给出误导性的legacy full占位符。原严格validator、named profile行为、已保存状态与默认值不变。见 `CHANGES-2.3.3.zh-CN.md`。
+2.3.3修正原Manager的active-route提示：当vertical没有命名workflow profiles且未保存profile时，显示空字段并要求省略或留空，不再给出误导性的legacy full占位符。原严格validator、named profile行为、已保存状态与默认值不变。见 `CHANGES-2.3.3.zh-CN.md`。
+
+本版修复原Manager阶段决策在state目录与实际工作目录分离时误报产物缺失：把既有execution_workdir传给现有altitude_root读取流程，使工作目录中的RESEARCH_NOTES等原产物进入上下文；状态、checklist与阶段权限仍由原state目录决定。见 `CHANGES-2.3.4.zh-CN.md`。
 
 ## 安装或升级
 
@@ -16,18 +18,18 @@
 python install_dots.py --argus-dir /absolute/path/to/Argus
 ```
 
-兼容固定原版 `9cfe9129fd90511c3a1865844ec7dfda1b5d1008`。有Git时HEAD须精确匹配；源码快照通过733项基准文件hash识别。不是任意0.1.8版本，也不接受site-packages目录。
+兼容固定原版 `9cfe9129fd90511c3a1865844ec7dfda1b5d1008`。有Git时HEAD须精确匹配；源码快照通过735项基准文件hash识别。不是任意0.1.8版本，也不接受site-packages目录。
 
-本包91项payload（34原文件修改、57新增），清单见 `PAYLOAD_FILES.txt`，包括本次全部执行代码及测试、相关模块文档。本次新增管理argus/manager/_vertical_ops.py与两个原测试模块，均保存原件再更新；新增两个测试文件的基准hash，原731项基准值不变。
+本包95项payload（38原文件修改、57新增），清单见 `PAYLOAD_FILES.txt`，包括本次全部执行代码及测试、相关模块文档。本次新增管理两个原Manager源文件与两个原测试模块，均保存原件再更新；新增两个测试文件的基准hash，原733项基准值不变。旧91项payload字节不变。
 
-已有受管2.0.0、2.1.0、2.1.1、2.1.2、2.2.0、2.3.0、2.3.1或2.3.2：
+已有受管2.0.0、2.1.0、2.1.1、2.1.2、2.2.0、2.3.0、2.3.1、2.3.2或2.3.3：
 
 ```sh
 python install_dots.py --argus-dir /absolute/path/to/Argus --check
 python install_dots.py --argus-dir /absolute/path/to/Argus --upgrade
 ```
 
-验证对应旧20/32/32/37/64/87/87/88文件的完整hash集合、原始备份与事务元数据；版本字符串相同不够。未知版本、用户后改、缺项或损坏拒绝覆盖，不提供force选项。旧完整8文件legacy可显式 `--adopt-legacy`，卸载恢复其原状态。
+验证对应旧20/32/32/37/64/87/87/88/91文件的完整hash集合、原始备份与事务元数据；版本字符串相同不够。未知版本、用户后改、缺项或损坏拒绝覆盖，不提供force选项。旧完整8文件legacy可显式 `--adopt-legacy`，卸载恢复其原状态。
 
 完整fork已含集成源码，无需对自身运行原版补丁安装器。仓库稳定入口为 `installers/dots-portable/`；根README.dots是完整fork入口，不覆盖到原版安装目标。
 
@@ -70,13 +72,13 @@ python install_dots.py --argus-dir /path/to/Argus --uninstall
 
 ## 验证范围
 
-准确当前结果见 `VALIDATION.json`；历史2.3.2记录保存在 `VALIDATION-2.3.2.json`，历史2.3.1记录保存在 `VALIDATION-2.3.1.json`，历史2.3.0记录保存在 `VALIDATION-2.3.0.json`，历史2.2.0记录保存在 `VALIDATION-2.2.0.json`，其他旧记录继续保留。各定向测试、独审和历史回归有重叠，不能相加或冒充当前全库测试。
+准确当前结果见 `VALIDATION.json`；历史2.3.3记录保存在 `VALIDATION-2.3.3.json`，历史2.3.2记录保存在 `VALIDATION-2.3.2.json`，历史2.3.1记录保存在 `VALIDATION-2.3.1.json`，历史2.3.0记录保存在 `VALIDATION-2.3.0.json`，历史2.2.0记录保存在 `VALIDATION-2.2.0.json`，其他旧记录继续保留。各定向测试、独审和历史回归有重叠，不能相加或冒充当前全库测试。
 
 最早2.0.0及legacy的实际历史字节在本轮环境不可用：精确maps保留、通用fixture继续验证，没有虚报最老实包重跑。当前安装验证在Linux执行；Python3.11、macOS、Windows/WSL未重新实测，Windows不宣称通过。
 
 标准库自检：`python -m unittest discover -s tests -v`
 
-离线真实版本迁移复验：设置 `ARGUS_DOTS_BASE_REPO`、`ARGUS_DOTS_HISTORY_ROOT`，再运行 `python -m unittest discover -s verification -v`。需合法原Git对象及2.1.0/2.1.1/2.1.2/2.2.0/2.3.0/2.3.1/2.3.2历史包；不联网，不构造假历史hash。
+离线真实版本迁移复验：设置 `ARGUS_DOTS_BASE_REPO`、`ARGUS_DOTS_HISTORY_ROOT`，再运行 `python -m unittest discover -s verification -v`。需合法原Git对象及2.1.0/2.1.1/2.1.2/2.2.0/2.3.0/2.3.1/2.3.2/2.3.3历史包；不联网，不构造假历史hash。
 
 MIT许可见 `LICENSE.Argus`。hash用于完整性，不是数字签名。不包含凭据、真实运行身份、raw日志或用户研究prompt。构建阶段与后续授权发布、服务启动分别记录。
 
@@ -84,6 +86,6 @@ MIT许可见 `LICENSE.Argus`。hash用于完整性，不是数字签名。不包
 
 2.3.0历史原Web API软件任务经过Manager→Planner→Engineer→Reviewer原typed审批并由原mission完成（8请求：5completed、3cancelled）；另一个有限scope验证原Planner同worker续接及原Curator callback，3请求均completed/consumed。这些证据分开记录，不是完整五角色研究、浏览器UI、策略内容质量或严格控制等价验收。先前失败仍保留，详见 `payload/docs/dots-supervised-native-validation.md` 与 `SUPERVISED-VALIDATION.json`。
 
-2.3.2已发布commitf758f5d的四项CI检查通过；此前2.3.0的失败记录继续保留。本版当前定向/安装测试见VALIDATION.json；新公开commit的CI须独立验证。新预算只适用于新请求，不延长已超时请求或session，也不证明真实长任务或研究目标已完成。
+2.3.3已发布commitcf8e8452的四项CI检查通过；此前2.3.0的失败记录继续保留。本版当前定向/安装测试见VALIDATION.json；新公开commit的CI须独立验证。新预算只适用于新请求，不延长已超时请求或session，也不证明真实长任务或研究目标已完成。
 
-2.3.3安装器执行脚本保持不变；本次生产修复仅涉及Manager提示。
+2.3.4安装器执行脚本保持不变；本次生产修复仅补齐Manager阶段上下文的既有artifact-root参数。本轮离线测试使用既有Python3.12环境及额外可用的NumPy依赖路径，未给默认service venv安装依赖，不声称该venv默认含NumPy。

@@ -1,0 +1,173 @@
+{
+  "release": "dots-portable-2.3.3",
+  "status": "local_package_verification_passed",
+  "verification_date": "2026-10-03",
+  "source_baseline_commit": "f758f5dea63c2dd62499f8f193f4039987769131",
+  "source_commit": "4365d0f90341d95f75b408f3a8f6841d34f25f91",
+  "source_tree": "895817254a2a75fffd0b7c2ec1f9ab0490be6359",
+  "installer_base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+  "payload": {
+    "files": 91,
+    "modified_originals": 34,
+    "added_files": 57,
+    "old_88_payload_bytes_unchanged": true,
+    "new_payload": [
+      "argus/manager/_vertical_ops.py",
+      "tests/manager/test_manager.py",
+      "tests/skills/test_workflow_profiles.py"
+    ],
+    "baseline_files": 733,
+    "prior_731_baseline_values_unchanged": true,
+    "baseline_extension": [
+      "tests/manager/test_manager.py",
+      "tests/skills/test_workflow_profiles.py"
+    ],
+    "all_payload_bytes_equal_source": true,
+    "source_payload_list": "PAYLOAD_FILES.txt"
+  },
+  "supported_upgrade_maps": {
+    "dots-portable-2.0.0": 20,
+    "dots-portable-2.1.0": 32,
+    "dots-portable-2.1.1": 32,
+    "dots-portable-2.1.2": 37,
+    "dots-portable-2.2.0": 64,
+    "dots-portable-2.3.0": 87,
+    "dots-portable-2.3.1": 87,
+    "dots-portable-2.3.2": 88
+  },
+  "legacy_map_files": 8,
+  "prior_maps_and_legacy_unchanged": true,
+  "installer_tests": {
+    "standard_library_passed": 57,
+    "standard_library_seconds": 0.344,
+    "real_historical_package_tests_passed": 12,
+    "real_historical_package_seconds": 18.743,
+    "real_historical_packages_reconstructed_and_hash_verified": {
+      "dots-portable-2.1.0": "06a12cb9d8dd14486ae2c1205c8f1215cbe327eb",
+      "dots-portable-2.1.1": "aa619ebd6ff158c4bda4554c70a2ad96f251aef9",
+      "dots-portable-2.1.2": "8bad9aa2a578b26a320092def30db0cd99360920",
+      "dots-portable-2.2.0": "949dfb2527c385151d3552fb89958a33170a389a",
+      "dots-portable-2.3.0": "c367792486566c3947522e499512c757b2e79ddb",
+      "dots-portable-2.3.1": "66d7f95d7832a4c4fe201705675d24c9deaa5bb6",
+      "dots-portable-2.3.2": "f758f5dea63c2dd62499f8f193f4039987769131"
+    },
+    "independent_migration_and_guards_passed": 75,
+    "independent_seconds": 92.971,
+    "oldest_real_bytes_unavailable": [
+      "dots-portable-2.0.0",
+      "original8-file legacy"
+    ],
+    "oldest_scope": "exact maps retained; generic fixtures only,not actual historical bundle reruns"
+  },
+  "entry_hashes": {
+    "install_dots.py": "5e4da31ffbabdc2c320828dfe914cabd272d4ca66058d2106351f9b0ec6680a9",
+    "bootstrap_argus.py": "aaec66a4c846a5f1fef01cddc8b890ff252ef6a13ead805f13fbefbee2d0db81",
+    "check_host.py": "9063049a778ef4e1d5b05fa4eda9ee048cbc2531350a7aac38f842cadac29161"
+  },
+  "three_execution_scripts_unchanged_from_2_3_2": true,
+  "installed_checkout": {
+    "base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+    "detached_git_worktree": true,
+    "imported_from_installed_source": true,
+    "payload_files_checked": 91,
+    "targeted_source_tests": {
+      "passed": 993,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 25.993,
+      "scope": [
+        "tests/apps/test_cli_parser.py",
+        "tests/apps/test_cli_verticals.py",
+        "tests/manager/test_budget_config_file.py",
+        "tests/manager/test_completion_rejection_reason.py",
+        "tests/manager/test_control_state.py",
+        "tests/manager/test_decision_requirement_lines.py",
+        "tests/manager/test_deterministic_stage_advance.py",
+        "tests/manager/test_directive.py",
+        "tests/manager/test_dispatch.py",
+        "tests/manager/test_domain_author.py",
+        "tests/manager/test_domain_intake.py",
+        "tests/manager/test_domain_tidy.py",
+        "tests/manager/test_experiment_scale_assessment.py",
+        "tests/manager/test_front_door_cached_vertical.py",
+        "tests/manager/test_front_door_classify_fresh.py",
+        "tests/manager/test_front_door_failure_state.py",
+        "tests/manager/test_front_door_reuse.py",
+        "tests/manager/test_front_door_streaming.py",
+        "tests/manager/test_front_door_workspace.py",
+        "tests/manager/test_handoff_contention.py",
+        "tests/manager/test_live_view.py",
+        "tests/manager/test_manager.py",
+        "tests/manager/test_manager_locks_portable.py",
+        "tests/manager/test_manager_new_domain.py",
+        "tests/manager/test_manager_session.py",
+        "tests/manager/test_manager_session_capacity.py",
+        "tests/manager/test_manager_session_reset.py",
+        "tests/manager/test_model_capability_mismatch.py",
+        "tests/manager/test_nested_worktree_replay.py",
+        "tests/manager/test_observation_fidelity.py",
+        "tests/manager/test_pipeline_boundary.py",
+        "tests/manager/test_pipeline_lock_reentrancy.py",
+        "tests/manager/test_pipeline_yield.py",
+        "tests/manager/test_plan_challenge.py",
+        "tests/manager/test_prompt_rewrite.py",
+        "tests/manager/test_reviewed_facts.py",
+        "tests/manager/test_routing_failure_diagnostics.py",
+        "tests/manager/test_self_context.py",
+        "tests/manager/test_session_handoff_evidence.py",
+        "tests/manager/test_session_rename_on_replacement.py",
+        "tests/manager/test_session_titles.py",
+        "tests/manager/test_skill_tidy.py",
+        "tests/manager/test_stage_complete_nonfinal_deadlock.py",
+        "tests/manager/test_stage_complete_target_contract.py",
+        "tests/manager/test_stage_decider.py",
+        "tests/manager/test_stale_stage_transition.py",
+        "tests/manager/test_status_intent_safe_fail.py",
+        "tests/manager/test_structured_backend_success.py",
+        "tests/manager/test_supervision_failures.py",
+        "tests/manager/test_supervision_runtime.py",
+        "tests/manager/test_team_dispatch_characterization.py",
+        "tests/roles/test_manager_prompt_date.py",
+        "tests/skills/test_vertical_routing_paths.py",
+        "tests/skills/test_workflow_profiles.py",
+        "tests/test_agent_cli_backend.py",
+        "tests/test_dots_runtime_routing.py",
+        "tests/test_workflow_dots_model_defaults.py"
+      ]
+    },
+    "cli_cycle": "2.3.2install→2.3.3check/upgrade/repeat→rollback→2.3.2check→2.3.3uninstall passed",
+    "uninstall_restored_original_hashes": 733,
+    "uninstall_removed_new_managed_files": 57,
+    "tracked_git_diff_after_uninstall": "empty"
+  },
+  "maintainer_manifest_reproduction": "passed including exact2.3.2 mapping,all prior maps and two original test baseline hashes",
+  "static_checks": {
+    "changed_package_script_ruff_F_E_excluding_E501": "passed",
+    "payload_python_ast": "passed",
+    "diff_whitespace": "passed"
+  },
+  "platform": {
+    "system": "Linux",
+    "python": "3.12.14"
+  },
+  "current_source_evidence": "MANAGER-PROFILE-VALIDATION.json",
+  "historical_evidence": {
+    "previous_package": "VALIDATION-2.3.2.json",
+    "previous_native_acceptance": "SUPERVISED-VALIDATION.json",
+    "scope": "historical CI/native/other suites remain separate; no new native research-completion claim"
+  },
+  "counts_overlap_and_are_not_cumulative": true,
+  "not_tested": [
+    "exact new published commit fullCI",
+    "new online bootstrap",
+    "new native research completion",
+    "local Python3.11/macOS/Windows/WSL installation",
+    "frontend bundle rebuild"
+  ],
+  "publication": {
+    "github_push": false,
+    "library_replacement": false,
+    "scope": "local packaging validation; later authorized publication is separately recorded"
+  }
+}

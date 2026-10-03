@@ -1,0 +1,75 @@
+{
+  "release": "dots-portable-2.3.4",
+  "source_baseline_commit": "cf8e8452b50cd44f2c3037774a2e2264ea17ca59",
+  "source_commit": "521fd95de999ac25f7a7998a49cd679ac8888bf7",
+  "source_tree": "89dac66632457f5413af673501aa78068fadb5e5",
+  "source_file_sha256": {
+    "argus/manager/_stage_ops.py": "1901a9d3888a247d7df0c00fefc07cd9236c5abb68a6ae786c74c6e3110ab561",
+    "argus/roles/prompts/manager.py": "c6c915bf18d69de518f51c2fc6c64485610137bd65a95eb096dd5f0b731e6138",
+    "tests/manager/test_stage_decider.py": "6547ae9359e5154d6b0389d8e98e544ebd7a5e785125f7d88d4845d46f68dcc1",
+    "tests/roles/test_prompt_catalog.py": "6f187e56847c5c3db354c2357a4eb24620e42bca9910f822c0db11408b7364dd"
+  },
+  "source_change_scope": {
+    "production_files": [
+      "argus/manager/_stage_ops.py",
+      "argus/roles/prompts/manager.py"
+    ],
+    "test_modules": [
+      "tests/manager/test_stage_decider.py",
+      "tests/roles/test_prompt_catalog.py"
+    ]
+  },
+  "fix": "Pass the existing execution_workdir as altitude_root to Manager stage decision context so artifacts in a split execution workspace are included",
+  "preserved": [
+    "state and checklist authority rooted at original project/state directory",
+    "same-root and omitted-argument behavior",
+    "existing artifact root handling, validators and stage transitions",
+    "permissions,timeouts,approvals and active process state"
+  ],
+  "validation": {
+    "source_targeted_passed": 1037,
+    "source_targeted_failed": 0,
+    "source_targeted_errors": 0,
+    "source_targeted_skipped": 4,
+    "source_targeted_seconds": 36.37,
+    "independent_changed_modules_passed": 66,
+    "full_repository_suite": false,
+    "source_result_evidence": "source-fix task report and readable completed pytest log; exact broader invocation and skip reasons were not retained for packaging",
+    "source_broader_scope_rerun_by_packaging": false,
+    "independent_source_modules_scope": [
+      "tests/manager/test_stage_decider.py",
+      "tests/roles/test_prompt_catalog.py"
+    ],
+    "installed_targeted_result": {
+      "tests": 66,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 66,
+      "seconds": 0.851,
+      "scope": [
+        "tests/manager/test_stage_decider.py",
+        "tests/roles/test_prompt_catalog.py"
+      ]
+    }
+  },
+  "environment": {
+    "system": "Linux",
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "dependency_context": "existing virtualenv plus available host Python dependency path for NumPy; no package installation or mutation of service virtualenv",
+    "default_service_venv_numpy_claim": false
+  },
+  "prior_public_ci": {
+    "commit": "cf8e8452b50cd44f2c3037774a2e2264ea17ca59",
+    "run_url": "https://github.com/Haloukaidi/argus-dots/actions/runs/37124949722",
+    "all_four_checks": "success"
+  },
+  "limits": [
+    "targeted offline validation does not establish completed native research",
+    "existing running processes are not changed by packaging",
+    "new published exact commit fullCI pending",
+    "cross-platform installer and new onlinebootstrap not rerun"
+  ],
+  "counts_overlap_and_are_not_cumulative": true
+}
