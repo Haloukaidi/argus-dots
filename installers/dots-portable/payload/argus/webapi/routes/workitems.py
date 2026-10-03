@@ -36,10 +36,13 @@ def register_workitem_routes(app, ctx: ServerContext) -> None:
         if not body.text.strip():
             raise HTTPException(status_code=400, detail="empty task text")
         project_root = ctx.project_root_or_404(sid)
-        from ...core.runtime_backend import RuntimeBackendUnavailable, require_dots_runtime
+        from ...adapters.dots_host_binding import require_project_dots_runtime
+        from ...core.runtime_backend import RuntimeBackendUnavailable
 
         try:
-            require_dots_runtime()
+            require_project_dots_runtime(
+                sid, global_root=project_root, state_dir=ctx.resolve_or_404(sid),
+            )
         except RuntimeBackendUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         try:

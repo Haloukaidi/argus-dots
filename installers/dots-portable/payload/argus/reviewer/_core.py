@@ -832,13 +832,38 @@ class Reviewer:
             "" if resume else static,
             (_REEVALUATE_HEADER + delta_base) if resume else delta_base,
         )
+        backend = str(getattr(self.runner, "backend", "")).lower()
+        supervised_dots = False
+        if backend == "dots":
+            from ..core.dots_profile import SupervisedDotsProfile
+
+            supervised_dots = type(getattr(self.runner, "execution_profile", None)) is SupervisedDotsProfile
+        review_read_dirs = (
+            [str(path) for path in review_libraries.library_roots]
+            if backend == "copilot" else None
+        )
+        if supervised_dots:
+            from .validation import configured_read_dirs
+
+            # Only host-provided evidence locations extend change detection.
+            # Never parse worker prose for paths or silently exclude host logs.
+            review_read_dirs = list(dict.fromkeys([
+                *(str(path) for path in (
+                    config.artifact_root, config.vertical_state_root,
+                    config.narrative_snapshot_root, checkpoint_path, engineer_log_path,
+                ) if path),
+                *configured_read_dirs(),
+            ]))
         review_output = None
         review_output_dir = None
         authored_review = None
-        if venue_required and str(getattr(self.runner, "backend", "")).lower() == "copilot":
+        if venue_required and (backend == "copilot" or supervised_dots):
             from tempfile import TemporaryDirectory
 
-            review_output_dir = TemporaryDirectory(prefix="argus-review-output-")
+            review_output_dir = TemporaryDirectory(
+                prefix="argus-review-output-",
+                dir=str(artifact_root) if supervised_dots else None,
+            )
             review_output = {
                 "path": str(Path(artifact_root).resolve() / "paper" / "REVIEW.md"),
                 "receipt": str(Path(review_output_dir.name) / "written.json"),
@@ -892,11 +917,7 @@ class Reviewer:
                         skip_git_repo_check=config.skip_git_repo_check,
                         extra_args=list(config.extra_args) if config.extra_args else None,
                         review_output=review_output,
-                        add_dirs=(
-                            [str(path) for path in review_libraries.library_roots]
-                            if str(getattr(self.runner, "backend", "")).lower() == "copilot"
-                            else None
-                        ),
+                        add_dirs=review_read_dirs,
                         skill_paths=native_skill_paths,
                         working_dir=config.working_dir,
                         # Search is available for the rare turn that proposes a

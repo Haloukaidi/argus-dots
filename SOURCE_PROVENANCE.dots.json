@@ -3,7 +3,7 @@
   "source_baseline_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
   "license": "MIT; original LICENSE and attribution preserved",
   "snapshot_date": "2026-10-02",
-  "integration": "dots source-level adapter and tested workflow fixes",
+  "integration": "dots source-level adapter, tested workflow fixes, bounded admission/runtime routing and explicit supervised approximate profile",
   "changed_or_added_from_baseline": [
     "argus/adapters/dots_backend.py",
     "argus/adapters/dots_coordinator.py",
@@ -56,10 +56,10 @@
   "retained_generated_assets": "Original tracked frontend runtime bundles and original tracked project resources are preserved.",
   "bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.2.0",
-    "standalone_archive_sha256": "36527e7c1ef9255b924c3b4d29924dda49693ee7eacf7092cfcab7356d6edf41",
+    "version": "2.3.0",
+    "standalone_archive_sha256": "c25ee9206be74daba90342a8329bb01f6bb02bfcd3ba430384cf768fbdc51452",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 474342
+    "standalone_archive_bytes": 580921
   },
   "post_publication_test_fix": {
     "previous_published_commit": "574877f2bf4c74fed8fe5bb4efe47f017e0a8f8c",
@@ -101,10 +101,10 @@
   },
   "previous_bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.1.2",
-    "standalone_archive_sha256": "6046ffd2273f9255e9b7de0760e7b08ee5c25a751c49d2507316dd8b9f0a7280",
+    "version": "2.2.0",
+    "standalone_archive_sha256": "36527e7c1ef9255b924c3b4d29924dda49693ee7eacf7092cfcab7356d6edf41",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 274646
+    "standalone_archive_bytes": 474342
   },
   "changed_or_added_from_baseline_recorded_at": "historical2.1.2 source snapshot; current managed list is installers/dots-portable/PAYLOAD_FILES.txt",
   "patch_sha256_scope": "historical2.1.0 source patch, not the current integrated routing/admission or packaging patch",
@@ -132,6 +132,49 @@
       "Tracked frontend bundles were not rebuilt; TypeScript help source is updated",
       "Actual oldest2.0.0/legacy bundle bytes were unavailable for this packaging rerun; exact maps and generic fixtures retained"
     ],
-    "exact_updated_commit_ci": "pending publication; local tests and earlier CI do not imply success for the future commit"
+    "exact_updated_commit_ci": "pending publication; local tests and earlier CI do not imply success for the future commit",
+    "recorded_at_release": "2.2.0 historical record; current supervised package described below"
+  },
+  "historical_bundled_portable_installers": [
+    {
+      "directory": "installers/dots-portable",
+      "version": "2.1.2",
+      "standalone_archive_sha256": "6046ffd2273f9255e9b7de0760e7b08ee5c25a751c49d2507316dd8b9f0a7280",
+      "integrated_repository_needs_reinstallation": false,
+      "standalone_archive_bytes": 274646
+    }
+  ],
+  "supervised_approximate_update": {
+    "recorded_at_release": "2.3.0",
+    "previous_public_commit": "949dfb2527c385151d3552fb89958a33170a389a",
+    "production_source_commit": "3bb96e2ab95493bdcb9b34ee873bb60bc936a45e",
+    "source_and_documentation_commit": "5aa13e93fe5d529b7f5484aa46859ff8a5281662",
+    "source_and_documentation_tree": "74b8627b42256b6f300d4442c686019dcaabacb6",
+    "profile": "supervised-approx-v1",
+    "protocol": 4,
+    "strict_default_unchanged": true,
+    "current_managed_payload_files": 87,
+    "current_baseline_file_hashes": 731,
+    "current_managed_payload_list": "installers/dots-portable/PAYLOAD_FILES.txt",
+    "current_package_validation": "installers/dots-portable/VALIDATION.json",
+    "current_source_validation": "installers/dots-portable/SUPERVISED-VALIDATION.json",
+    "public_reports": [
+      "docs/dots-supervised.md",
+      "docs/dots-supervised-web.md",
+      "docs/dots-supervised-native-validation.md"
+    ],
+    "installer_correction": "Reject incomplete or inconsistent rollback/recovery transaction journals before restoring files; normal transaction and recovery flow unchanged",
+    "native_results_scope": "One original Web API software mission (8 settled:5 completed,3 cancelled), plus separate3 completed/consumed original Planner fresh/resume and Curator callback probes. Prior trial and fixture failures retained. No full research acceptance claim.",
+    "limits": [
+      "Read-only,working-directory and disabled-tool behavior is advisory, not operating-system enforcement",
+      "Bounded authorized live native host with short lease required; no persistent unattended-service guarantee",
+      "Native observed model/token/cost unavailable; cost remains null, no budget-equivalence claim",
+      "Curator background pool,teammate lifecycle and full strict five-role parity not validated",
+      "Planner plan/strategy content correctness not certified; a proposed test-discovery command may omit existing layout",
+      "Browser graphical UI unverified; tracked frontend bundles not rebuilt",
+      "Current tests are targeted selections,not whole-repository or cross-platform acceptance",
+      "Actual oldest2.0.0/legacy package bytes unavailable this rerun; exact maps and generic fixtures retained"
+    ],
+    "exact_updated_commit_ci": "pending publication; local tests and previous CI do not prove the future commit"
   }
 }

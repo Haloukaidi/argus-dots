@@ -642,15 +642,23 @@ def build_dots_life_runner(args: argparse.Namespace, *, transport: Any,
     """Opt in to dot role adapters without changing CLI defaults or state.
 
     Reuse the real Manager/Planner/Engineer/Reviewer/Curator orchestration.
-    A supplied transport must implement and enforce each role's required
-    execution capabilities; otherwise calls fail before being submitted.
+    Strict transports must enforce each role's requested controls. A separately
+    supplied dots_execution_profile explicitly accepts its named advisory
+    deficits; it never upgrades the transport's enforced capabilities.
     """
     from ..adapters.dots_backend import DOTS_ROLES, DotsBackend
     from ._runtime import _SkillLoopRunner
 
     if transport is None:
         raise ValueError("dots requires an explicitly configured host transport")
-    backends = {role: DotsBackend(transport, role=role, timeout_seconds=timeout_seconds)
+    profile = getattr(args, "dots_execution_profile", None)
+    if profile is not None:
+        from ..core.runtime_backend import require_dots_runtime
+
+        require_dots_runtime("dots", transport=transport, execution_profile=profile)
+        transport.assert_ready(project_root=getattr(args, "workdir", None))
+    profile_args = {"execution_profile": profile} if profile is not None else {}
+    backends = {role: DotsBackend(transport, role=role, timeout_seconds=timeout_seconds, **profile_args)
                 for role in DOTS_ROLES}
     return _SkillLoopRunner(args, seed_thread_id=seed_thread_id, role_backends=backends)
 
@@ -661,7 +669,19 @@ def build_life_runner(args: argparse.Namespace, *, seed_thread_id: str | None = 
         from ..core.runtime_backend import require_dots_runtime
 
         transport = getattr(args, "dots_transport", None)
-        if require_dots_runtime(args.backend, transport=transport):
+        profile = getattr(args, "dots_execution_profile", None)
+        if transport is None:
+            from ..adapters.dots_host_binding import require_configured_dots_runtime
+
+            binding = require_configured_dots_runtime(
+                args.backend, project_root=getattr(args, "workdir", None),
+            )
+            if binding is not None:
+                transport = binding.transport
+                profile = binding.execution_profile
+                args.dots_transport = transport
+                args.dots_execution_profile = profile
+        if require_dots_runtime(args.backend, transport=transport, execution_profile=profile):
             return build_dots_life_runner(args, transport=transport, seed_thread_id=seed_thread_id)
     if args.backend == "memory":
         runner = _MemoryRunner()

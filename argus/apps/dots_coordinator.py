@@ -11,12 +11,17 @@ from ..adapters.dots_coordinator import DotsCoordinator
 from ..adapters.dots_file_transport import FileDotsTransport
 
 
-def main(argv: list[str] | None = None, *, role_mode: bool = False, bounded_mode: bool = False) -> int:
+def main(argv: list[str] | None = None, *, role_mode: bool = False, bounded_mode: bool = False,
+         supervised_mode: bool = False) -> int:
+    bounded_mode = bounded_mode or supervised_mode
     role_mode = role_mode or bounded_mode
     parser = argparse.ArgumentParser(description=(
         "Journal an explicitly authorized finite native-coordinator task list. "
         "The host, not this process, calls real native tools. No execution isolation is implied."))
     parser.add_argument("--bridge-dir", type=Path, required=True)
+    if supervised_mode:
+        parser.add_argument("--profile-file", type=Path, required=True,
+                            help="explicit host-authored supervised profile JSON; never auto-discovered")
     commands = parser.add_subparsers(dest="command", required=True)
     create = commands.add_parser("create", help="parent enrolls exact requests or an explicit bounded producer scope")
     if bounded_mode:
@@ -42,11 +47,15 @@ def main(argv: list[str] | None = None, *, role_mode: bool = False, bounded_mode
     handoff.add_argument("--parent", required=True)
     handoff.add_argument("--previous-generation", type=int, required=True)
     handoff.add_argument("--coordinator", required=True)
-    for name in ("next", "bind", "record", "stop", "abandon"):
+    names = ("next", "bind", "record", "stop", "abandon", "heartbeat") if supervised_mode else (
+        "next", "bind", "record", "stop", "abandon")
+    for name in names:
         command = commands.add_parser(name)
         command.add_argument("session_id")
         command.add_argument("--owner", required=True, help="actual native coordinator task_name")
         command.add_argument("--generation", type=int, required=True)
+        if name == "heartbeat":
+            command.add_argument("--lease-seconds", type=int, default=30)
         if name in {"bind", "record", "abandon"}:
             command.add_argument("request_id")
         if name in {"bind", "record"}:
@@ -73,7 +82,31 @@ def main(argv: list[str] | None = None, *, role_mode: bool = False, bounded_mode
         tool.add_argument("--arguments-json", help="omit to read one JSON argument object from stdin")
     args = parser.parse_args(argv)
     try:
-        if bounded_mode:
+        if supervised_mode:
+            import os
+
+            from ..adapters.dots_supervised import (
+                SupervisedDotsRoleHost,
+                SupervisedRoleFileDotsTransport,
+            )
+            from ..core.dots_profile import SupervisedDotsProfile
+
+            if not args.profile_file.is_absolute():
+                raise DotsBridgeError("profile-file must be an explicit absolute path")
+            descriptor = os.open(args.profile_file, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            try:
+                import stat
+                if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    raise DotsBridgeError("profile-file must be a regular file")
+                with os.fdopen(descriptor, "rb", closefd=False) as stream:
+                    data = stream.read(MAX_PAYLOAD_BYTES + 1)
+                if len(data) > MAX_PAYLOAD_BYTES:
+                    raise DotsBridgeError("profile-file exceeds the bounded read size")
+                profile = SupervisedDotsProfile.from_dict(json.loads(data))
+            finally:
+                os.close(descriptor)
+            host = SupervisedDotsRoleHost(SupervisedRoleFileDotsTransport(args.bridge_dir, profile=profile))
+        elif bounded_mode:
             from ..adapters.dots_admission import BoundedDotsRoleHost, BoundedRoleFileDotsTransport
 
             host = BoundedDotsRoleHost(BoundedRoleFileDotsTransport(args.bridge_dir))
@@ -102,6 +135,8 @@ def main(argv: list[str] | None = None, *, role_mode: bool = False, bounded_mode
                                   previous_generation=args.previous_generation, coordinator_task=args.coordinator)
         else:
             kwargs = {"coordinator_task": args.owner, "generation": args.generation}
+            if args.command == "heartbeat":
+                kwargs["lease_seconds"] = args.lease_seconds
             if args.command == "request-tool":
                 raw = args.arguments_json if args.arguments_json is not None else sys.stdin.read(MAX_PAYLOAD_BYTES + 1)
                 if len(raw.encode()) > MAX_PAYLOAD_BYTES:

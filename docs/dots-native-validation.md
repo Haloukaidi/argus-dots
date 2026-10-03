@@ -5,6 +5,10 @@ that the complete native five-role workflow is now supported. The subsequent
 expanded source regression and fault tests are documented separately in the
 [workflow report](workflow-validation-2026-10-02.zh-CN.md).
 
+Protocol-4 supervised observations have their own
+[2026-10-03 record](dots-supervised-native-validation.md); they do not retroactively
+change the outcomes or scope of the historical probes below.
+
 ## Finite coordinator acceptance, 2026-10-02
 
 A separate real native coordinator handled an explicitly authorized three-task

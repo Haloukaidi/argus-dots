@@ -116,6 +116,15 @@ def _resolve_backend(role: str, env: Mapping[str, str]) -> str:
     return effective
 
 
+def _backend_label(backend: str, env: Mapping[str, str]) -> str:
+    if backend == "dots":
+        from .dots_host_binding import configured_dots_profile_name
+
+        profile = configured_dots_profile_name(env=env)
+        return f"dots ({profile}; supervised approximate)" if profile else "dots"
+    return _BACKEND_LABEL.get(backend, backend or "Codex")
+
+
 def runner_backend_label(env: Mapping[str, str] | None = None) -> str:
     """Display label of the *current* runner backend, resolved from
     ``ARGUS_SKILL_RUNNER_BACKEND`` →
@@ -129,7 +138,7 @@ def runner_backend_label(env: Mapping[str, str] | None = None) -> str:
     env = env if env is not None else os.environ
     try:
         backend = _resolve_backend("manager", env)
-        return _BACKEND_LABEL.get(backend, backend or "Codex")
+        return _backend_label(backend, env)
     except Exception:  # noqa: BLE001 — display copy must never crash
         return "Codex"
 
@@ -196,7 +205,7 @@ def resolve_role_config(role: str, *, env: Mapping[str, str] | None = None) -> R
     return RoleConfig(
         role=role,
         backend=backend,
-        backend_label=_BACKEND_LABEL.get(backend, backend or "codex"),
+        backend_label=_backend_label(backend, env),
         model=model,
         effort=effort,
         desc=_ROLE_DESC.get(role, ""),

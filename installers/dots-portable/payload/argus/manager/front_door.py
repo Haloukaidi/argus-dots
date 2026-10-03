@@ -266,12 +266,11 @@ def _ensure_manager_runner(chat_state: dict[str, Any], mem: Any) -> Any:
         return None
 
     try:
-        from ..core.runtime_backend import require_dots_runtime
+        from ..adapters.dots_host_binding import require_configured_dots_runtime
         from .runtime_config import refresh_manager_runtime_config
 
         refresh_manager_runtime_config(chat_state)
         backend = chat_state.get("backend")
-        require_dots_runtime(backend)
         # ``manager_session_root`` MUST match the daemon's own
         # ``ns.manager_session_root = str(cfg.life_dir)`` (see
         # ``daemon/life_worker.py:_runner_namespace``) — otherwise this
@@ -291,6 +290,7 @@ def _ensure_manager_runner(chat_state: dict[str, Any], mem: Any) -> Any:
         session_root = getattr(mem, "project_root", None)
         operator_workspace = _operator_workspace(chat_state, session_root)
         workspace_key = str(operator_workspace)
+        binding = require_configured_dots_runtime(backend, project_root=operator_workspace)
         cached = chat_state.get("manager_runner")
         if (
             cached is not None
@@ -349,6 +349,9 @@ def _ensure_manager_runner(chat_state: dict[str, Any], mem: Any) -> Any:
         )
         from ..apps._runtime import build_life_runner
 
+        if binding is not None:
+            ns.dots_transport = binding.transport
+            ns.dots_execution_profile = binding.execution_profile
         runner = build_life_runner(ns)
         acp_scope = f"manager:{chat_state.get('session_id') or workspace_key}"
         backends: list[Any] = []

@@ -595,11 +595,14 @@ def main(argv: list[str] | None = None) -> int:
         return _run_with_path_resolution_errors(lambda: _cmd_init_identity(args))
     if args.setup:
         if backend_default == "dots":
-            from ...core.backend_readiness import check_backend_readiness, format_backend_readiness
+            from ...adapters.dots_host_binding import (
+                check_configured_backend_readiness as check_backend_readiness,
+            )
+            from ...core.backend_readiness import format_backend_readiness
 
             report = check_backend_readiness("dots", getattr(args, "auth_mode", None))
             sys.stderr.write(format_backend_readiness(report) + "\n")
-            return 3
+            return 0 if report.ok else 3
         from ...tools.setup import run_setup
         return run_setup(
             backend=getattr(args, "backend", None),
@@ -733,11 +736,38 @@ def _build_worker_config(args: argparse.Namespace):
     )
 
 
-def _cmd_daemon_start(args: argparse.Namespace, *, foreground: bool) -> int:
-    from ...core.backend_readiness import (
-        check_backend_readiness,
-        format_backend_readiness,
+def _supervised_dots_cli_workdir(args: argparse.Namespace) -> Path:
+    """Read-only equivalent of the daemon's eventual project choice."""
+    from ...core.session import read_session_meta, resolve_session, resolve_session_workdir
+
+    root = _resolve_global_root(args)
+    mode, sid = _session_mode(args)
+    if mode in {"resume", "continue"}:
+        # A bounded unattended launch must name its resume target rather than
+        # open an interactive picker before scope validation.
+        sid, _ = resolve_session(global_root=root, mode=mode, session_id=sid)
+        # Pin --continue to the exact session that passed this preflight;
+        # another session becoming newest must not retarget this launch.
+        args.continue_session = False
+        args.resume = sid
+        meta = read_session_meta(root, sid)
+        if meta is None:
+            raise ValueError("supervised resume requires existing project metadata")
+        # With real metadata, the resolver uses its bound workdir/cwd and never
+        # the absent-session fallback. Reuse that persisted identity directly.
+        return resolve_session_workdir(meta, state_dir=meta.cwd)
+    selected = Path.cwd() if getattr(args, "new", False) else (
+        core_paths.resolve_runtime_path(args.project_root, context="--project-root")
+        if getattr(args, "project_root", None) is not None else Path.cwd()
     )
+    return selected.resolve(strict=True)
+
+
+def _cmd_daemon_start(args: argparse.Namespace, *, foreground: bool) -> int:
+    from ...adapters.dots_host_binding import (
+        check_configured_backend_readiness as check_backend_readiness,
+    )
+    from ...core.backend_readiness import format_backend_readiness
     from ...core.knobs import resolve_role_backend
     from ...daemon.commands import execute_daemon_command
     from ...daemon.life_worker import run_foreground, spawn_detached_daemon
@@ -768,12 +798,23 @@ def _cmd_daemon_start(args: argparse.Namespace, *, foreground: bool) -> int:
     skip_vault_probe = (
         os.environ.get("ARGUS_SKILL_SKIP_VAULT_PREFLIGHT", "").strip() == "1"
     )
+    dots_project_root = None
+    from ...core.dots_host_binding import HOST_CONFIG_ENV
+    from ...core.runtime_backend import selected_dots_roles
+
+    if os.environ.get(HOST_CONFIG_ENV) and selected_dots_roles(backend_default):
+        try:
+            dots_project_root = _supervised_dots_cli_workdir(args)
+        except (OSError, RuntimeError, ValueError) as exc:
+            sys.stderr.write(f"dots host-required: project scope could not be verified: {exc}\n")
+            return 3
     readiness = check_backend_readiness(
         getattr(args, "backend", None) or backend_default,
         getattr(args, "auth_mode", None),
         probe_auth=True,
         probe_vault=not skip_vault_probe,
         allow_prerelease=bool(getattr(args, "allow_prerelease", False)),
+        dots_project_root=dots_project_root,
     )
     if not readiness.ok:
         sys.stderr.write(format_backend_readiness(readiness) + "\n")
@@ -784,6 +825,15 @@ def _cmd_daemon_start(args: argparse.Namespace, *, foreground: bool) -> int:
             "readiness probe skipped; backend/auth/config checks still passed.\n"
         )
     cfg = _build_worker_config(args)
+    if dots_project_root is not None:
+        from ...adapters.dots_host_binding import require_configured_dots_runtime
+        from ...core.runtime_backend import RuntimeBackendUnavailable
+
+        try:
+            require_configured_dots_runtime(backend_default, project_root=cfg.project_workdir)
+        except RuntimeBackendUnavailable as exc:
+            sys.stderr.write(str(exc) + "\n")
+            return 3
     if foreground:
         return run_foreground(cfg)
     receipt = execute_daemon_command(

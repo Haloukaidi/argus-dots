@@ -194,6 +194,49 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual((self.root / "argus/reviewer/tools.py").read_bytes(), self.payload["argus/reviewer/tools.py"])
         self.assertEqual((self.root / "argus/apps/entry.py").read_bytes(), b"USER = 9\n")
 
+    def reject_changed_journal(self, action, change):
+        if action == "recover":
+            self.crash_transaction()
+        else:
+            self.install()
+        with self.installer() as inst:
+            txn_id = (json.loads((inst.meta / "pending.json").read_text())["id"]
+                      if action == "recover" else inst.state["last_install"])
+            path = inst.meta / "transactions" / txn_id / "journal.json"
+            journal = json.loads(path.read_text())
+            change(journal)
+            path.write_text(json.dumps(journal))
+            before = {p.relative_to(self.root): p.read_bytes()
+                      for p in self.root.rglob("*") if p.is_file()}
+            with self.assertRaisesRegex(m.InstallError, "[Jj]ournal"):
+                getattr(inst, action)()
+            self.assertEqual({p.relative_to(self.root): p.read_bytes()
+                              for p in self.root.rglob("*") if p.is_file()}, before)
+
+    def test_rollback_rejects_missing_journal_entry_before_writes(self):
+        self.reject_changed_journal("rollback", lambda j: j["entries"].pop("docs/dots.md"))
+
+    def test_recover_rejects_missing_journal_entry_before_writes(self):
+        self.reject_changed_journal("recover", lambda j: j["entries"].pop("argus/reviewer/tools.py"))
+
+    def test_rollback_rejects_consistently_missing_state_and_entry(self):
+        def change(journal):
+            journal["entries"].pop("docs/dots.md")
+            journal["after_state"]["files"].pop("docs/dots.md")
+        self.reject_changed_journal("rollback", change)
+
+    def test_recover_rejects_consistently_missing_state_and_entry(self):
+        def change(journal):
+            journal["entries"].pop("argus/reviewer/tools.py")
+            journal["after_state"]["files"].pop("argus/reviewer/tools.py")
+        self.reject_changed_journal("recover", change)
+
+    def test_rollback_rejects_forged_original_fingerprint(self):
+        self.reject_changed_journal("rollback", lambda j: j["entries"]["argus/apps/entry.py"].update(before=None))
+
+    def test_recover_rejects_forged_payload_fingerprint(self):
+        self.reject_changed_journal("recover", lambda j: j["entries"]["argus/reviewer/tools.py"].update(after=None))
+
     def test_corrupt_backup_blocks_uninstall(self):
         self.install()
         with self.installer() as inst:
@@ -418,6 +461,7 @@ class InstallerTest(unittest.TestCase):
             path = inst.meta / "transactions" / state["last_install"] / "journal.json"
             journal = json.loads(path.read_text())
             journal["after_state"] = state
+            journal["entries"]["argus/apps/entry.py"]["before"] = state["files"]["argus/apps/entry.py"]["original"]
             path.write_text(json.dumps(journal))
             (inst.meta / "state.json").write_text(json.dumps(state))
         with self.assertRaisesRegex(m.InstallError, "Original backup metadata"):

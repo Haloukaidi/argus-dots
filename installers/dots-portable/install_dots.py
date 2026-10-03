@@ -484,10 +484,34 @@ class Installer:
         self.validate_managed_paths(value["before_state"]["files"])
         self.validate_managed_paths(value["after_state"]["files"])
         self.validate_managed_paths(value["entries"])
+        if value.get("kind") not in ("install", "adopt_legacy", "rollback", "uninstall"):
+            raise InstallError("Unknown transaction kind")
+        before_files = value["before_state"]["files"]
+        after_files = value["after_state"]["files"]
+        if set(value["entries"]) != set(before_files) | set(after_files):
+            raise InstallError("Transaction journal has an incomplete managed file set")
+        for state in (value["before_state"], value["after_state"]):
+            if not state["files"]:
+                if state != empty_state():
+                    raise InstallError("Transaction journal contains incomplete installation state")
+                continue
+            known = ({r: i["sha256"] for r, i in self.manifest["payload"].items()}
+                     if state["release"] == self.manifest["release"]
+                     else self.manifest.get("upgrade_payloads", {}).get(state["release"]))
+            if (not known or set(state["files"]) != set(known)
+                    or any(info["installed"] is None or info["installed"]["sha256"] != known[rel]
+                           for rel, info in state["files"].items())):
+                raise InstallError("Transaction journal state differs from a known complete release")
         for rel, item in value["entries"].items():
             relative(rel)
             validate_fingerprint(item["before"])
             validate_fingerprint(item["after"])
+            before = (before_files[rel]["installed"] if rel in before_files
+                      else after_files[rel]["original"])
+            after = (after_files[rel]["installed"] if rel in after_files
+                     else before_files[rel]["original"])
+            if item["before"] != before or item["after"] != after:
+                raise InstallError("Transaction journal entry differs from its installation state: " + rel)
             if item["before"] is not None:
                 validate_backup_ref(item["backup"])
         allowed_dirs = {str(p) for r in value["entries"] for p in PurePosixPath(r).parents if str(p) != "."}

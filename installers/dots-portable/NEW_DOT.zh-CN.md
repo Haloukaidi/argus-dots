@@ -39,9 +39,9 @@ Manager、Planner、Engineer、Reviewer、Curator 仍由 Argus 原有职责和�
 
 ## 5. 验收后才能继续
 
-这台接收端先跑一条有限真实 probe，记录真实创建、身份绑定、答案、退出状态；需要续接/typed-tool 时各补一条实际验收。不存在公开Python native endpoint。2.2.0新增显式 `--backend dots` runtime选择，但普通Web/CLI缺host或原角色控制时会明确拒绝，没有CLI fallback。安装不能自动产生平台能力。
+这台接收端先跑一条有限真实 probe，记录真实创建、身份绑定、答案、退出状态；需要续接/typed-tool 时各补一条实际验收。不存在公开Python native endpoint。`--backend dots` 是独立runtime选择，严格模式缺host或原角色控制时会明确拒绝，没有CLI fallback。2.3.0另提供下述显式监督近似模式；安装不能自动产生平台能力。
 
-完整命令、参数和状态分支见 `payload/docs/dots-coordinator.md`、`dots-role-host.md`、`dots-backend.md`。这些文档描述公开模块协议；示例占位符必须替换为本次真实值。没有只读隔离、工具约束、provider 配额/成本控制等保证的调用应提前失败，不夸大为完整生产支持。
+完整命令、参数和状态分支见 `payload/docs/dots-coordinator.md`、`dots-role-host.md`、`dots-backend.md`。这些文档描述公开模块协议；示例占位符必须替换为本次真实值。严格模式所需但缺失的只读隔离、工具约束等控制应提前失败；监督近似模式必须显式接受其可用范围，不能宣称强制隔离或费用控制。
 
 ## 6. 完成交付优先（2.1.2操作增补）
 
@@ -60,3 +60,18 @@ v1/v2显式请求批次仍可用。需要接纳后续依赖调用时，使用 `p
 原同角色续接、typed action、当前marker、取消/期限优先和完成优先record规则不变。未知执行不盲目重发，不自动新建scope延长任务。工作者结束、宿主消失或会话到期后，持久journal不能替代活着的协调者。
 
 协议3只继承v2的resume/typed-tool能力，execution options仍不支持。正式五角色研究需要的只读、工具禁用、隔离等控制不可删掉；缺失即提前拒绝。不要把两个简单manager-tagged文本调用说成完整Manager/五角色运行。Runtime路由及Web/CLI边界见 `payload/docs/dots-runtime-entry.md`。
+
+## 8. 2.3.0显式监督近似模式（协议4）
+
+需要在同一有限host中运行原Web/daemon角色流程时，先阅读 `payload/docs/dots-supervised.md` 与 `payload/docs/dots-supervised-web.md`。只有明确选择 `supervised-approx-v1`、知晓并接受实际权限边界，才能使用这条路径；原严格模式和协议1/2/3不自动转换。
+
+1. 以本次真实工具目录声明精确model/effort支持；只有显式profile映射才可近似effort，必须同时保留原请求、实际dispatch和未知观测值。不能猜测平台模型，也不能把继承配置说成已验证模型
+2. 使用不含凭据的专用项目副本，明确producer、project、workflow、允许角色、总调用数、并发、期限及必要read/report roots。任务范围内的只读、禁工具、技能路径和安全模式是给worker的指令，不是OS强制约束；强隔离、任意CLI参数、凭据等不支持选项继续拒绝
+3. 创建真实在线协调者，建立协议4session，保存准确profile和host-binding locator。协调者真实参与时才heartbeat，维持短lease；配置文件本身不启动、不唤醒host，也不是凭据
+4. 用 `python -m argus.apps.dots_web --host-config /absolute/path/to/host-binding.json --web-host 127.0.0.1 --web-port 8799` 进入原Web前门。选择的项目workdir必须精确匹配；daemon子进程继承有限绑定，原角色提示、调度和Reviewer审批继续生效
+5. 协调者执行 `next` 返回的精确native动作和worker_prompt，绑定真实身份；原typed工具由当前worker亲自调用。审批后仍须候选/证据快照复查、真实final record与producer消费。host快照能事后检出变化，不能防止实际权限下的写入
+6. 结束时关闭producer并核对全部请求终态；取消须真实interrupt及停止观察。host消失、lease过期或额度耗尽就停止新接纳，不偷偷延长、不重放不确定动作，也不退回CLI
+
+原daemon日志别名纳入明确host来源校验；未知或篡改的别名仍拒绝。并发Manager写入受保护证据可使Reviewer保守失败，不通过忽略证据来变成成功。费用/token账本缺失应呈现unknown/null；空账本计数不是native调用数。
+
+有限真实验收不能证明每台新机器都可运行，也不证明操作系统隔离、常驻服务、完整严格五角色等价或成本预算等价。正常Web流程的成功、独立probe和历史失败分别记录；不要合并成未经执行的全能力验收。

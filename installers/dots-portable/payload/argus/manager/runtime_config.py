@@ -6,10 +6,12 @@ from typing import Any
 
 def refresh_manager_runtime_config(state: dict[str, Any]) -> None:
     """Revalidate borrowed warm runners after backend/model/effort changes."""
+    from ..core.dots_host_binding import binding_configuration_key
     from ..core.knobs import resolve_role_backend
     from ..core.runtime_backend import normalize_runtime_backend, runtime_configuration_key
 
-    key = runtime_configuration_key()
+    binding_key = binding_configuration_key()
+    key = runtime_configuration_key() + ((binding_key,) if binding_key[1] else ())
     selected = normalize_runtime_backend(resolve_role_backend(
         "manager", default=str(state.get("backend") or "codex"),
     ))

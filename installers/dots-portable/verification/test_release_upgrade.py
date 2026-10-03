@@ -23,9 +23,13 @@ PACKAGE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE))
 import install_dots as current  # noqa: E402
 
-RELEASES = ("dots-portable-2.1.0", "dots-portable-2.1.1", "dots-portable-2.1.2")
+RELEASES = ("dots-portable-2.1.0", "dots-portable-2.1.1", "dots-portable-2.1.2", "dots-portable-2.2.0")
 BASE = "9cfe9129fd90511c3a1865844ec7dfda1b5d1008"
-NEW_ORIGINALS = ("frontend/core/src/commands.ts", "tests/apps/test_cli_parser.py", "tests/test_architecture_invariants.py")
+BASELINE_EXTENSION = ("tests/conftest.py",)
+NEW_ORIGINALS = (
+    "argus/daemon/_life_worker_run.py", "argus/daemon/state.py",
+    "argus/webapi/diagnostics.py", "tests/conftest.py",
+)
 
 
 class ReleaseUpgradeTests(unittest.TestCase):
@@ -98,7 +102,7 @@ class ReleaseUpgradeTests(unittest.TestCase):
 
     def test_expanded_baseline_and_older_maps_unchanged(self):
         old = self.previous[RELEASES[-1]][2]
-        self.assertEqual(set(self.manifest["base"]) - set(old["base"]), set(NEW_ORIGINALS))
+        self.assertEqual(set(self.manifest["base"]) - set(old["base"]), set(BASELINE_EXTENSION))
         for rel, digest in old["base"].items():
             self.assertEqual(self.manifest["base"][rel], digest)
         self.assertEqual(self.manifest["legacy"], old["legacy"])
@@ -149,13 +153,13 @@ class ReleaseUpgradeTests(unittest.TestCase):
     def test_new_original_local_edits_block_all_writes(self):
         self.invoke(release=RELEASES[-1])
         path = self.root / NEW_ORIGINALS[0]
-        path.write_text("User's TypeScript changes\n")
+        path.write_text("User's test fixture changes\n")
         before = self.payload_snapshot()
         with self.assertRaises(current.InstallError):
             self.invoke(upgrade=True)
         self.assertEqual(self.payload_snapshot(), before)
 
-    def test_postinstall_typescript_edit_blocks_uninstall(self):
+    def test_postinstall_managed_test_edit_blocks_uninstall(self):
         self.invoke()
         (self.root / NEW_ORIGINALS[0]).write_text("User's changes after install\n")
         before = self.payload_snapshot()

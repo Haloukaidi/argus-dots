@@ -16,6 +16,7 @@ from ..agent_cli.runner_backend import (
     resolve_runner_bin,
     runner_child_environment,
 )
+from .dots_host_binding import DotsHostBinding
 from .knob_store import read_persisted_knobs, write_persisted_knobs
 from .knobs import resolve_runner_bin_setting
 
@@ -187,7 +188,9 @@ def resolve_backend_profile(
             if auth_value:
                 auth_source = f"persisted:{AUTH_MODE_KNOB}"
     normalized_auth = _clean_auth_mode(auth_value) or AUTH_MODE_SUBSCRIPTION
-    if normalized_backend == "dots" and auth_source == "default":
+    if normalized_backend == "dots" and (
+        auth_source == "default" or auth_value.strip().lower().replace("-", "_") == "native_host"
+    ):
         normalized_auth = "native_host"
     return BackendProfile(
         backend=normalized_backend,
@@ -750,18 +753,43 @@ def check_backend_readiness(
     required_routes: Iterable[str] = DEFAULT_MODEL_API_ROUTES,
     allow_prerelease: bool | None = None,
     timeout_s: float = DEFAULT_READINESS_TIMEOUT_S,
+    dots_project_root: Path | str | None = None,
+    dots_binding: DotsHostBinding | None = None,
     env: Mapping[str, str] | None = None,
 ) -> BackendReadiness:
     env_map = env if env is not None else os.environ
     profile = resolve_backend_profile(backend, auth_mode, env=env_map)
     report = BackendReadiness(profile=profile)
     if profile.backend == "dots":
-        from .runtime_backend import dots_readiness_problems
+        from .runtime_backend import RuntimeBackendUnavailable, require_dots_runtime
 
-        report.problems.extend(ReadinessProblem(
-            f"dots {role}", detail,
-            "Provide a supported native host with enforced role controls; do not switch to a CLI provider or weaken the requested controls.",
-        ) for role, detail in dots_readiness_problems().items())
+        binding = dots_binding
+        try:
+            require_dots_runtime(
+                "dots", transport=binding.transport if binding is not None else None,
+                execution_profile=binding.execution_profile if binding is not None else None,
+                env=env_map,
+            )
+            if binding is not None:
+                binding.transport.assert_ready(project_root=dots_project_root)
+        except (RuntimeBackendUnavailable, OSError, ValueError) as exc:
+            problems = exc.problems if isinstance(exc, RuntimeBackendUnavailable) else {"host": "host-required: " + str(exc)}
+            report.problems.extend(ReadinessProblem(
+                f"dots {role}", detail,
+                "Attach the explicitly authorized native host and renew its bounded session lease; strict dots still requires enforced controls.",
+            ) for role, detail in problems.items())
+        else:
+            if binding is not None and profile.auth_mode != "native_host":
+                report.problems.append(ReadinessProblem(
+                    "auth_mode", "supervised dots requires native_host authentication mode; CLI/API authentication does not attach a native host",
+                    "Remove the conflicting explicit CLI/API authentication setting for this native-host launch.",
+                ))
+            if binding is not None:
+                report.warnings.append(
+                    "Execution profile: " + binding.execution_profile.name
+                    + "; supervised approximate operation, not enforced OS read-only or tool isolation. "
+                    "A current host lease is a trusted host assertion, not proof of native execution."
+                )
         return report
     if profile.backend not in _SUPPORTED_BACKENDS:
         report.problems.append(

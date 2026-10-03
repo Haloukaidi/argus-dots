@@ -16,6 +16,7 @@ from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Callable, Iterator, Protocol
 
+from ..core.dots_profile import SupervisedDotsProfile
 from ..core.models import RunnerOptions, RunnerResult
 from ..core.role_tool_bridge import ToolBridgeBusy
 from ..core.runtime_backend import DotsCapabilities
@@ -32,7 +33,9 @@ USAGE_FIELDS = ("input_tokens", "cached_input_tokens", "output_tokens")
 DOTS_ROLES = frozenset({"manager", "engineer", "reviewer", "planner", "curator"})
 EXECUTION_FIELDS = frozenset({"working_dir", "add_dirs", "skill_paths", "review_output", "live_search",
                               "sandbox_mode", "force_safe_mode", "disable_tools", "output_schema",
-                              "isolate_workdir", "full_auto"})
+                              "isolate_workdir", "full_auto", "dangerous_yolo",
+                              "watchdog_soft_idle_seconds", "watchdog_stalled_idle_seconds",
+                              "inactivity_callback"})
 
 
 class DotsBridgeError(ValueError):
@@ -179,12 +182,19 @@ class DotsBackend:
     def __init__(self, transport: DotsTransport | None = None, *, role: str = "manager",
                  timeout_seconds: float = 300, poll_interval: float = 0.1,
                  cancellation_grace_seconds: float = 0.2,
-                 default_interrupt_reason_provider: Callable[[], str | None] | None = None) -> None:
+                 default_interrupt_reason_provider: Callable[[], str | None] | None = None,
+                 execution_profile: SupervisedDotsProfile | None = None) -> None:
         if role not in DOTS_ROLES:
             raise ValueError("unknown dots role: " + role)
         self.role = role
+        if execution_profile is not None:
+            if (type(execution_profile) is not SupervisedDotsProfile
+                    or getattr(transport, "execution_profile", None) != execution_profile):
+                raise DotsBridgeError("explicit supervised profile must match the bound host transport")
+        self.execution_profile = execution_profile
         self._default_interrupt = default_interrupt_reason_provider
         self._tools: ContextVar[Any] = ContextVar("dots_call_bound_tools", default=None)
+        self._review_store_factory: ContextVar[Any] = ContextVar("dots_host_review_store_factory", default=None)
         if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive and finite")
         if not math.isfinite(poll_interval) or poll_interval <= 0:
@@ -205,18 +215,23 @@ class DotsBackend:
         return DotsBackend(self.transport, role=self.role, timeout_seconds=self.timeout_seconds,
                            poll_interval=self.poll_interval,
                            cancellation_grace_seconds=self.cancellation_grace_seconds,
-                           default_interrupt_reason_provider=interrupt_reason_provider or self._default_interrupt)
+                           default_interrupt_reason_provider=interrupt_reason_provider or self._default_interrupt,
+                           execution_profile=self.execution_profile)
 
     def capability_report(self) -> dict[str, Any]:
         caps = getattr(self.transport, "capabilities", DotsCapabilities(roles=frozenset()))
-        return {"backend": "dots", "role": self.role, "configured": self.transport is not None,
+        report = {"backend": "dots", "role": self.role, "configured": self.transport is not None,
                 "roles": sorted(caps.roles), "supported_options": sorted(caps.options),
                 "resume": caps.resume, "role_tools": caps.role_tools,
                 "automatic_dispatch": False}
+        if self.execution_profile is not None:
+            report["execution_profile"] = self.execution_profile.to_dict()
+        return report
 
     @contextmanager
     def bind_role_tools(self, tools: list[dict[str, Any]],
-                        dispatch: Callable[[str, dict[str, Any]], dict[str, Any]]) -> Iterator[None]:
+                        dispatch: Callable[[str, dict[str, Any]], dict[str, Any]], *,
+                        review_store_factory: Callable[..., Any] | None = None) -> Iterator[None]:
         """Keep a role's existing dispatcher call-bound and inside Argus.
 
         The request carries tool schemas only. No bearer token, port,
@@ -224,10 +239,14 @@ class DotsBackend:
         """
         if self.role != "reviewer":
             raise DotsBridgeError("review tools can only bind to the independent reviewer role")
+        if review_store_factory is not None and (self.execution_profile is None or not callable(review_store_factory)):
+            raise DotsBridgeError("a host review-store factory requires the explicit supervised profile")
         token = self._tools.set((tools, dispatch))
+        store_token = self._review_store_factory.set(review_store_factory)
         try:
             yield
         finally:
+            self._review_store_factory.reset(store_token)
             self._tools.reset(token)
 
     def run_exec(self, *, prompt: str, options: RunnerOptions, run_label: str,
@@ -290,6 +309,11 @@ class DotsBackend:
                 return fail("dots host does not support role: " + self.role, stop_kind="permanent_error")
             if resume_thread_id is not None and not caps.resume:
                 return fail("dots host does not support session resume", stop_kind="permanent_error")
+            profile = self.execution_profile
+            if profile is not None:
+                if getattr(self.transport, "execution_profile", None) != profile:
+                    return fail("supervised transport profile changed", stop_kind="permanent_error")
+                self.transport.assert_ready()
             # Compare against the existing dataclass defaults so newly introduced
             # execution controls also fail closed until intentionally supported.
             supported = {"model", "reasoning_effort", "external_interrupt_reason_provider", "on_agent_message",
@@ -314,6 +338,13 @@ class DotsBackend:
                 if f.name in supported or value == getattr(defaults, f.name) or empty_list:
                     continue
                 capability = f"sandbox_mode:{value}" if f.name == "sandbox_mode" else f.name
+                if profile is not None and profile.disposition(f.name, value) is not None:
+                    profile.validate_option(f.name, value)
+                    # Python callbacks are not executable bridge payloads. The
+                    # explicit profile records only their requested presence;
+                    # soft-idle restart behavior is deliberately unavailable.
+                    serializable[f.name] = True if f.name == "inactivity_callback" else value
+                    continue
                 if f.name in forbidden or capability not in caps.options:
                     unsupported.append(f.name)
                 else:
@@ -327,6 +358,20 @@ class DotsBackend:
             tools_binding = self._tools.get()
             if tools_binding and not caps.role_tools:
                 return fail("dots host cannot enforce call-bound role tools", stop_kind="permanent_error")
+            guard = None
+            if profile is not None:
+                profile.dispatch(None if options.model == "" else options.model, options.reasoning_effort)
+                if self.role == "reviewer":
+                    from ..core.daemon_log_alias import created_daemon_log_aliases
+                    from .dots_supervised_guard import SupervisedReviewGuard
+                    guard = SupervisedReviewGuard(options, protected_paths=(self.transport.project_root,),
+                                                  review_store_factory=self._review_store_factory.get(),
+                                                  host_aliases=created_daemon_log_aliases())
+                    guard.prepare()
+                    if tools_binding:
+                        tools_binding = guard.bind_tools(*tools_binding)
+                    elif options.review_output is not None:
+                        raise DotsBridgeError("supervised review output requires original call-bound review actions")
             def interrupt() -> str | None:
                 default = self._default_interrupt() if self._default_interrupt else None
                 original = options.external_interrupt_reason_provider
@@ -422,12 +467,17 @@ class DotsBackend:
                             except Exception:
                                 log.exception("dots on_agent_message callback failed")
                     else:
+                        if guard is not None:
+                            guard.verify()
                         self.transport.finish(request.request_id)
                         for name, value in event.get("usage", {}).items():
                             setattr(result, name, value)
                             setattr(result, name + "_present", True)
                         result.exit_code = 0
-                        result.usage_model = options.model or ""
+                        # Native tools do not report the model that actually
+                        # generated this output; requested values stay in the
+                        # request/profile journal, never masquerade as usage.
+                        result.usage_model = "" if profile is not None else (options.model or "")
                         return result
                 elif kind == "failed":
                     self.transport.finish(request.request_id)

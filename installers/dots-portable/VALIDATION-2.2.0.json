@@ -1,0 +1,131 @@
+{
+  "release": "dots-portable-2.2.0",
+  "status": "local_package_verification_passed_archive_integrity_verified",
+  "verification_date": "2026-10-02",
+  "source_commit": "de3d72c7e01cb14200975453d3ab7ca361c38c26",
+  "source_tree": "7305280e5322595511f4d95cb8f0ad490680cfe5",
+  "installer_base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+  "payload": {
+    "files": 64,
+    "modified_originals": 27,
+    "added_files": 37,
+    "previous_2_1_2_payload_updated": 8,
+    "new_payload_entries": 27,
+    "baseline_files": 730,
+    "baseline_extension_paths": [
+      "frontend/core/src/commands.ts",
+      "tests/apps/test_cli_parser.py",
+      "tests/test_architecture_invariants.py"
+    ],
+    "old_727_baseline_values_unchanged": true,
+    "source_delta_excluded_from_installation": [
+      "README.dots.zh-CN.md (full-repository entry, retained at repository root)"
+    ],
+    "documentation_dependency_added": "docs/HOST-PRIORITY.zh-CN.md",
+    "all_payload_bytes_equal_source": true,
+    "source_payload_list": "PAYLOAD_FILES.txt"
+  },
+  "supported_upgrade_maps": {
+    "dots-portable-2.0.0": 20,
+    "dots-portable-2.1.0": 32,
+    "dots-portable-2.1.1": 32,
+    "dots-portable-2.1.2": 37
+  },
+  "legacy_map_files": 8,
+  "prior_maps_and_legacy_unchanged": true,
+  "installer_tests": {
+    "standard_library_passed": 51,
+    "real_historical_package_tests_passed": 12,
+    "real_historical_package_seconds": 9.749,
+    "real_historical_packages_reconstructed_and_hash_verified": {
+      "dots-portable-2.1.0": "06a12cb9",
+      "dots-portable-2.1.1": "aa619ebd",
+      "dots-portable-2.1.2": "8bad9aa2"
+    },
+    "independent_real_payload_audit_passed": 32,
+    "independent_baseline_metadata_failure_variants": 8,
+    "independent_baseline_result": "24 passed, 8 failed before the focused uninstall fix; all32 passed after",
+    "oldest_real_bytes_unavailable": [
+      "dots-portable-2.0.0",
+      "original8-file legacy"
+    ],
+    "oldest_scope": "exact maps retained; generic protocol fixtures only, not actual historical bundle reruns"
+  },
+  "uninstall_fix": {
+    "reproduced_before_fix": "incomplete active state could report uninstall success while leaving an omitted managed file unrestored",
+    "changed_scope": "pre-uninstall complete known file-set/hash metadata and original journal consistency check only",
+    "transaction_recovery_algorithms_changed": false,
+    "inactive_empty_state_remains_idempotent": true,
+    "rollback_to_known_previous_release_uninstall_verified": true,
+    "source_files": [
+      "install_dots.py",
+      "tests/test_installer.py"
+    ]
+  },
+  "installed_checkout": {
+    "base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
+    "detached_git_worktree": true,
+    "install_and_check": "passed",
+    "imported_from_installed_source": true,
+    "targeted_source_tests": {
+      "passed": 445,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 18.832,
+      "scope": [
+        "tests/test_dots_runtime_routing.py",
+        "tests/test_dots_admission.py",
+        "tests/test_dots_backend.py",
+        "tests/test_dots_file_transport.py",
+        "tests/test_dots_coordinator.py",
+        "tests/test_dots_role_host.py",
+        "tests/test_dots_cancellation_ack.py",
+        "tests/test_workflow_dots_lifecycle.py",
+        "tests/test_workflow_dots_model_defaults.py",
+        "tests/apps/test_cli_parser.py",
+        "tests/test_architecture_invariants.py"
+      ],
+      "warning": "Starlette/httpx deprecation, not a failure"
+    },
+    "uninstall_restored_original_hashes": 730,
+    "uninstall_removed_new_managed_files": 37,
+    "tracked_git_diff_after_uninstall": "empty"
+  },
+  "maintainer_manifest_reproduction": "passed including new original TS/test baselines and all upgrade maps; previous legacy map retained without inventing historical bytes",
+  "entry_hashes": {
+    "install_dots.py": "2edc5350d72b43f72724a048980d2cd064f15f4e077ef34b70053507fb711adf",
+    "bootstrap_argus.py": "aaec66a4c846a5f1fef01cddc8b890ff252ef6a13ead805f13fbefbee2d0db81",
+    "check_host.py": "9063049a778ef4e1d5b05fa4eda9ee048cbc2531350a7aac38f842cadac29161"
+  },
+  "bootstrap_and_host_inventory_scripts_unchanged_from_2_1_2": true,
+  "static_checks": {
+    "ruff_F_E_excluding_E501": "passed",
+    "payload_python_ast": "passed",
+    "diff_whitespace": "passed"
+  },
+  "platform": {
+    "system": "Linux",
+    "python": "3.12.14"
+  },
+  "not_tested": [
+    "new native trial",
+    "complete production five-role research workflow",
+    "native execution controls missing on current host",
+    "online2.2.0 bootstrap",
+    "rebuild of tracked frontend runtime bundles",
+    "new Python3.11/macOS/Windows/WSL installation",
+    "exact future published commit CI"
+  ],
+  "source_evidence": "RUNTIME-ADMISSION-VALIDATION.json",
+  "previous_package_evidence": "VALIDATION-2.1.2.json",
+  "counts_overlap_and_are_not_cumulative": true,
+  "publication": {
+    "github_push": false,
+    "library_replacement": false,
+    "native_trial_started": false,
+    "service_restart": false,
+    "user_research_submitted": false,
+    "scope": "local packaging task only; later authorized publication is a separate record"
+  }
+}

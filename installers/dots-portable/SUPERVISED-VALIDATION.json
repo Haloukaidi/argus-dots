@@ -1,0 +1,72 @@
+{
+  "profile": "supervised-approx-v1",
+  "protocol": 4,
+  "production_source_commit": "3bb96e2ab95493bdcb9b34ee873bb60bc936a45e",
+  "strict_default_unchanged": true,
+  "source_targeted_gate": {
+    "passed": 780,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 14,
+    "skip_reason": "explicitly gated local Docker probes",
+    "scope": "tests/test_dots*.py, tests/test_workflow_dots_lifecycle.py, tests/test_workflow_dots_model_defaults.py, tests/test_reviewer*.py, tests/test_architecture_invariants.py; each selected file once",
+    "full_repository_suite": false
+  },
+  "normal_web_api_native_acceptance": {
+    "status": "passed_bounded_software_fixture",
+    "original_entry": "argus.apps.dots_web and POST /api/daemons",
+    "roles": [
+      "Manager",
+      "Planner",
+      "Engineer",
+      "Reviewer"
+    ],
+    "original_typed_approve_review": true,
+    "original_mission_result": "success=true,status=done",
+    "requests_settled": 8,
+    "completed": 5,
+    "cancelled": 3,
+    "active_native_turns_or_tools_after_stop": 0,
+    "producer_sealed_and_host_stopped": true,
+    "post_stop_fixture_tests_passed": 4,
+    "three_original_tests_preserved": true,
+    "native_model_observed": "unknown",
+    "provider_usage": "unknown",
+    "cost_usd": null,
+    "lease_renewal_longest_observed_gap_seconds": 53.389,
+    "lease_seconds": 60
+  },
+  "history_preserved": [
+    "Earlier original daemon log alias rejection caused failure before Reviewer admission",
+    "Earlier staged trial could not establish unchanged-test provenance and hit original Reviewer timeout without approval"
+  ],
+  "additional_original_function_probes": {
+    "status": "passed_separate_corrected_finite_scope",
+    "total_requests": 3,
+    "completed": 3,
+    "consumed": 3,
+    "original_planner": "real spawn then same native worker followup; two capsule turns",
+    "original_curator": "original callback; saved strategy equals real response",
+    "full_project_and_measured_input_hashes_unchanged": true,
+    "only_intended_capsule_and_strategy_outputs": true,
+    "active_requests_or_tools_after_drain": 0,
+    "first_probe_attempt": "one Planner call completed; fixture postcheck rejected legitimate lazily created original host metadata; resume/Curator not admitted; failed scope closed and preserved",
+    "fixture_correction": "initialize original metadata before taking baseline; no production source change",
+    "scope_limits": [
+      "not Curator background-pool/teammate lifecycle or full research campaign",
+      "not resume across new host sessions or unlimited context retention",
+      "parsed Planner output included a potentially incomplete test-discovery command; implementation plan and strategy correctness not certified"
+    ]
+  },
+  "limits": [
+    "advisory native working-directory/read-only/tool constraints, no OS enforcement",
+    "bounded livehost required, no unattended persistent service guarantee",
+    "browser graphical navigation blocked; Web API acceptance only",
+    "one bounded software mission, not a research mission or full strict five-role parity",
+    "concurrent host/state writes can conservatively fail protected review",
+    "no measured model/token/cost telemetry or cost-equivalence claim"
+  ],
+  "counts_overlap_and_are_not_cumulative": true,
+  "final_documentation_commit": "5aa13e93fe5d529b7f5484aa46859ff8a5281662",
+  "public_report": "payload/docs/dots-supervised-native-validation.md"
+}

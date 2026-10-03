@@ -57,11 +57,14 @@ def register_daemon_routes(app, ctx: ServerContext) -> None:
         """Create a brand-new daemon (session). The objective is OPTIONAL — with
         none, the daemon is idle and the user just talks to the Manager (which
         writes its own objectives). Threadpool: fs writes + optional fork."""
-        from ...core.runtime_backend import RuntimeBackendUnavailable, require_dots_runtime
+        from ...adapters.dots_host_binding import require_configured_dots_runtime
+        from ...core.runtime_backend import RuntimeBackendUnavailable
 
         if body.objective.strip():
             try:
-                require_dots_runtime()
+                binding = require_configured_dots_runtime(project_root=body.workdir or None)
+                if binding is not None and not body.workdir:
+                    raise RuntimeBackendUnavailable({"host": "host-required: an objective requires the explicitly bound project workdir"})
             except RuntimeBackendUnavailable as exc:
                 raise HTTPException(status_code=503, detail=str(exc)) from exc
         root = project_state.resolve_global_root(ctx.global_root)

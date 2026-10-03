@@ -170,17 +170,26 @@ class BoundedDotsRoleHost(DotsRoleHost):
         if len(allowed_roles) != len(set(allowed_roles)):
             raise DotsBridgeError("allowed_roles must not contain duplicates")
         now = time.time()
-        session = {"version": 3, "session_id": uuid.uuid4().hex, "parent_task": parent_task,
+        canonical_project = _project(project_root)
+        session = {"version": self.protocol_version, "session_id": uuid.uuid4().hex, "parent_task": parent_task,
                    "coordinator_task": coordinator_task, "generation": 1, "created_at": now,
                    "expires_at": now + lifetime_seconds, "max_concurrency": max_concurrency,
                    "requests": {}, "stopping": False, "producer_id": producer_id,
-                   "project_root": _project(project_root), "mission_id": mission_id,
+                   "project_root": canonical_project, "mission_id": mission_id,
                    "allowed_roles": sorted(allowed_roles), "max_requests": max_requests,
-                   "producer_closed": False}
+                   "producer_closed": False, **self._new_session_metadata(project_root=canonical_project)}
         self._validate_session_extension(session)
         with self.transport._root_fd() as root, self.transport._locked(root):
             self.transport._write(root, self._name(session["session_id"]), session)
         return session
+
+    def _new_session_metadata(self, *, project_root: str) -> dict[str, Any]:
+        """Versioned opt-in hosts may add immutable session metadata."""
+        return {}
+
+    def _validate_admitted_request(self, session: dict[str, Any], request: DotsRequest) -> None:
+        if request.mission_id != session["mission_id"] or request.role not in session["allowed_roles"]:
+            raise DotsBridgeError("request mission or role is outside the authorized producer scope")
 
     @staticmethod
     def _producer(session: dict[str, Any], producer_id: str, project_root: str) -> None:
@@ -239,8 +248,7 @@ class BoundedDotsRoleHost(DotsRoleHost):
         with self.transport._root_fd() as root, self.transport._locked(root):
             session = self._session(root, session_id)
             self._producer(session, producer_id, project_root)
-            if request.mission_id != session["mission_id"] or request.role not in session["allowed_roles"]:
-                raise DotsBridgeError("request mission or role is outside the authorized producer scope")
+            self._validate_admitted_request(session, request)
             owner = self._admission_owner(session, request.request_id, digest)
             reservation = self.transport._read(root, self._admission_name(request.request_id))
             if reservation is not None and reservation != owner:

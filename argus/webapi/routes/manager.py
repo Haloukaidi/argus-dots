@@ -149,10 +149,13 @@ def register_manager_routes(app, ctx: ServerContext) -> None:
     app.state.message_requests = requests
 
     def _begin_message(sid: str, request_id: str):
-        from ...core.runtime_backend import RuntimeBackendUnavailable, require_dots_runtime
+        from ...adapters.dots_host_binding import require_project_dots_runtime
+        from ...core.runtime_backend import RuntimeBackendUnavailable
 
         try:
-            require_dots_runtime()
+            require_project_dots_runtime(
+                sid, global_root=ctx.project_root_or_404(sid), state_dir=ctx.resolve_or_404(sid),
+            )
         except RuntimeBackendUnavailable as exc:
             # Reject before transcript writes, Manager calls or daemon startup.
             # Both HTTP forms return a non-success response so the UI keeps its draft.

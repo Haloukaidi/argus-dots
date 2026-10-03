@@ -105,10 +105,11 @@ class FileDotsTransport:
                 os.close(fd)
 
     @contextmanager
-    def _locked(self, fd: int, *, wait: bool = True) -> Iterator[None]:
+    def _locked(self, fd: int, *, wait: bool = True, create: bool = True) -> Iterator[None]:
         import fcntl
 
-        lock = os.open("lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600, dir_fd=fd)
+        flags = os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK | (os.O_CREAT if create else 0)
+        lock = os.open("lock", flags, 0o600, dir_fd=fd)
         try:
             self._check_private(lock, directory=False)
             # Poll/read never wait on a stalled or abandoned host process.

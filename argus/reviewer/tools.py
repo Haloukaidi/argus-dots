@@ -209,8 +209,18 @@ def review_action_tools(
     if backend == "dots":
         # The adapter translates only explicit, call-bound tool events into
         # the same dispatcher. No bridge bearer capability leaves Argus.
+        from ..core.dots_profile import SupervisedDotsProfile
+
+        report_binding = {}
+        if (type(getattr(runner, "execution_profile", None)) is SupervisedDotsProfile
+                and options.review_output is not None):
+            from .review_file import ReviewFileStore
+
+            # Inject the original file capability into the host's call context.
+            # The adapter sees only this protocol; no factory goes on the wire.
+            report_binding["review_store_factory"] = ReviewFileStore
         try:
-            with runner.bind_role_tools(actions.tools, actions.dispatch):
+            with runner.bind_role_tools(actions.tools, actions.dispatch, **report_binding):
                 yield actions, replace(options, force_safe_mode=True)
         finally:
             if validation is not None:

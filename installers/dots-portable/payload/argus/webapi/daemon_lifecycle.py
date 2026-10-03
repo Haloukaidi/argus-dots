@@ -241,10 +241,11 @@ def start_project_daemon(
     if life_dir is None:
         return None
     root = _global_root(global_root)
-    from ..core.runtime_backend import RuntimeBackendUnavailable, require_dots_runtime
+    from ..adapters.dots_host_binding import require_project_dots_runtime
+    from ..core.runtime_backend import RuntimeBackendUnavailable
 
     try:
-        require_dots_runtime()
+        require_project_dots_runtime(sid, global_root=root, state_dir=life_dir)
     except RuntimeBackendUnavailable as exc:
         return {"rc": 3, "already_alive": False, "error": str(exc),
                 "daemon": _daemon_dict(daemon_worker.read_daemon_status(life_dir))}
@@ -552,6 +553,13 @@ def create_daemon(
 
     from ..core.session import new_session_id
 
+    if (objective or "").strip():
+        from ..adapters.dots_host_binding import require_configured_dots_runtime
+        from ..core.runtime_backend import RuntimeBackendUnavailable
+
+        binding = require_configured_dots_runtime(project_root=workdir or None)
+        if binding is not None and not workdir:
+            raise RuntimeBackendUnavailable({"host": "host-required: an objective requires the explicitly bound project workdir"})
     root = _global_root(global_root)
     sid = new_session_id(session_namespace) if session_namespace else new_session_id()
     now = _time.time()

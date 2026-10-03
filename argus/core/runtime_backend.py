@@ -1,7 +1,8 @@
 """Runtime backend selection, separate from the agent-CLI provider catalog.
 
 Dots is an explicitly injected native host, never a CLI executable or an
-implicit fallback. Readiness reports guarantees, not prompt instructions.
+implicit fallback. Strict readiness reports guarantees, not prompt instructions.
+A separately selected supervised profile records accepted advisory deficits.
 """
 from __future__ import annotations
 
@@ -59,9 +60,25 @@ def selected_dots_roles(backend: str | None = None, *, env: Mapping[str, str] | 
     return roles if "dots" in roles.values() or str(backend or "").strip().lower() == "dots" else {}
 
 
-def dots_readiness_problems(transport: Any = None) -> dict[str, str]:
+def dots_readiness_problems(transport: Any = None, *, execution_profile: Any = None) -> dict[str, str]:
     if transport is None:
         return {"host": "no native receiving transport is configured; ordinary CLI executables cannot dispatch conversation-native tools"}
+    advisory = frozenset()
+    if execution_profile is not None:
+        from .dots_profile import SupervisedDotsProfile, SupervisedDotsTransport
+
+        if (not isinstance(execution_profile, SupervisedDotsProfile)
+                or not isinstance(transport, SupervisedDotsTransport)
+                or transport.execution_profile != execution_profile):
+            return {"host": "explicit supervised profile and bound receiving transport do not match"}
+        try:
+            transport.assert_ready()
+        except (ValueError, OSError) as exc:
+            detail = str(exc)
+            return {"host": detail if detail.startswith("host-required:") else "host-required: " + detail}
+        # This explicit branch accepts advisory limitations, never advertises
+        # them as enforced capabilities. Strict dots continues below unchanged.
+        advisory = execution_profile.advisory_options
     capabilities = getattr(transport, "capabilities", None)
     if not isinstance(capabilities, DotsCapabilities):
         return {"host": "receiving transport has no valid capability contract"}
@@ -70,21 +87,24 @@ def dots_readiness_problems(transport: Any = None) -> dict[str, str]:
         if role not in capabilities.roles:
             problems[role] = "role is not supported by the receiving host"
             continue
-        missing = sorted(required - capabilities.options)
+        missing = sorted(required - capabilities.options - advisory)
         if role == "reviewer" and not capabilities.role_tools:
             missing.append("call-bound role_tools")
         if missing:
             problems[role] = "missing enforced controls: " + ", ".join(missing)
+    if execution_profile is not None and not capabilities.resume:
+        problems["host"] = "supervised profile requires same-role continuation support"
     return problems
 
 
 def require_dots_runtime(backend: str | None = None, *, transport: Any = None,
-                         env: Mapping[str, str] | None = None) -> bool:
+                         execution_profile: Any = None, env: Mapping[str, str] | None = None) -> bool:
     """Preflight an explicit dots selection without submitting or creating state.
 
     Returns False for an ordinary pipeline. The optional transport is an
     in-process host-owned dependency, never deserialized from project config.
-    An unattended CLI/Web process currently has no supported native receiver.
+    Selecting dots alone never attaches a native receiver. The explicit
+    supervised composition root supplies both a bounded host and its profile.
     """
     roles = selected_dots_roles(backend, env=env)
     if not roles:
@@ -93,7 +113,7 @@ def require_dots_runtime(backend: str | None = None, *, transport: Any = None,
                  for role, name in roles.items() if name != "dots"}
     if conflicts:
         raise RuntimeBackendUnavailable(conflicts)
-    problems = dots_readiness_problems(transport)
+    problems = dots_readiness_problems(transport, execution_profile=execution_profile)
     if problems:
         raise RuntimeBackendUnavailable(problems)
     return True

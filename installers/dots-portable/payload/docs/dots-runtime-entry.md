@@ -1,10 +1,21 @@
 # Explicit dots runtime selection
 
+A separate opt-in [supervised approximate Web binding](dots-supervised-web.md)
+now accepts explicitly documented advisory deficits through a live bounded
+native-host session. The strict `dots` behavior described below remains the
+default; selecting the backend alone does not enable that profile.
+
 `dots` is now a runtime selection, separate from the nine agent-CLI backends.
 The default remains unchanged. Dots runtime dispatch/readiness never resolves a
 CLI executable, imports credentials, silently selects another provider, or grants
 capabilities. Explicit dots setup reports native-host unavailability before the
 ordinary CLI installation/login flow.
+
+## Strict default entry
+
+The following refusal behavior applies without the explicit supervised profile.
+Its separately verified API path is documented in the
+[supervised native record](dots-supervised-native-validation.md).
 
 - `--backend dots`, the shared backend knob, and role displays retain the dots
   identity. A pipeline mixing dots and CLI role overrides fails explicitly.
