@@ -1,0 +1,32 @@
+Typed reviewer fixture synchronization fix
+
+The failed CI run rejected three typed-review fixture tool calls as outside their active bound reviewer turn. That message is a secondary safety check: the original CI log did not include the request snapshot or the producer's original failure, so it cannot alone prove the historical cancellation trigger.
+
+Controlled reproduction identified a concrete scheduling race in these fixtures. Their one-millisecond request_tool retry loop repeatedly takes the same root and task journal locks needed by the producer to claim and settle a typed action. Holding the fixture's retry lock for 0.7 seconds while the producer claims the tool exhausts the existing 0.5-second bounded lock wait. The producer fails closed and requests cancellation. The next host retry raises the same active-turn error reported by CI.
+
+The captured reproduction snapshot showed an accepted reviewer, no terminal event, cancellation requested, and a closed reason reporting a busy bridge. The request still had about 4.25 seconds remaining. This rules out missing acceptance and request expiry for the reproduced failure. CI progress timing is consistent with this mechanism, but historical runner state was not captured.
+
+The patch changes only two source test files and their identical portable payload copies. It submits the real typed action once, then waits on a threading Event. The Event is set only after the original bound transport's tool_result method returns, after durable reply publication and journal lock release. The host then reads the real ready reply once and checks that the original approve_review dispatcher recorded it. Binding and settlement failures include the accepted, terminal, cancellation, closed, and available producer failure state.
+
+All production files, lock limits, request expiry checks, strict and approximate profile gates, and existing five-second fixture/backend budgets are unchanged. No tests were skipped or removed. Existing checks still require the original typed approval before mutation and a real terminal event before final guard verification. Unchanged evidence must succeed and be consumed; candidate mutation, daemon-log append, and alias retarget must fail verification. Alias descriptors must remain absent from request data.
+
+Added regression coverage delays actual durable tool-reply writes by 0.7 seconds while the real journal locks remain held. Both unchanged and mutated candidate cases pass with synchronization. Applying this delay to the unchanged baseline fixture produces two lock-contention failures, demonstrating red/green coverage.
+
+Validation
+- Python 3.12.14, imported from the isolated exact baseline checkout
+- All root dots tests: 472 passed
+- Guard, role-host, and cancellation subset: 151 passed, including existing stop and deadline rejection tests
+- Parallel repetition: 8 simultaneous processes, 20 repetitions of 7 affected fixture variants per process; 1,120 passed
+- Full CI Python lint scope: passed
+- Git whitespace check: passed
+- Production diff: empty
+- Source and portable payload fixture copies: byte-identical
+
+Limits
+Python 3.11 and pytest-xdist were unavailable in the existing environments. Parallel repetition used independent pytest processes rather than xdist. The complete remote CI suite must still be checked for the eventual published commit. The portable payload is an overlay, not a standalone installation; installed-package verification belongs to the rebuilt package validation and is not claimed by this report.
+
+Frozen file SHA-256
+- tests/test_dots_supervised.py: 87a2d99981d26a5e87f227e8f07d2deb838bc8754286e17cc5514fad0b9efe02
+- tests/test_dots_supervised_daemon_log_alias.py: 5cdb0f95ee35e32c2b6b482f953a0eb03d49c67faee5dfff73d1a11d7a5a0eed
+- Matching files under installers/dots-portable/payload/tests have the same hashes
+- typed-review-fixture-sync.patch: 42ea08468831af35f6bce28483873d6ad22d89a85d33e9481cfb25272284cc06

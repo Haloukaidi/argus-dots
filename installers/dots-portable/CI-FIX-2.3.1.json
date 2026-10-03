@@ -1,0 +1,51 @@
+{
+  "release": "dots-portable-2.3.1",
+  "change_scope": "test fixtures and distribution metadata only",
+  "source_baseline_commit": "c367792486566c3947522e499512c757b2e79ddb",
+  "fixed_source_tree": "80977286ebee8122d147cabd6b9733430e351f96",
+  "source_test_sha256": {
+    "tests/test_dots_supervised.py": "87a2d99981d26a5e87f227e8f07d2deb838bc8754286e17cc5514fad0b9efe02",
+    "tests/test_dots_supervised_daemon_log_alias.py": "5cdb0f95ee35e32c2b6b482f953a0eb03d49c67faee5dfff73d1a11d7a5a0eed"
+  },
+  "production_unchanged": true,
+  "installer_entry_scripts_unchanged": true,
+  "timeouts_lock_limits_and_safety_gates_unchanged": true,
+  "historical_ci": {
+    "commit": "c367792486566c3947522e499512c757b2e79ddb",
+    "run_id": 37110331454,
+    "status": "failed",
+    "passed": 12542,
+    "skipped": 119,
+    "failed": 3,
+    "counts_source": "reconstructed from CI log progress symbols; not a canonical pytest summary",
+    "historical_root_cause": "inferred from matching controlled reproduction, not conclusively captured in original CI"
+  },
+  "controlled_reproduction": {
+    "lock_hold_seconds": 0.7,
+    "existing_lock_wait_seconds": 0.5,
+    "outcome": "producer bridge-busy cancellation then active-turn rejection with accepted worker, no terminal, and about4.25s request time remaining",
+    "red_green": "old delayed fixture fails; synchronized fixture passes"
+  },
+  "fix": "Event after original transport.tool_result returns from durable reply publication and lock release; original typed action dispatched once, then real reply read",
+  "added_cases": 2,
+  "tests": {
+    "root_dots_passed": 472,
+    "overlapping_guard_role_host_cancellation_passed": 151,
+    "parallel_affected_variants_passed": 1120,
+    "parallel_processes": 8,
+    "repeats_per_process": 20,
+    "variants_per_repeat": 7,
+    "full_ci_lint": "passed",
+    "diff_whitespace": "passed"
+  },
+  "limits": [
+    "Python3.11 and pytest-xdist unavailable locally; eight independent pytest processes used",
+    "new published exact-commit fullCI pending",
+    "no production/native/runtime change or new native trial",
+    "historical2.3.0 source/full/native counts must not be presented as new2.3.1 full rerun"
+  ],
+  "report": "CI-FIX-2.3.1.txt",
+  "report_sha256": "d18fdb3262e0f51212985f7e66c4cbfb8f7c631256a15a1c7b8cc405449ac327",
+  "source_patch_sha256": "42ea08468831af35f6bce28483873d6ad22d89a85d33e9481cfb25272284cc06",
+  "counts_overlap_and_are_not_cumulative": true
+}

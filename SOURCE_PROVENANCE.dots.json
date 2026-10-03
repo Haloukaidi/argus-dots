@@ -56,10 +56,10 @@
   "retained_generated_assets": "Original tracked frontend runtime bundles and original tracked project resources are preserved.",
   "bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.3.0",
-    "standalone_archive_sha256": "c25ee9206be74daba90342a8329bb01f6bb02bfcd3ba430384cf768fbdc51452",
+    "version": "2.3.1",
+    "standalone_archive_sha256": "337cb00e1e36e8e5ec8507023b7850e7c935056fdf691fd4a0be5f68369a3497",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 580921
+    "standalone_archive_bytes": 590144
   },
   "post_publication_test_fix": {
     "previous_published_commit": "574877f2bf4c74fed8fe5bb4efe47f017e0a8f8c",
@@ -101,10 +101,10 @@
   },
   "previous_bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.2.0",
-    "standalone_archive_sha256": "36527e7c1ef9255b924c3b4d29924dda49693ee7eacf7092cfcab7356d6edf41",
+    "version": "2.3.0",
+    "standalone_archive_sha256": "c25ee9206be74daba90342a8329bb01f6bb02bfcd3ba430384cf768fbdc51452",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 474342
+    "standalone_archive_bytes": 580921
   },
   "changed_or_added_from_baseline_recorded_at": "historical2.1.2 source snapshot; current managed list is installers/dots-portable/PAYLOAD_FILES.txt",
   "patch_sha256_scope": "historical2.1.0 source patch, not the current integrated routing/admission or packaging patch",
@@ -142,6 +142,13 @@
       "standalone_archive_sha256": "6046ffd2273f9255e9b7de0760e7b08ee5c25a751c49d2507316dd8b9f0a7280",
       "integrated_repository_needs_reinstallation": false,
       "standalone_archive_bytes": 274646
+    },
+    {
+      "directory": "installers/dots-portable",
+      "version": "2.2.0",
+      "standalone_archive_sha256": "36527e7c1ef9255b924c3b4d29924dda49693ee7eacf7092cfcab7356d6edf41",
+      "integrated_repository_needs_reinstallation": false,
+      "standalone_archive_bytes": 474342
     }
   ],
   "supervised_approximate_update": {
@@ -176,5 +183,49 @@
       "Actual oldest2.0.0/legacy package bytes unavailable this rerun; exact maps and generic fixtures retained"
     ],
     "exact_updated_commit_ci": "pending publication; local tests and previous CI do not prove the future commit"
+  },
+  "ci_fixture_sync_update": {
+    "recorded_at_release": "2.3.1",
+    "source_baseline_commit": "c367792486566c3947522e499512c757b2e79ddb",
+    "fixed_source_tree_before_distribution_updates": "80977286ebee8122d147cabd6b9733430e351f96",
+    "changed_source_tests_sha256": {
+      "tests/test_dots_supervised.py": "87a2d99981d26a5e87f227e8f07d2deb838bc8754286e17cc5514fad0b9efe02",
+      "tests/test_dots_supervised_daemon_log_alias.py": "5cdb0f95ee35e32c2b6b482f953a0eb03d49c67faee5dfff73d1a11d7a5a0eed"
+    },
+    "matching_payload_tests_identical": true,
+    "production_and_three_installer_entry_scripts_unchanged": true,
+    "source_patch_sha256": "42ea08468831af35f6bce28483873d6ad22d89a85d33e9481cfb25272284cc06",
+    "public_report": "installers/dots-portable/CI-FIX-2.3.1.txt",
+    "current_validation": "installers/dots-portable/VALIDATION.json",
+    "historical_ci": {
+      "commit": "c367792486566c3947522e499512c757b2e79ddb",
+      "run_id": 37110331454,
+      "status": "failed",
+      "passed": 12542,
+      "skipped": 119,
+      "failed": 3,
+      "count_method": "reconstructed from CI log progress symbols",
+      "cause": "inferred from matching controlled lock-cancellation reproduction; original runner state not captured"
+    },
+    "fix_scope": "two fixtures wait on an Event after real durable tool reply settlement; original typed approval and all evidence/alias/deadline rejection assertions retained",
+    "added_cases": 2,
+    "timeouts_and_lock_wait_limits_unchanged": true,
+    "current_checks": {
+      "source_dots_passed": 472,
+      "overlapping_guard_role_host_cancel_passed": 151,
+      "eight_process_repeated_variants_passed": 1120,
+      "installed_source_affected_tests_passed": 66,
+      "installer_standard_library_passed": 57,
+      "five_historical_package_verification_cases_passed": 12,
+      "independent_migration_guard_cases_passed": 66
+    },
+    "historical_scope": "2.3.0 780/14 and609 tests and native acceptance not claimed rerun for2.3.1",
+    "limits": [
+      "Python3.11 and pytest-xdist unavailable locally; independent processes used",
+      "original CI cause remains inference,not proof",
+      "new exact published commit fullCI still required",
+      "no new native trial,production change,service restart or research submission"
+    ],
+    "exact_updated_commit_ci": "pending publication; local pass does not replace future commit CI"
   }
 }

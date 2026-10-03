@@ -241,13 +241,13 @@ def test_no_worker_json_or_prose_can_supply_a_descriptor(tmp_path):
 
 
 @pytest.mark.parametrize("change", [None, "host_append", "retarget"])
-def test_real_protocol4_reviewer_publication_and_typed_terminal_guard(tmp_path, change):
+def test_real_protocol4_reviewer_publication_and_typed_terminal_guard(tmp_path, monkeypatch, change):
     import time
     from concurrent.futures import ThreadPoolExecutor
 
     from argus.adapters.dots_backend import DotsBackend
     from argus.reviewer.tools import ReviewActions
-    from tests.test_dots_supervised import OWNER, setup
+    from tests.test_dots_supervised import OWNER, reviewer_fixture_state, settled_review_tool, setup
 
     bound, host, sid = setup(tmp_path)
     state = Path(bound.project_root) / "state"
@@ -282,15 +282,11 @@ def test_real_protocol4_reviewer_publication_and_typed_terminal_guard(tmp_path, 
         rid = action["request_id"]
         assert "host_aliases" not in bound.inspect(rid)["request"]
         assert "host_aliases" not in bound.inspect(rid)["request"]["options"]
-        host.bind(sid, rid, worker_id="fixture-reviewer", worker_task=action["claim"]["worker_task"], **OWNER)
-        while time.monotonic() < deadline:
-            reply = host.request_tool(sid, rid, worker_id="fixture-reviewer", call_id="fixture-approve",
-                name="approve_review", arguments={"review": "Original typed review action"}, **OWNER)
-            if reply["status"] == "ready":
-                break
-            time.sleep(0.001)
-        else:
-            pytest.fail("typed action was not settled")
+        binding = host.bind(sid, rid, worker_id="fixture-reviewer", worker_task=action["claim"]["worker_task"], **OWNER)
+        assert binding["action"] == "bound", reviewer_fixture_state(host, sid, rid, future)
+        settled_review_tool(monkeypatch, bound, host, sid, rid, future, deadline,
+            worker_id="fixture-reviewer", call_id="fixture-approve", name="approve_review",
+            arguments={"review": "Original typed review action"})
         assert actions.decision.status == "done"
         if change == "host_append":
             with target.open("a") as handle:

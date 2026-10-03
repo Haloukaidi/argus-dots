@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from threading import Event
 
 import pytest
 
@@ -34,6 +35,52 @@ def setup(tmp_path, *, policy=None):
     bound = SupervisedRoleFileDotsTransport(raw.root, profile=policy,
         session_id=session["session_id"], producer_id="fixture-producer", project_root=project)
     return bound, host, session["session_id"]
+
+
+def reviewer_fixture_state(host, sid, rid, future):
+    """Keep the producer's original failure visible if a host phase fails."""
+    try:
+        snapshot = host.status(sid)["tasks"][rid]
+        state = {key: snapshot[key] for key in ("accepted", "terminal", "cancel_requested", "closed")}
+    except DotsBridgeError as exc:
+        state = {"snapshot_error": str(exc)}
+    if future.done():
+        result = future.result()
+        state["backend"] = {"exit_code": result.exit_code, "fatal_error": result.fatal_error}
+    else:
+        state["backend"] = "still running"
+    return state
+
+
+def settled_review_tool(monkeypatch, bound, host, sid, rid, future, deadline, **call):
+    """Wait for the real producer settlement without taking its journal locks."""
+    settled = Event()
+    original = bound.tool_result
+
+    def persist_reply(*args, **kwargs):
+        original(*args, **kwargs)
+        settled.set()  # The durable reply, not the in-memory decision, is ready.
+
+    with monkeypatch.context() as patch:
+        patch.setattr(bound, "tool_result", persist_reply)
+        try:
+            reply = host.request_tool(sid, rid, **call, **OWNER)
+        except DotsBridgeError as exc:
+            pytest.fail(f"typed action admission failed: {exc}; {reviewer_fixture_state(host, sid, rid, future)}")
+        assert reply["status"] == "pending"
+        # Repeated request_tool calls acquire the same root/task locks needed
+        # by claim_tool_call and tool_result. A busy CI runner can exhaust the
+        # producer's bounded lock wait and cancel this otherwise valid review.
+        while not settled.wait(timeout=0.01):
+            if future.done() or time.monotonic() >= deadline:
+                pytest.fail(f"typed action was not settled: {reviewer_fixture_state(host, sid, rid, future)}")
+        try:
+            reply = host.request_tool(sid, rid, **call, **OWNER)
+        except DotsBridgeError as exc:
+            pytest.fail(f"typed action reply failed: {exc}; {reviewer_fixture_state(host, sid, rid, future)}")
+    assert reply["status"] == "ready", reviewer_fixture_state(host, sid, rid, future)
+    assert reply["result"] == {"recorded": "approve_review"}
+    return reply
 
 
 def request(number=1, **changes):
@@ -272,7 +319,8 @@ def test_supervised_cli_requires_profile_and_explicit_heartbeat(tmp_path, capsys
 
 
 @pytest.mark.parametrize("mutate", [False, True])
-def test_original_typed_approval_requires_post_terminal_evidence_check(tmp_path, mutate):
+@pytest.mark.parametrize("slow_settlement", [False, True])
+def test_original_typed_approval_requires_post_terminal_evidence_check(tmp_path, monkeypatch, mutate, slow_settlement):
     from pathlib import Path
 
     from argus.reviewer.tools import ReviewActions
@@ -280,6 +328,17 @@ def test_original_typed_approval_requires_post_terminal_evidence_check(tmp_path,
     bound, host, sid = setup(tmp_path)
     candidate = Path(bound.project_root) / "candidate.txt"
     candidate.write_text("verified candidate")
+    if slow_settlement:
+        original_write = bound._write
+
+        def delayed_reply(fd, name, value, **kwargs):
+            if name.startswith("tool-reply-"):
+                # Hold the real journal locks longer than their 0.5s contender
+                # budget. The host must wait for settlement without polling.
+                time.sleep(0.7)
+            return original_write(fd, name, value, **kwargs)
+
+        monkeypatch.setattr(bound, "_write", delayed_reply)
     host.heartbeat(sid, **OWNER)
     backend = DotsBackend(bound, role="reviewer", execution_profile=bound.execution_profile,
                           timeout_seconds=5, poll_interval=0.001)
@@ -301,15 +360,11 @@ def test_original_typed_approval_requires_post_terminal_evidence_check(tmp_path,
         else:
             pytest.fail("reviewer fixture was not submitted")
         rid = action["request_id"]
-        host.bind(sid, rid, worker_id="fixture-reviewer", worker_task=action["claim"]["worker_task"], **OWNER)
-        while time.monotonic() < deadline:
-            reply = host.request_tool(sid, rid, worker_id="fixture-reviewer", call_id="approve1",
-                name="approve_review", arguments={"review": "fixture checked"}, **OWNER)
-            if reply["status"] == "ready":
-                break
-            time.sleep(0.001)
-        else:
-            pytest.fail("typed original action was not settled")
+        binding = host.bind(sid, rid, worker_id="fixture-reviewer", worker_task=action["claim"]["worker_task"], **OWNER)
+        assert binding["action"] == "bound", reviewer_fixture_state(host, sid, rid, future)
+        settled_review_tool(monkeypatch, bound, host, sid, rid, future, deadline,
+            worker_id="fixture-reviewer", call_id="approve1", name="approve_review",
+            arguments={"review": "fixture checked"})
         assert actions.decision.status == "done"
         if mutate:
             candidate.write_text("changed after approval")

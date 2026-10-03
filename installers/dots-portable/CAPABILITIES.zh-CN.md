@@ -1,4 +1,4 @@
-# 能力矩阵（2.3.0）
+# 能力矩阵（2.3.1）
 
 | 范围 | 实现与证据 | 限制 |
 |---|---|---|
@@ -15,4 +15,6 @@
 
 准确本轮安装、源码与native验证范围见 `VALIDATION.json` 及其所引报告。普通Web API角色流程、单独原功能探针、fixture及历史失败分别陈述；不把监督近似验收提升为完整严格五角色控制、跨平台、常驻服务或费用等价证明。
 
-本次原Web API软件任务经过Manager→Planner→Engineer→Reviewer原typed审批并由原mission完成（8请求：5completed、3cancelled）；另一个有限scope验证原Planner同worker续接及原Curator callback，3请求均completed/consumed。这些证据分开记录，不是完整五角色研究、浏览器UI、策略内容质量或严格控制等价验收。先前失败仍保留，详见 `payload/docs/dots-supervised-native-validation.md` 与 `SUPERVISED-VALIDATION.json`。
+2.3.0历史原Web API软件任务经过Manager→Planner→Engineer→Reviewer原typed审批并由原mission完成（8请求：5completed、3cancelled）；另一个有限scope验证原Planner同worker续接及原Curator callback，3请求均completed/consumed。这些证据分开记录，不是完整五角色研究、浏览器UI、策略内容质量或严格控制等价验收。先前失败仍保留，详见 `payload/docs/dots-supervised-native-validation.md` 与 `SUPERVISED-VALIDATION.json`。
+
+2.3.1仅改变两个测试fixture及分发版本：通过实际持久回复后的Event同步，保留原typed审批与证据变更拒绝断言。原2.3.0公开CI有3项失败；本版当前定向、并发重复及安装结果见VALIDATION.json，未将旧780/14或609计为2.3.1全库重跑。

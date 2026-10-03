@@ -23,10 +23,10 @@ PACKAGE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE))
 import install_dots as current  # noqa: E402
 
-RELEASES = ("dots-portable-2.1.0", "dots-portable-2.1.1", "dots-portable-2.1.2", "dots-portable-2.2.0")
+RELEASES = ("dots-portable-2.1.0", "dots-portable-2.1.1", "dots-portable-2.1.2", "dots-portable-2.2.0", "dots-portable-2.3.0")
 BASE = "9cfe9129fd90511c3a1865844ec7dfda1b5d1008"
-BASELINE_EXTENSION = ("tests/conftest.py",)
-NEW_ORIGINALS = (
+BASELINE_EXTENSION = ()
+ORIGINALS_TO_CHECK = (
     "argus/daemon/_life_worker_run.py", "argus/daemon/state.py",
     "argus/webapi/diagnostics.py", "tests/conftest.py",
 )
@@ -133,26 +133,26 @@ class ReleaseUpgradeTests(unittest.TestCase):
         self.invoke("uninstall", release=RELEASES[0])
         self.assert_original()
 
-    def test_new_original_backups_modes_and_restore(self):
-        for rel in NEW_ORIGINALS:
+    def test_original_backups_modes_and_restore(self):
+        for rel in ORIGINALS_TO_CHECK:
             (self.root / rel).chmod(0o640)
         self.invoke(release=RELEASES[-1])
         self.invoke(upgrade=True)
         inst = current.Installer(self.root, PACKAGE)
         with inst.locked():
-            for rel in NEW_ORIGINALS:
+            for rel in ORIGINALS_TO_CHECK:
                 info = inst.state["files"][rel]
                 self.assertEqual(info["original"]["sha256"], self.manifest["base"][rel])
                 self.assertEqual(info["original"]["mode"], 0o640)
                 self.assertEqual(current.sha(inst.read_backup(info["backup"], info["original"])), self.manifest["base"][rel])
         self.invoke("uninstall")
         self.assert_original()
-        for rel in NEW_ORIGINALS:
+        for rel in ORIGINALS_TO_CHECK:
             self.assertEqual((self.root / rel).stat().st_mode & 0o777, 0o640)
 
-    def test_new_original_local_edits_block_all_writes(self):
+    def test_original_local_edits_block_all_writes(self):
         self.invoke(release=RELEASES[-1])
-        path = self.root / NEW_ORIGINALS[0]
+        path = self.root / ORIGINALS_TO_CHECK[0]
         path.write_text("User's test fixture changes\n")
         before = self.payload_snapshot()
         with self.assertRaises(current.InstallError):
@@ -161,7 +161,7 @@ class ReleaseUpgradeTests(unittest.TestCase):
 
     def test_postinstall_managed_test_edit_blocks_uninstall(self):
         self.invoke()
-        (self.root / NEW_ORIGINALS[0]).write_text("User's changes after install\n")
+        (self.root / ORIGINALS_TO_CHECK[0]).write_text("User's changes after install\n")
         before = self.payload_snapshot()
         with self.assertRaises(current.InstallError):
             self.invoke("uninstall")
@@ -198,7 +198,7 @@ class ReleaseUpgradeTests(unittest.TestCase):
         def fail(path, data, mode=0o600):
             nonlocal triggered
             real_write(path, data, mode)
-            if path == self.root / NEW_ORIGINALS[0] and not triggered:
+            if path == self.root / ORIGINALS_TO_CHECK[0] and not triggered:
                 triggered = True
                 raise OSError("Injected failure after replacement")
         with mock.patch.object(current, "atomic_write", side_effect=fail), self.assertRaises(OSError):
@@ -213,7 +213,7 @@ class ReleaseUpgradeTests(unittest.TestCase):
         real_write = current.atomic_write
         def fail(path, data, mode=0o600):
             real_write(path, data, mode)
-            if path == self.root / NEW_ORIGINALS[0]:
+            if path == self.root / ORIGINALS_TO_CHECK[0]:
                 raise OSError("Injected interrupted process after replacement")
         with mock.patch.object(current, "atomic_write", side_effect=fail), mock.patch.object(current.Installer, "recover", side_effect=OSError("Process stopped")), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(OSError):
             self.invoke(upgrade=True)
