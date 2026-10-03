@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import stat
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ from .runtime_backend import RuntimeBackendUnavailable
 
 HOST_CONFIG_ENV = "ARGUS_DOTS_HOST_CONFIG"
 _CONFIG_KEYS = frozenset({"version", "bridge_dir", "session_id", "producer_id", "project_root", "execution_profile"})
+_OPTIONAL_CONFIG_KEYS = frozenset({"request_timeout_seconds"})
 _MAX_CONFIG_BYTES = 16384
 
 
@@ -27,6 +29,7 @@ class DotsHostBinding:
     execution_profile: Any
     identity: str
     config_path: Path
+    request_timeout_seconds: float = 300
 
 
 def dots_host_unavailable(reason: str) -> RuntimeBackendUnavailable:
@@ -81,8 +84,14 @@ def read_dots_host_config(env: Mapping[str, str]) -> tuple[Path, dict[str, Any]]
         raise ValueError("host configuration exceeds 16 KiB")
     value = json.loads(data, object_pairs_hook=_unique_object,
                        parse_constant=_reject_nonfinite)
-    if not isinstance(value, dict) or set(value) != _CONFIG_KEYS or type(value["version"]) is not int or value["version"] != 1:
+    if (not isinstance(value, dict) or not _CONFIG_KEYS <= set(value)
+            or set(value) - _CONFIG_KEYS - _OPTIONAL_CONFIG_KEYS
+            or type(value["version"]) is not int or value["version"] != 1):
         raise ValueError("invalid explicit host configuration schema")
+    timeout = value.get("request_timeout_seconds", 300)
+    if (type(timeout) not in (int, float) or not 0 < timeout <= 3600
+            or not math.isfinite(timeout)):
+        raise ValueError("request_timeout_seconds must be a finite number greater than 0, at most 3600")
     return path, value
 
 

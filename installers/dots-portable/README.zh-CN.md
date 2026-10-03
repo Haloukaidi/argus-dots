@@ -1,10 +1,10 @@
-# Argus dots 便携模块 2.3.1
+# Argus dots 便携模块 2.3.2
 
 2.3.0已加入显式 `supervised-approx-v1` 与协议4，把原Web前门、daemon及角色流程绑定到在线、获授权的有限native host。严格dots默认、原九个CLI provider及Reviewer typed审批保留；选择dots不会静默回退CLI。
 
 监督近似模式的只读、禁工具、工作目录和安全选项是指令约束，不能宣称操作系统强制隔离。必须明确接受这些限制并选用准确profile；缺少host、越界或仍不支持的选项会拒绝。安装包本身不创建native能力，不启动常驻服务。
 
-本补丁版只修正两个Reviewer测试fixture的同步；生产代码、执行权限、超时和锁等待限制不变。原公开2.3.0的CI失败仍保留：根据日志进度符号重建为12,542 passed、119 skipped、3 failed。受控复现证实锁竞争可触发同样的取消，但原CI缺完整现场，不能将其原因当成已证实。详见 `CI-FIX-2.3.1.txt`。
+本版新增host-owned请求预算与显式profile lease时长。request_timeout_seconds仍默认300秒，只允许大于0且不超过3600的有限数值；实际请求期限取所选预算与原session期限的较早者。可显式声明1..90秒lease；未声明保持legacy默认30秒与原显式1..60秒支持。严格模式、协议3、角色权限和停止规则不变。详见 `CHANGES-2.3.2.zh-CN.md`。
 
 ## 安装或升级
 
@@ -16,16 +16,16 @@ python install_dots.py --argus-dir /absolute/path/to/Argus
 
 兼容固定原版 `9cfe9129fd90511c3a1865844ec7dfda1b5d1008`。有Git时HEAD须精确匹配；源码快照通过731项基准文件hash识别。不是任意0.1.8版本，也不接受site-packages目录。
 
-本包87项payload（31原文件修改、56新增），清单见 `PAYLOAD_FILES.txt`，包括本次全部执行代码及测试、相关模块文档。原基准新增管理daemon启动、daemon状态、Web diagnostics及tests/conftest.py，均保存原件再更新；新增基准hash覆盖原tests/conftest.py。
+本包88项payload（31原文件修改、57新增），清单见 `PAYLOAD_FILES.txt`，包括本次全部执行代码及测试、相关模块文档。原基准新增管理daemon启动、daemon状态、Web diagnostics及tests/conftest.py，均保存原件再更新；新增基准hash覆盖原tests/conftest.py。
 
-已有受管2.0.0、2.1.0、2.1.1、2.1.2、2.2.0或2.3.0：
+已有受管2.0.0、2.1.0、2.1.1、2.1.2、2.2.0、2.3.0或2.3.1：
 
 ```sh
 python install_dots.py --argus-dir /absolute/path/to/Argus --check
 python install_dots.py --argus-dir /absolute/path/to/Argus --upgrade
 ```
 
-验证对应旧20/32/32/37/64/87文件的完整hash集合、原始备份与事务元数据；版本字符串相同不够。未知版本、用户后改、缺项或损坏拒绝覆盖，不提供force选项。旧完整8文件legacy可显式 `--adopt-legacy`，卸载恢复其原状态。
+验证对应旧20/32/32/37/64/87/87文件的完整hash集合、原始备份与事务元数据；版本字符串相同不够。未知版本、用户后改、缺项或损坏拒绝覆盖，不提供force选项。旧完整8文件legacy可显式 `--adopt-legacy`，卸载恢复其原状态。
 
 完整fork已含集成源码，无需对自身运行原版补丁安装器。仓库稳定入口为 `installers/dots-portable/`；根README.dots是完整fork入口，不覆盖到原版安装目标。
 
@@ -68,16 +68,18 @@ python install_dots.py --argus-dir /path/to/Argus --uninstall
 
 ## 验证范围
 
-准确当前结果见 `VALIDATION.json`；历史2.3.0记录保存在 `VALIDATION-2.3.0.json`，历史2.2.0记录保存在 `VALIDATION-2.2.0.json`，其他旧记录继续保留。各定向测试、独审和历史回归有重叠，不能相加或冒充当前全库测试。
+准确当前结果见 `VALIDATION.json`；历史2.3.1记录保存在 `VALIDATION-2.3.1.json`，历史2.3.0记录保存在 `VALIDATION-2.3.0.json`，历史2.2.0记录保存在 `VALIDATION-2.2.0.json`，其他旧记录继续保留。各定向测试、独审和历史回归有重叠，不能相加或冒充当前全库测试。
 
 最早2.0.0及legacy的实际历史字节在本轮环境不可用：精确maps保留、通用fixture继续验证，没有虚报最老实包重跑。当前安装验证在Linux执行；Python3.11、macOS、Windows/WSL未重新实测，Windows不宣称通过。
 
 标准库自检：`python -m unittest discover -s tests -v`
 
-离线真实版本迁移复验：设置 `ARGUS_DOTS_BASE_REPO`、`ARGUS_DOTS_HISTORY_ROOT`，再运行 `python -m unittest discover -s verification -v`。需合法原Git对象及2.1.0/2.1.1/2.1.2/2.2.0/2.3.0历史包；不联网，不构造假历史hash。
+离线真实版本迁移复验：设置 `ARGUS_DOTS_BASE_REPO`、`ARGUS_DOTS_HISTORY_ROOT`，再运行 `python -m unittest discover -s verification -v`。需合法原Git对象及2.1.0/2.1.1/2.1.2/2.2.0/2.3.0/2.3.1历史包；不联网，不构造假历史hash。
 
 MIT许可见 `LICENSE.Argus`。hash用于完整性，不是数字签名。不包含凭据、真实运行身份、raw日志或用户研究prompt。构建阶段与后续授权发布、服务启动分别记录。
 
 安装器另修复已复现的rollback/recover日志漏项：读取journal时先验证完整受管集合、已知版本hash及前后状态指纹；不完整记录在写文件前拒绝，原正常事务/恢复控制流程不变。
 
 2.3.0历史原Web API软件任务经过Manager→Planner→Engineer→Reviewer原typed审批并由原mission完成（8请求：5completed、3cancelled）；另一个有限scope验证原Planner同worker续接及原Curator callback，3请求均completed/consumed。这些证据分开记录，不是完整五角色研究、浏览器UI、策略内容质量或严格控制等价验收。先前失败仍保留，详见 `payload/docs/dots-supervised-native-validation.md` 与 `SUPERVISED-VALIDATION.json`。
+
+2.3.1已发布commit66d7f95的四项CI检查通过；此前2.3.0的失败记录继续保留。本版当前定向/安装测试见VALIDATION.json；新公开commit的CI须独立验证。新预算只适用于新请求，不延长已超时请求或session，也不证明真实长任务或研究目标已完成。

@@ -1,4 +1,4 @@
-# 能力矩阵（2.3.1）
+# 能力矩阵（2.3.2）
 
 | 范围 | 实现与证据 | 限制 |
 |---|---|---|
@@ -17,4 +17,6 @@
 
 2.3.0历史原Web API软件任务经过Manager→Planner→Engineer→Reviewer原typed审批并由原mission完成（8请求：5completed、3cancelled）；另一个有限scope验证原Planner同worker续接及原Curator callback，3请求均completed/consumed。这些证据分开记录，不是完整五角色研究、浏览器UI、策略内容质量或严格控制等价验收。先前失败仍保留，详见 `payload/docs/dots-supervised-native-validation.md` 与 `SUPERVISED-VALIDATION.json`。
 
-2.3.1仅改变两个测试fixture及分发版本：通过实际持久回复后的Event同步，保留原typed审批与证据变更拒绝断言。原2.3.0公开CI有3项失败；本版当前定向、并发重复及安装结果见VALIDATION.json，未将旧780/14或609计为2.3.1全库重跑。
+历史2.3.1仅改变两个测试fixture及分发版本：通过实际持久回复后的Event同步，保留原typed审批与证据变更拒绝断言。原2.3.0公开CI有3项失败；本版当前定向、并发重复及安装结果见VALIDATION.json，未将旧780/14或609计为2.3.1全库重跑。
+
+2.3.2新增有限host请求预算和显式profile lease。默认请求预算300秒，显式值有限且≤3600；每个请求受原sessionexpiry截断。显式lease1..90秒仅控制续租时长，默认legacy30秒和原1..60秒覆盖保持兼容；续租不延长session或request。不改变权限、strict/v3、不自动后台续租、不重放既有调用。

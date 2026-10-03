@@ -1,28 +1,34 @@
 {
-  "release": "dots-portable-2.3.1",
+  "release": "dots-portable-2.3.2",
   "status": "local_package_verification_passed",
   "verification_date": "2026-10-03",
-  "source_baseline_commit": "c367792486566c3947522e499512c757b2e79ddb",
-  "fixed_source_tree_before_distribution_updates": "80977286ebee8122d147cabd6b9733430e351f96",
-  "production_source_commit": "3bb96e2ab95493bdcb9b34ee873bb60bc936a45e",
-  "production_unchanged_from_2_3_0": true,
-  "source_test_sha256": {
-    "tests/test_dots_supervised.py": "87a2d99981d26a5e87f227e8f07d2deb838bc8754286e17cc5514fad0b9efe02",
-    "tests/test_dots_supervised_daemon_log_alias.py": "5cdb0f95ee35e32c2b6b482f953a0eb03d49c67faee5dfff73d1a11d7a5a0eed"
-  },
+  "source_baseline_commit": "66d7f95d7832a4c4fe201705675d24c9deaa5bb6",
+  "source_commit": "9fc972d49a33dad76fc4aa3f58ca21485cc6daf2",
+  "source_tree": "b670b55c94583d39fbca1518a8abc24a852814e6",
   "installer_base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
   "payload": {
-    "files": 87,
+    "files": 88,
     "modified_originals": 31,
-    "added_files": 56,
-    "changed_from_2_3_0": [
-      "tests/test_dots_supervised.py",
-      "tests/test_dots_supervised_daemon_log_alias.py"
+    "added_files": 57,
+    "changed_existing_payload": [
+      "argus/adapters/dots_backend.py",
+      "argus/adapters/dots_host_binding.py",
+      "argus/adapters/dots_supervised.py",
+      "argus/apps/_runtime_construction.py",
+      "argus/apps/dots_coordinator.py",
+      "argus/core/dots_host_binding.py",
+      "argus/core/dots_profile.py",
+      "argus/manager/front_door.py",
+      "docs/dots-supervised-web.md",
+      "tests/test_dots_host_binding.py",
+      "tests/test_dots_supervised_workflow.py"
     ],
-    "only_two_approved_test_files_changed": true,
+    "new_payload": [
+      "tests/test_dots_supervised_lease.py"
+    ],
     "baseline_files": 731,
     "all_prior_baseline_values_unchanged": true,
-    "all_payload_bytes_equal_fixed_source_tree": true,
+    "all_payload_bytes_equal_source": true,
     "source_payload_list": "PAYLOAD_FILES.txt"
   },
   "supported_upgrade_maps": {
@@ -31,59 +37,77 @@
     "dots-portable-2.1.1": 32,
     "dots-portable-2.1.2": 37,
     "dots-portable-2.2.0": 64,
-    "dots-portable-2.3.0": 87
+    "dots-portable-2.3.0": 87,
+    "dots-portable-2.3.1": 87
   },
   "legacy_map_files": 8,
   "prior_maps_and_legacy_unchanged": true,
   "installer_tests": {
     "standard_library_passed": 57,
-    "standard_library_seconds": 0.349,
+    "standard_library_seconds": 0.29,
     "real_historical_package_tests_passed": 12,
-    "real_historical_package_seconds": 14.295,
+    "real_historical_package_seconds": 15.622,
     "real_historical_packages_reconstructed_and_hash_verified": {
       "dots-portable-2.1.0": "06a12cb9d8dd14486ae2c1205c8f1215cbe327eb",
       "dots-portable-2.1.1": "aa619ebd6ff158c4bda4554c70a2ad96f251aef9",
       "dots-portable-2.1.2": "8bad9aa2a578b26a320092def30db0cd99360920",
       "dots-portable-2.2.0": "949dfb2527c385151d3552fb89958a33170a389a",
-      "dots-portable-2.3.0": "c367792486566c3947522e499512c757b2e79ddb"
+      "dots-portable-2.3.0": "c367792486566c3947522e499512c757b2e79ddb",
+      "dots-portable-2.3.1": "66d7f95d7832a4c4fe201705675d24c9deaa5bb6"
     },
-    "independent_migration_and_guards_passed": 66,
+    "independent_migration_and_guards_passed": 70,
+    "independent_seconds": 85.903,
     "oldest_real_bytes_unavailable": [
       "dots-portable-2.0.0",
       "original8-file legacy"
     ],
-    "oldest_scope": "exact maps retained; generic fixtures only, not actual historical bundle reruns"
+    "oldest_scope": "exact maps retained; generic fixtures only,not actual historical bundle reruns"
   },
   "entry_hashes": {
     "install_dots.py": "5e4da31ffbabdc2c320828dfe914cabd272d4ca66058d2106351f9b0ec6680a9",
     "bootstrap_argus.py": "aaec66a4c846a5f1fef01cddc8b890ff252ef6a13ead805f13fbefbee2d0db81",
     "check_host.py": "9063049a778ef4e1d5b05fa4eda9ee048cbc2531350a7aac38f842cadac29161"
   },
-  "three_execution_scripts_unchanged_from_2_3_0": true,
+  "three_execution_scripts_unchanged_from_2_3_1": true,
   "installed_checkout": {
     "base_commit": "9cfe9129fd90511c3a1865844ec7dfda1b5d1008",
     "detached_git_worktree": true,
     "imported_from_installed_source": true,
-    "payload_files_checked": 87,
-    "affected_source_tests": {
-      "passed": 66,
+    "payload_files_checked": 88,
+    "targeted_source_tests": {
+      "passed": 603,
       "failed": 0,
       "errors": 0,
       "skipped": 0,
-      "seconds": 3.245,
+      "seconds": 20.042,
       "scope": [
+        "tests/test_architecture_invariants.py",
+        "tests/test_dots_admission.py",
+        "tests/test_dots_backend.py",
+        "tests/test_dots_cancellation_ack.py",
+        "tests/test_dots_coordinator.py",
+        "tests/test_dots_file_transport.py",
+        "tests/test_dots_host_binding.py",
+        "tests/test_dots_role_host.py",
+        "tests/test_dots_runtime_routing.py",
         "tests/test_dots_supervised.py",
-        "tests/test_dots_supervised_daemon_log_alias.py"
+        "tests/test_dots_supervised_daemon_log_alias.py",
+        "tests/test_dots_supervised_guard.py",
+        "tests/test_dots_supervised_lease.py",
+        "tests/test_dots_supervised_reviewer.py",
+        "tests/test_dots_supervised_workflow.py",
+        "tests/test_dots_usage_presentation.py",
+        "tests/test_workflow_dots_lifecycle.py"
       ]
     },
-    "cli_cycle": "2.3.0install→2.3.1check/upgrade/repeat→rollback→2.3.0check→2.3.1uninstall passed",
+    "cli_cycle": "2.3.1install→2.3.2check/upgrade/repeat→rollback→2.3.1check→2.3.2uninstall passed",
     "uninstall_restored_original_hashes": 731,
-    "uninstall_removed_new_managed_files": 56,
+    "uninstall_removed_new_managed_files": 57,
     "tracked_git_diff_after_uninstall": "empty"
   },
-  "maintainer_manifest_reproduction": "passed including exact2.3.0 mapping and all prior maps",
+  "maintainer_manifest_reproduction": "passed including exact2.3.1 mapping and all prior maps",
   "static_checks": {
-    "modified_package_script_ruff_F_E_excluding_E501": "passed",
+    "changed_package_script_ruff_F_E_excluding_E501": "passed",
     "payload_python_ast": "passed",
     "diff_whitespace": "passed"
   },
@@ -91,31 +115,20 @@
     "system": "Linux",
     "python": "3.12.14"
   },
-  "current_fixture_evidence": "CI-FIX-2.3.1.json",
-  "current_fixture_report": "CI-FIX-2.3.1.txt",
+  "current_source_evidence": "TIMEOUT-LEASE-VALIDATION.json",
   "historical_evidence": {
-    "previous_package": "VALIDATION-2.3.0.json",
+    "previous_package": "VALIDATION-2.3.1.json",
     "previous_native_acceptance": "SUPERVISED-VALIDATION.json",
-    "scope": "historical2.3.0 780passed/14skipped source gate,609 installed-source tests and native scopes; none claimed rerun for2.3.1"
-  },
-  "historical_ci": {
-    "commit": "c367792486566c3947522e499512c757b2e79ddb",
-    "run_id": 37110331454,
-    "status": "failed",
-    "passed": 12542,
-    "skipped": 119,
-    "failed": 3,
-    "count_method": "reconstructed from log progress symbols",
-    "cause": "matching controlled race reproduced; historical cause inferred,not proven"
+    "scope": "historical2.3.0/2.3.1 tests,CI and native trials remain separate; no new native research completion claim"
   },
   "counts_overlap_and_are_not_cumulative": true,
   "not_tested": [
     "exact new published commit fullCI",
-    "local Python3.11 or pytest-xdist",
-    "new native trial or full research campaign",
     "new online bootstrap",
-    "macOS/Windows/WSL installation",
-    "rebuilt frontend bundles"
+    "new native long research completion",
+    "local Python3.11/macOS/Windows/WSL installation",
+    "frontend bundle rebuild",
+    "Mypy unavailable in specified source-validation environment"
   ],
   "publication": {
     "github_push": false,

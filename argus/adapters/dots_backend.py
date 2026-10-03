@@ -226,6 +226,7 @@ class DotsBackend:
                 "automatic_dispatch": False}
         if self.execution_profile is not None:
             report["execution_profile"] = self.execution_profile.to_dict()
+            report["request_timeout_seconds"] = self.timeout_seconds
         return report
 
     @contextmanager
@@ -310,10 +311,18 @@ class DotsBackend:
             if resume_thread_id is not None and not caps.resume:
                 return fail("dots host does not support session resume", stop_kind="permanent_error")
             profile = self.execution_profile
+            expires_at = started + self.timeout_seconds
             if profile is not None:
                 if getattr(self.transport, "execution_profile", None) != profile:
                     return fail("supervised transport profile changed", stop_kind="permanent_error")
-                self.transport.assert_ready()
+                readiness = self.transport.assert_ready()
+                session_expires_at = readiness.get("session_expires_at")
+                if (type(session_expires_at) not in (int, float)
+                        or not math.isfinite(session_expires_at) or session_expires_at <= started):
+                    raise DotsBridgeError("supervised host requires a finite live session_expires_at")
+                # Preparation, queueing and dispatch all consume the original
+                # budget. A lease renewal or config edit cannot extend it.
+                expires_at = min(expires_at, session_expires_at)
             # Compare against the existing dataclass defaults so newly introduced
             # execution controls also fail closed until intentionally supported.
             supported = {"model", "reasoning_effort", "external_interrupt_reason_provider", "on_agent_message",
@@ -383,7 +392,7 @@ class DotsBackend:
             request = validate_request(DotsRequest(
                 uuid.uuid4().hex, prompt, run_label,
                 None if options.model == "" else options.model, options.reasoning_effort,
-                started, started + self.timeout_seconds,
+                started, expires_at,
                 role=self.role, mission_id=mission_id, resume_thread_id=resume_thread_id, options=serializable,
                 tools=tools_binding[0] if tools_binding else [],
             ).to_dict())

@@ -206,7 +206,8 @@ def test_stale_lease_is_host_required(live_binding, monkeypatch):
         require_configured_dots_runtime("dots")
 
 
-def test_configuration_replacement_blocks_new_calls_but_preserves_settlement(live_binding):
+@pytest.mark.parametrize("changed_field", ["session_id", "request_timeout_seconds"])
+def test_configuration_replacement_blocks_new_calls_but_preserves_settlement(live_binding, changed_field):
     import time
 
     from argus.adapters.dots_backend import DotsRequest
@@ -219,7 +220,7 @@ def test_configuration_replacement_blocks_new_calls_but_preserves_settlement(liv
     action = host.next(value["session_id"], **owner)
     host.bind(value["session_id"], request.request_id, worker_id="fixture-worker",
               worker_task=action["claim"]["worker_task"], **owner)
-    value["session_id"] = "f" * 32
+    value[changed_field] = "f" * 32 if changed_field == "session_id" else 900
     path.write_text(json.dumps(value))
     with pytest.raises(ValueError, match="launcher binding changed"):
         binding.transport.assert_ready()
@@ -275,7 +276,8 @@ def test_launcher_uses_original_web_entry_and_explicit_environment(live_binding,
     assert HOST_CONFIG_ENV not in os.environ
 
 
-def test_frontdoor_and_daemon_factory_share_same_bound_host(live_binding, monkeypatch, tmp_path):
+@pytest.mark.parametrize("timeout", [None, 900, 0.5, 3600])
+def test_frontdoor_and_daemon_factory_share_same_bound_host(live_binding, monkeypatch, tmp_path, timeout):
     import argparse
     from pathlib import Path
     from types import SimpleNamespace
@@ -285,7 +287,11 @@ def test_frontdoor_and_daemon_factory_share_same_bound_host(live_binding, monkey
     from argus.daemon.config import LifeWorkerConfig
     from argus.manager.front_door import _ensure_manager_runner
 
-    _, value, _, _ = live_binding
+    path, value, _, _ = live_binding
+    if timeout is not None:
+        value["request_timeout_seconds"] = timeout
+        path.write_text(json.dumps(value))
+    expected_timeout = 300 if timeout is None else timeout
     seen = []
 
     def build(ns, **kwargs):
@@ -302,6 +308,7 @@ def test_frontdoor_and_daemon_factory_share_same_bound_host(live_binding, monkey
     manager_ns = seen[0]
     assert manager_ns.dots_transport.session_id == value["session_id"]
     assert manager_ns.dots_execution_profile.name == "supervised-approx-v1"
+    assert manager_ns.dots_request_timeout_seconds == expected_timeout
 
     # The detached daemon's standard namespace has no serialized Python host.
     # Shared composition reconstructs the same explicit locator/session.
@@ -312,6 +319,8 @@ def test_frontdoor_and_daemon_factory_share_same_bound_host(live_binding, monkey
     monkeypatch.setattr(_runtime_construction, "build_dots_life_runner", lambda ns, **kwargs: kwargs)
     received = _runtime_construction.build_life_runner(daemon_ns)
     assert received["transport"].session_id == value["session_id"]
+    assert received["timeout_seconds"] == expected_timeout
+    assert daemon_ns.dots_request_timeout_seconds == expected_timeout
     assert daemon_ns.dots_execution_profile == manager_ns.dots_execution_profile
 
 
@@ -342,20 +351,38 @@ def test_normal_web_message_accepts_bound_project_and_refuses_other_project(live
     assert len(calls) == 1
 
 
-def test_actual_shared_factory_constructs_five_explicit_profile_backends(live_binding, monkeypatch, tmp_path):
+@pytest.mark.parametrize("timeout", [None, 900])
+@pytest.mark.parametrize("entry", ["direct", "web", "daemon"])
+def test_actual_shared_factory_constructs_five_explicit_profile_backends(live_binding, monkeypatch, tmp_path, timeout, entry):
     import argparse
+    from pathlib import Path
+    from types import SimpleNamespace
 
     from argus.apps._runtime_construction import build_life_runner
     from argus.core.runtime_backend import DOTS_ROLES
+    from argus.daemon._life_worker_runtime_context import _runner_namespace
+    from argus.daemon.config import LifeWorkerConfig
+    from argus.manager.front_door import _ensure_manager_runner
 
-    _, value, _, _ = live_binding
+    path, value, _, _ = live_binding
+    if timeout is not None:
+        value["request_timeout_seconds"] = timeout
+        path.write_text(json.dumps(value))
     monkeypatch.setattr("argus.adapters.agent_cli_backend.AgentCliBackend",
                         lambda *a, **k: pytest.fail("native factory must not construct CLI"))
-    args = argparse.Namespace(backend="dots", workdir=value["project_root"], skills_dir=str(tmp_path / "skills"))
-    runner = build_life_runner(args)
+    if entry == "web":
+        mem = SimpleNamespace(project_root=value["project_root"], global_root=tmp_path / "state", root=tmp_path / "state")
+        runner = _ensure_manager_runner({"backend": "dots"}, mem)
+    else:
+        args = (_runner_namespace(LifeWorkerConfig(life_dir=tmp_path / "state",
+                    project_workdir=Path(value["project_root"]), backend="dots"))
+                if entry == "daemon" else argparse.Namespace(backend="dots",
+                    workdir=value["project_root"], skills_dir=str(tmp_path / "skills")))
+        runner = build_life_runner(args)
     for role in DOTS_ROLES:
         backend = getattr(runner, role + "_backend")
         assert backend.backend == "dots"
+        assert backend.timeout_seconds == (300 if timeout is None else timeout)
         assert backend.execution_profile.name == "supervised-approx-v1"
         assert backend.transport.session_id == value["session_id"]
         assert backend.capability_report()["supported_options"] == []
@@ -437,3 +464,263 @@ def test_launcher_reaches_actual_cli_web_composition(live_binding, monkeypatch):
     assert dots_web.main(["--host-config", str(path), "--web-port", "8888"]) == 0
     assert len(calls) == 1
     assert calls[0]["host"] == "127.0.0.1" and calls[0]["port"] == 8888
+
+
+@pytest.mark.parametrize("timeout", [0, -1, True, False, "900", None, float("nan"), float("inf"), -float("inf"), 3600.1, 10**400])
+def test_invalid_request_timeout_fails_before_transport_or_writes(live_binding, monkeypatch, timeout):
+    from pathlib import Path
+
+    from argus.adapters import dots_supervised
+
+    path, value, host, _ = live_binding
+    root = Path(value["bridge_dir"])
+    before = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+    value["request_timeout_seconds"] = timeout
+    path.write_text(json.dumps(value))
+    monkeypatch.setattr(dots_supervised, "SupervisedRoleFileDotsTransport",
+                        lambda *a, **k: pytest.fail("invalid config must not construct transport"))
+    with pytest.raises(RuntimeBackendUnavailable, match="request_timeout_seconds|nonfinite"):
+        require_configured_dots_runtime("dots")
+    assert {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
+    assert not host.status(value["session_id"])["tasks"]
+
+
+def test_timeout_only_edit_changes_identity_and_rebuilds_warm_manager(live_binding, tmp_path):
+    from types import SimpleNamespace
+
+    from argus.manager.front_door import _ensure_manager_runner
+
+    path, value, _, _ = live_binding
+    binding = require_configured_dots_runtime("dots")
+    before = binding_configuration_key()
+    mem = SimpleNamespace(project_root=value["project_root"], global_root=tmp_path / "state", root=tmp_path / "state")
+    state = {"backend": "dots"}
+    original = _ensure_manager_runner(state, mem)
+    assert original.manager_backend.timeout_seconds == 300
+    value["request_timeout_seconds"] = 900
+    path.write_text(json.dumps(value))
+    assert binding_configuration_key() != before
+    assert require_configured_dots_runtime("dots").identity != binding.identity
+    rebuilt = _ensure_manager_runner(state, mem)
+    assert rebuilt is not original
+    assert rebuilt.manager_backend.timeout_seconds == 900
+    assert original.manager_backend.timeout_seconds == 300
+
+
+@pytest.fixture
+def host_clock(live_binding, monkeypatch):
+    import time
+
+    from argus.adapters import (
+        dots_admission,
+        dots_backend,
+        dots_coordinator,
+        dots_file_transport,
+        dots_supervised,
+    )
+
+    now = time.time()
+
+    class Clock:
+        elapsed = 0.0
+
+        def time(self):
+            return now + self.elapsed
+
+        def monotonic(self):
+            return self.elapsed
+
+        def sleep(self, seconds):
+            self.elapsed += seconds
+
+    clock = Clock()
+    for module in (dots_admission, dots_backend, dots_coordinator, dots_file_transport, dots_supervised):
+        monkeypatch.setattr(module, "time", clock)
+    return clock
+
+
+@pytest.mark.parametrize("timeout", [300, 900])
+@pytest.mark.parametrize("interrupt_at_expiry", [False, True])
+def test_effective_deadline_includes_preparation_and_queued_time(live_binding, host_clock, monkeypatch, tmp_path, timeout, interrupt_at_expiry):
+    import argparse
+
+    from argus.apps._runtime_construction import build_life_runner
+    from argus.core.models import RunnerOptions
+
+    path, value, host, owner = live_binding
+    value["request_timeout_seconds"] = timeout
+    path.write_text(json.dumps(value))
+    runner = build_life_runner(argparse.Namespace(backend="dots", workdir=value["project_root"],
+                                                skills_dir=str(tmp_path / "skills")))
+    backend = runner.manager_backend
+    transport = backend.transport
+    session_deadline = host.status(value["session_id"])["session"]["expires_at"]
+    readiness = transport.assert_ready()
+    assert readiness["session_expires_at"] == session_deadline
+    assert readiness["expires_at"] < session_deadline  # renewable lease is not the session budget
+    assert backend.capability_report()["request_timeout_seconds"] == timeout
+    started = host_clock.time()
+    original_ready, original_submit = transport.assert_ready, transport.submit
+    submitted = []
+
+    def prepare():
+        ready = original_ready()
+        host_clock.sleep(7)  # preparation consumes the original call budget
+        return ready
+
+    def queue(request):
+        original_submit(request)
+        submitted.append(request)
+        host_clock.sleep(request.expires_at - host_clock.time() + 1)
+        # A delayed dispatch cannot create a fresh execution timeout.
+
+    monkeypatch.setattr(transport, "assert_ready", prepare)
+    monkeypatch.setattr(transport, "submit", queue)
+    monkeypatch.setattr(transport, "poll", lambda *a: pytest.fail("expired queue must not poll for success"))
+    result = backend.run_exec(prompt="queued fixture", run_label="fixture", options=RunnerOptions(
+        external_interrupt_reason_provider=lambda: (
+            "operator abort requested" if submitted and interrupt_at_expiry else None),
+    ))
+    request = submitted[0]
+    assert request.created_at == started
+    assert request.expires_at == min(started + timeout, session_deadline)
+    assert backend.timeout_seconds == timeout  # requested budget is still distinct from the effective deadline
+    assert result.exit_code == (130 if interrupt_at_expiry else 124)
+    assert ("External interrupt" if interrupt_at_expiry else "timed out") in result.fatal_error
+    host.next(value["session_id"], **owner)
+    task = host.status(value["session_id"])["tasks"][request.request_id]
+    assert task["claim"] is None and task["terminal"] == "cancelled"
+    assert transport.poll_cancellation(request.request_id)["type"] == "cancelled"
+    # The exact enrolled receipt remains recoverable after its immutable expiry.
+    transport.submit = original_submit
+    transport.submit(request)
+    assert transport.inspect(request.request_id)["request"] == request.to_dict()
+
+
+@pytest.mark.parametrize("session_expiry", [None, True, False, 0, "3600", float("nan"), float("inf"), -float("inf")])
+def test_supervised_missing_or_invalid_session_deadline_fails_before_publication(live_binding, monkeypatch, session_expiry):
+    from argus.adapters.dots_backend import DotsBackend
+    from argus.core.models import RunnerOptions
+
+    _, value, host, _ = live_binding
+    binding = require_configured_dots_runtime("dots")
+    monkeypatch.setattr(binding.transport, "assert_ready", lambda: {"session_expires_at": session_expiry})
+    result = DotsBackend(binding.transport, execution_profile=binding.execution_profile).run_exec(
+        prompt="fixture", run_label="fixture", options=RunnerOptions())
+    assert result.exit_code != 0 and "session_expires_at" in result.fatal_error
+    assert not host.status(value["session_id"])["tasks"]
+
+
+def test_long_timeout_cannot_outlive_host_stop(live_binding, monkeypatch):
+    from argus.adapters.dots_backend import DotsBackend, DotsBridgeError
+    from argus.core.models import RunnerOptions
+
+    path, value, host, owner = live_binding
+    value["request_timeout_seconds"] = 900
+    path.write_text(json.dumps(value))
+    binding = require_configured_dots_runtime("dots")
+    original_submit = binding.transport.submit
+
+    def stop_before_result(request):
+        original_submit(request)
+        action = host.next(value["session_id"], **owner)
+        host.bind(value["session_id"], request.request_id, worker_id="fixture-worker",
+                  worker_task=action["claim"]["worker_task"], **owner)
+        host.stop(value["session_id"], **owner)
+        with pytest.raises(DotsBridgeError, match="late result"):
+            host.record(value["session_id"], request.request_id, worker_id="fixture-worker",
+                        worker_status="completed", turn_request_id=request.request_id,
+                        kind="completed", text="ARGUS_DOTS_CALL:" + request.request_id + "\nlate result", **owner)
+        host.record(value["session_id"], request.request_id, worker_id="fixture-worker",
+                    worker_status="interrupted", turn_request_id=request.request_id,
+                    kind="cancelled", text="host observed stopped worker", **owner)
+
+    monkeypatch.setattr(binding.transport, "submit", stop_before_result)
+    result = DotsBackend(binding.transport, timeout_seconds=binding.request_timeout_seconds,
+                         execution_profile=binding.execution_profile).run_exec(
+        prompt="fixture", run_label="fixture", options=RunnerOptions())
+    assert result.exit_code == 130 and "host confirmed cancellation" in result.fatal_error
+    assert "late result" not in result.last_agent_message
+
+
+def test_configured_budget_accepts_completion_after_legacy_300_seconds(live_binding, host_clock, monkeypatch, tmp_path):
+    import argparse
+
+    from argus.apps._runtime_construction import build_life_runner
+    from argus.core.models import RunnerOptions
+
+    path, value, host, owner = live_binding
+    value["request_timeout_seconds"] = 900
+    path.write_text(json.dumps(value))
+    runner = build_life_runner(argparse.Namespace(backend="dots", workdir=value["project_root"],
+                                                skills_dir=str(tmp_path / "skills")))
+    backend = runner.engineer_backend
+    original_submit = backend.transport.submit
+    submitted = []
+
+    def delayed_completion(request):
+        original_submit(request)
+        submitted.append(request)
+        action = host.next(value["session_id"], **owner)
+        host.bind(value["session_id"], request.request_id, worker_id="fixture-worker",
+                  worker_task=action["claim"]["worker_task"], **owner)
+        host_clock.sleep(301)  # deterministic observation; no native worker or model call
+        host.record(value["session_id"], request.request_id, worker_id="fixture-worker",
+                    worker_status="completed", turn_request_id=request.request_id,
+                    kind="completed", text="ARGUS_DOTS_CALL:" + request.request_id + "\nlong fixture completed", **owner)
+
+    monkeypatch.setattr(backend.transport, "submit", delayed_completion)
+    result = backend.run_exec(prompt="long fixture", run_label="fixture", options=RunnerOptions())
+    request = submitted[0]
+    assert result.exit_code == 0 and result.last_agent_message == "long fixture completed"
+    assert request.created_at + 300 < result.completed_at < request.expires_at
+    assert request.expires_at == host.status(value["session_id"])["session"]["expires_at"]
+    assert backend.timeout_seconds == 900
+
+
+def test_explicit_lease_profile_is_bound_to_session_and_config_identity(live_binding):
+    from dataclasses import replace
+
+    from argus.adapters.dots_supervised import (
+        SupervisedDotsRoleHost,
+        SupervisedRoleFileDotsTransport,
+    )
+    from argus.core.dots_profile import SupervisedDotsProfile
+    from argus.core.runtime_backend import DOTS_ROLES
+
+    path, value, _, owner = live_binding
+    policy = replace(SupervisedDotsProfile.from_dict(value["execution_profile"]), lease_duration_seconds=90)
+    transport = SupervisedRoleFileDotsTransport(value["bridge_dir"], profile=policy)
+    host = SupervisedDotsRoleHost(transport)
+    session = host.create(parent_task="/root", coordinator_task=owner["coordinator_task"],
+                          producer_id=value["producer_id"], project_root=value["project_root"],
+                          mission_id="explicit-lease-fixture", allowed_roles=list(DOTS_ROLES), max_requests=8)
+    host.heartbeat(session["session_id"], **owner)
+    value.update(session_id=session["session_id"], execution_profile=policy.to_dict())
+    path.write_text(json.dumps(value))
+    binding = require_configured_dots_runtime("dots")
+    assert binding.execution_profile.lease_duration_seconds == 90
+    assert binding.transport.assert_ready()["lease_duration_seconds"] == 90
+    before = binding_configuration_key()
+    value["execution_profile"]["lease_duration_seconds"] = 60
+    path.write_text(json.dumps(value))
+    assert binding_configuration_key() != before
+    with pytest.raises(ValueError, match="binding changed"):
+        binding.transport.assert_ready()
+    with pytest.raises(RuntimeBackendUnavailable, match="profile does not match"):
+        require_configured_dots_runtime("dots")
+    assert host.status(session["session_id"])["session"]["execution_profile"] == policy.to_dict()
+
+
+@pytest.mark.parametrize("duration", [0, -1, True, "90", None, 90.0, 91])
+def test_invalid_lease_profile_config_fails_before_transport(live_binding, monkeypatch, duration):
+    from argus.adapters import dots_supervised
+
+    path, value, host, _ = live_binding
+    value["execution_profile"]["lease_duration_seconds"] = duration
+    path.write_text(json.dumps(value))
+    monkeypatch.setattr(dots_supervised, "SupervisedRoleFileDotsTransport",
+                        lambda *a, **k: pytest.fail("invalid profile must not construct transport"))
+    with pytest.raises(RuntimeBackendUnavailable, match="lease_duration_seconds|exact versioned"):
+        require_configured_dots_runtime("dots")
+    assert not host.status(value["session_id"])["tasks"]

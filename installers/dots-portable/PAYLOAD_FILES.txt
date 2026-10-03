@@ -75,6 +75,7 @@ tests/test_dots_runtime_routing.py
 tests/test_dots_supervised.py
 tests/test_dots_supervised_daemon_log_alias.py
 tests/test_dots_supervised_guard.py
+tests/test_dots_supervised_lease.py
 tests/test_dots_supervised_reviewer.py
 tests/test_dots_supervised_workflow.py
 tests/test_dots_usage_presentation.py

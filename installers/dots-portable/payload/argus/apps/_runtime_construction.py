@@ -670,6 +670,7 @@ def build_life_runner(args: argparse.Namespace, *, seed_thread_id: str | None = 
 
         transport = getattr(args, "dots_transport", None)
         profile = getattr(args, "dots_execution_profile", None)
+        timeout_seconds = getattr(args, "dots_request_timeout_seconds", 300) if profile is not None else 300
         if transport is None:
             from ..adapters.dots_host_binding import require_configured_dots_runtime
 
@@ -681,8 +682,11 @@ def build_life_runner(args: argparse.Namespace, *, seed_thread_id: str | None = 
                 profile = binding.execution_profile
                 args.dots_transport = transport
                 args.dots_execution_profile = profile
+                timeout_seconds = binding.request_timeout_seconds
+                args.dots_request_timeout_seconds = timeout_seconds
         if require_dots_runtime(args.backend, transport=transport, execution_profile=profile):
-            return build_dots_life_runner(args, transport=transport, seed_thread_id=seed_thread_id)
+            return build_dots_life_runner(args, transport=transport, timeout_seconds=timeout_seconds,
+                                          seed_thread_id=seed_thread_id)
     if args.backend == "memory":
         runner = _MemoryRunner()
         workdir, state_root, session_root = _manager_roots(args)

@@ -55,7 +55,8 @@ def main(argv: list[str] | None = None, *, role_mode: bool = False, bounded_mode
         command.add_argument("--owner", required=True, help="actual native coordinator task_name")
         command.add_argument("--generation", type=int, required=True)
         if name == "heartbeat":
-            command.add_argument("--lease-seconds", type=int, default=30)
+            command.add_argument("--lease-seconds", type=int,
+                                 help="explicit override; omitted preserves the selected supervised lease duration")
         if name in {"bind", "record", "abandon"}:
             command.add_argument("request_id")
         if name in {"bind", "record"}:

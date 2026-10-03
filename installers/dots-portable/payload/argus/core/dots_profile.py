@@ -36,12 +36,17 @@ No model alias, effort fallback, CLI flag or credential is inferred.
     report_roots: tuple[str, ...] = ()
     effort_overrides: tuple[tuple[str, str], ...] = ()
     default_effort_override: str | None = None
+    lease_duration_seconds: int | None = None
 
     name = PROFILE_NAME
     advisory_options = ADVISORY_OPTIONS
     ignored_options = IGNORED_OPTIONS
 
     def __post_init__(self) -> None:
+        if (self.lease_duration_seconds is not None
+                and (type(self.lease_duration_seconds) is not int
+                     or not 1 <= self.lease_duration_seconds <= 90)):
+            raise ValueError("lease_duration_seconds must be an integer from 1 to 90")
         if not isinstance(self.model_efforts, tuple):
             raise ValueError("native model catalog must be an immutable tuple")
         seen = set()
@@ -95,7 +100,9 @@ No model alias, effort fallback, CLI flag or credential is inferred.
                 "reasoning_effort_overrides": dict(self.effort_overrides),
                 "default_effort_override": self.default_effort_override,
                 "filesystem_isolation": False, "native_tool_allowlist": False,
-                "evidence_integrity": "trusted-host-detection-only"}
+                "evidence_integrity": "trusted-host-detection-only",
+                **({"lease_duration_seconds": self.lease_duration_seconds}
+                   if self.lease_duration_seconds is not None else {})}
 
     @classmethod
     def from_dict(cls, value: Any) -> SupervisedDotsProfile:
@@ -114,7 +121,7 @@ No model alias, effort fallback, CLI flag or credential is inferred.
             raise ValueError("effort overrides must be explicitly present, even when empty")
         result = cls(tuple((model, tuple(efforts)) for model, efforts in catalog.items()),
                      tuple(value["read_roots"]), tuple(value["report_roots"]), tuple(overrides.items()),
-                     value.get("default_effort_override"))
+                     value.get("default_effort_override"), value.get("lease_duration_seconds"))
         if result.to_dict() != value:
             raise ValueError("execution profile must explicitly accept the exact versioned deficits")
         return result
@@ -183,4 +190,8 @@ class SupervisedDotsTransport(ABC):
 
     @abstractmethod
     def assert_ready(self, project_root: Any = None) -> dict[str, Any]:
-        """Validate current immutable scope and bounded host availability."""
+        """Validate scope/availability and return finite immutable session_expires_at.
+
+        The session deadline bounds every new request. It is distinct from a
+        renewable availability lease's expires_at and never extends on renewal.
+        """

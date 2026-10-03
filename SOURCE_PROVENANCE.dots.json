@@ -56,10 +56,10 @@
   "retained_generated_assets": "Original tracked frontend runtime bundles and original tracked project resources are preserved.",
   "bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.3.1",
-    "standalone_archive_sha256": "337cb00e1e36e8e5ec8507023b7850e7c935056fdf691fd4a0be5f68369a3497",
+    "version": "2.3.2",
+    "standalone_archive_sha256": "881dba611bae723f0bf6a244b60e75e328e675406c90c099b9f2fca17cd3a33c",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 590144
+    "standalone_archive_bytes": 603865
   },
   "post_publication_test_fix": {
     "previous_published_commit": "574877f2bf4c74fed8fe5bb4efe47f017e0a8f8c",
@@ -101,10 +101,10 @@
   },
   "previous_bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.3.0",
-    "standalone_archive_sha256": "c25ee9206be74daba90342a8329bb01f6bb02bfcd3ba430384cf768fbdc51452",
+    "version": "2.3.1",
+    "standalone_archive_sha256": "337cb00e1e36e8e5ec8507023b7850e7c935056fdf691fd4a0be5f68369a3497",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 580921
+    "standalone_archive_bytes": 590144
   },
   "changed_or_added_from_baseline_recorded_at": "historical2.1.2 source snapshot; current managed list is installers/dots-portable/PAYLOAD_FILES.txt",
   "patch_sha256_scope": "historical2.1.0 source patch, not the current integrated routing/admission or packaging patch",
@@ -149,6 +149,13 @@
       "standalone_archive_sha256": "36527e7c1ef9255b924c3b4d29924dda49693ee7eacf7092cfcab7356d6edf41",
       "integrated_repository_needs_reinstallation": false,
       "standalone_archive_bytes": 474342
+    },
+    {
+      "directory": "installers/dots-portable",
+      "version": "2.3.0",
+      "standalone_archive_sha256": "c25ee9206be74daba90342a8329bb01f6bb02bfcd3ba430384cf768fbdc51452",
+      "integrated_repository_needs_reinstallation": false,
+      "standalone_archive_bytes": 580921
     }
   ],
   "supervised_approximate_update": {
@@ -226,6 +233,60 @@
       "new exact published commit fullCI still required",
       "no new native trial,production change,service restart or research submission"
     ],
-    "exact_updated_commit_ci": "pending publication; local pass does not replace future commit CI"
+    "exact_updated_commit_ci": "pending publication; local pass does not replace future commit CI",
+    "published_commit_ci": {
+      "commit": "66d7f95d7832a4c4fe201705675d24c9deaa5bb6",
+      "status": "success",
+      "all_four_checks": "success",
+      "run_url": "https://github.com/Haloukaidi/argus-dots/actions/runs/37112301683"
+    }
+  },
+  "supervised_timeout_lease_update": {
+    "recorded_at_release": "2.3.2",
+    "source_baseline_commit": "66d7f95d7832a4c4fe201705675d24c9deaa5bb6",
+    "timeout_commit": "0cefc9f247bac2f8c220bac0d9749ea344cbb394",
+    "source_commit": "9fc972d49a33dad76fc4aa3f58ca21485cc6daf2",
+    "source_tree": "b670b55c94583d39fbca1518a8abc24a852814e6",
+    "source_delta": [
+      "argus/adapters/dots_backend.py",
+      "argus/adapters/dots_host_binding.py",
+      "argus/adapters/dots_supervised.py",
+      "argus/apps/_runtime_construction.py",
+      "argus/apps/dots_coordinator.py",
+      "argus/core/dots_host_binding.py",
+      "argus/core/dots_profile.py",
+      "argus/manager/front_door.py",
+      "docs/dots-supervised-web.md",
+      "tests/test_dots_host_binding.py",
+      "tests/test_dots_supervised_lease.py",
+      "tests/test_dots_supervised_workflow.py"
+    ],
+    "managed_payload_files": 88,
+    "baseline_file_hashes": 731,
+    "current_payload_list": "installers/dots-portable/PAYLOAD_FILES.txt",
+    "current_validation": "installers/dots-portable/VALIDATION.json",
+    "source_validation": "installers/dots-portable/TIMEOUT-LEASE-VALIDATION.json",
+    "configuration_documentation": "docs/dots-supervised-web.md",
+    "requested_call_budget": "host-owned finite positive <=3600,default300; immutable request deadline capped by original session expiry",
+    "host_lease": "explicit profile integer1..90; old encoding/default30 and legacy1..60 overrides preserved; capped by original session expiry",
+    "strict_protocol3_and_role_permissions_unchanged": true,
+    "three_installer_execution_scripts_unchanged": true,
+    "current_checks": {
+      "source_combined_targeted_passed": 603,
+      "installed_source_targeted_passed": 603,
+      "installer_standard_library_passed": 57,
+      "six_actual_historical_package_verification_cases_passed": 12,
+      "independent_package_migration_guard_cases_passed": 70
+    },
+    "counts_overlap_and_are_not_cumulative": true,
+    "limits": [
+      "no extension or replay of already submitted,expired or cancelled calls",
+      "lease is not a timer,native liveness proof or permanent service",
+      "no new OS isolation,measured cost or actual research completion claim",
+      "historical CI and native records retained separately",
+      "Mypy unavailable in the specified source test environment",
+      "new published exact-commit fullCI and cross-platform installations pending"
+    ],
+    "exact_updated_commit_ci": "pending publication; local tests and prior CI do not prove the new commit"
   }
 }

@@ -31,6 +31,7 @@ Save a nonsensitive launcher configuration in an explicit absolute file path:
   "session_id": "32-lowercase-hex-session-id",
   "producer_id": "authorized-web-producer",
   "project_root": "/absolute/authorized/project",
+  "request_timeout_seconds": 300,
   "execution_profile": "replace with the exact profile.to_dict() object"
 }
 ```
@@ -42,6 +43,55 @@ paths, final symlinks, nonregular files and files larger than 16 KiB are
 rejected. Do not store tokens, passwords, native credentials, or importable
 Python objects in this file. It is a locator and immutable scope snapshot, not
 a credential or independent authorization.
+
+`request_timeout_seconds` is optional and defaults to 300 for existing files.
+It must be a finite JSON number greater than zero and at most 3600; booleans,
+strings and null are rejected before transport construction or admission. The
+host-owned value reaches all five role backends through both the prebound Web
+Manager and detached-daemon factory. No project file, prompt or new CLI flag
+selects this budget.
+
+This is the requested total call budget, including preparation, queue waiting
+and native dispatch waiting. Each new request records an immutable effective
+`expires_at = min(call_started_at + request_timeout_seconds, session_expires_at)`.
+The backend's `request_timeout_seconds` capability diagnostic retains the
+requested budget; the request journal's `created_at` and `expires_at` show the
+effective budget. For example, requesting 900 seconds with 400 seconds left in
+the authorized session permits at most those remaining 400 seconds. Readiness
+reports the immutable `session_expires_at` separately from the renewable host
+lease's `expires_at`. Renewing that lease does not extend either the session or
+a request. The separate hard-idle watchdog and stop/cancellation rules remain
+unchanged and can end a call earlier.
+
+### Explicit host lease duration
+
+The protocol-4 execution profile may additionally declare
+`lease_duration_seconds` as an integer from 1 to 90. This selects an immutable
+renewal duration for that profile/session. It belongs inside the exact
+`execution_profile` object, not at the top level of the launcher configuration.
+For example, the host can create `SupervisedDotsProfile(...,
+lease_duration_seconds=90)` and use its unchanged `to_dict()` output for both
+session creation and launcher binding. A profile-only edit cannot change an
+existing session's selection; it fails the binding match and invalidates warm
+runners.
+
+An omitted field keeps the legacy profile encoding, 30-second initial default
+and explicitly requested `heartbeat(..., lease_seconds=1..60)` support. An
+explicit profile duration governs every omitted-argument `heartbeat()` and
+`next()` renewal; a conflicting explicit heartbeat override is rejected.
+For legacy profiles, an explicit selection is remembered in the lease record
+for the same owner/generation, including renewal after the previous lease
+expires. Older lease records without that metadata renew at the conservative
+30-second default. An authorized handoff also resets a legacy selection to 30
+unless the new owner explicitly chooses another legacy duration; an explicit
+profile selection survives handoff. The supervised CLI's omitted
+`--lease-seconds` follows the same rules.
+
+Every lease is capped at the original session expiry. Stopped or expired hosts
+cannot renew; `next()` still permits cancellation/reconciliation without a
+pulse, and status/result settlement remains available. The declaration does
+not start a timer, prove native liveness, extend a request, or change strict
+`dots`/protocol-3 behavior or role permissions.
 
 ## Normal Web entry
 
@@ -76,13 +126,15 @@ supported catalog; unsupported choices fail rather than being dropped.
 Missing, stale, expired, closed, wrong-project, wrong-profile or mismatched
 sessions report `host-required` before new Web transcripts/tasks or daemon
 launch. Every reused Manager runner is revalidated. Changing the locator or
-its session/profile content invalidates cached role runners, thread IDs and
+its session/profile/timeout content invalidates cached role runners, thread IDs and
 plan previews. Ordinary strict `dots` with no configured binding keeps its
 original native-transport refusal and never falls back to Codex or another CLI.
 
 An active request remains subject to bounded timeout, cancellation and
 reconciliation rules. A renewal is not authority to replay an uncertain spawn
-or continuation. Stop and terminal observations remain host-owned. After the
+or continuation. A timeout-only configuration edit applies to newly constructed
+runners; it never extends an existing request or prevents its exact receipt
+recovery and cancellation/result settlement. Stop and terminal observations remain host-owned. After the
 host disappears, restore the authorized live coordinator and its current
 session lease before retrying an unsubmitted Web request. Do not assume an
 already submitted native turn can be safely repeated.

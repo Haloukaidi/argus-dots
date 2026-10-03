@@ -6,7 +6,8 @@
 
 - 真实 native 验收：[`2026-10-03 Web API、续接与 Curator 结果及保留的失败`](docs/dots-supervised-native-validation.md)
 - 显式监督近似模式：[`Web 与 daemon 的同一有限 host 绑定`](docs/dots-supervised-web.md)，需要在线 native coordinator；不会把提示词约束宣称为操作系统隔离
-- 最新2.3.1：[`Reviewer fixture同步修正`](installers/dots-portable/CHANGES-2.3.1.zh-CN.md)、[`CI失败记录与复验范围`](installers/dots-portable/CI-FIX-2.3.1.txt)
+- 最新2.3.2：[`有限请求预算与显式lease`](installers/dots-portable/CHANGES-2.3.2.zh-CN.md)、[`host配置与兼容边界`](docs/dots-supervised-web.md)
+- 2.3.1历史：[`Reviewer fixture同步修正`](installers/dots-portable/CHANGES-2.3.1.zh-CN.md)、[`CI失败记录与复验范围`](installers/dots-portable/CI-FIX-2.3.1.txt)
 - 2.3.0历史：[`监督近似模式与原Web验收`](docs/dots-supervised-native-validation.md)、[`便携安装变更`](installers/dots-portable/CHANGES-2.3.0.zh-CN.md)
 - 2.2.0历史：[`有限producer接纳`](docs/dots-admission.md)、[`runtime入口与拒绝边界`](docs/dots-runtime-entry.md)、[`便携安装变更`](installers/dots-portable/CHANGES-2.2.0.zh-CN.md)
 - 既有 Reviewer 文件定位符修复：[`2.1.2 变更与边界`](docs/CHANGES-2.1.2.zh-CN.md)

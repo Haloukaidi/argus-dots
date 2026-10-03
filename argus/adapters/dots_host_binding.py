@@ -66,7 +66,8 @@ def resolve_dots_host_binding(*, project_root: Path | str | None = None,
         transport.assert_ready()
         require_dots_runtime("dots", transport=transport, execution_profile=profile, env=env_map)
         identity = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-        return DotsHostBinding(transport, profile, identity, path)
+        return DotsHostBinding(transport, profile, identity, path,
+                               request_timeout_seconds=value.get("request_timeout_seconds", 300))
     except RuntimeBackendUnavailable:
         raise
     except (OSError, ValueError, TypeError, KeyError) as exc:

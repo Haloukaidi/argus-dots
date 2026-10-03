@@ -75,3 +75,14 @@ v1/v2显式请求批次仍可用。需要接纳后续依赖调用时，使用 `p
 原daemon日志别名纳入明确host来源校验；未知或篡改的别名仍拒绝。并发Manager写入受保护证据可使Reviewer保守失败，不通过忽略证据来变成成功。费用/token账本缺失应呈现unknown/null；空账本计数不是native调用数。
 
 有限真实验收不能证明每台新机器都可运行，也不证明操作系统隔离、常驻服务、完整严格五角色等价或成本预算等价。正常Web流程的成功、独立probe和历史失败分别记录；不要合并成未经执行的全能力验收。
+
+## 9. 2.3.2有限请求预算与明确续租时长
+
+- launcher的host-binding配置可写request_timeout_seconds；缺省300，必须是大于0且≤3600的有限JSON数值，不接受boolean/string/null。它是host设置，不从项目文件、prompt或新CLI参数授权
+- 原Manager与daemon角色工厂均接收此预算。总调用预算含准备、排队与等待dispatch；expires_at不超过原sessionexpiry。hard-idle、停止和取消仍可提前终止
+- execution_profile可显式声明整数lease_duration_seconds=1..90，并用同一个准确profile创建session和绑定launcher。配置与既有session不匹配就拒绝，不悄悄修改原session
+- 明确profile时，heartbeat/next的省略参数使用固定声明，冲突覆盖拒绝；未声明时保持旧序列化和初始30秒。旧显式1..60秒选择在同owner/generation续租中保留，handoff后回到30除非新owner重选；显式profile选择则跨handoff保留
+- 续租仍要真实在线协调者参与，且不超过原sessionexpiry。它不启动定时器、不证明worker存活、不延长请求或总会话，也不改变strict/v3与角色权限
+- timeout配置变更清旧runner缓存，只影响新构造的调用；已提交、已取消或超时的请求按原receipt/状态恢复，不再次执行。不能用延长配置掩盖既有失败
+
+准确字段位置和兼容规则见payload/docs/dots-supervised-web.md。任何新任务仍须在当前授权、并发和截止边界内进行；通过配置测试不等于完成真实长任务或研究验收。

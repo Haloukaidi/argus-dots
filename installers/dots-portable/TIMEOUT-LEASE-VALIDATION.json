@@ -1,0 +1,59 @@
+{
+  "release": "dots-portable-2.3.2",
+  "source_baseline_commit": "66d7f95d7832a4c4fe201705675d24c9deaa5bb6",
+  "timeout_commit": "0cefc9f247bac2f8c220bac0d9749ea344cbb394",
+  "lease_commit": "9fc972d49a33dad76fc4aa3f58ca21485cc6daf2",
+  "source_tree": "b670b55c94583d39fbca1518a8abc24a852814e6",
+  "request_budget": {
+    "host_owned": true,
+    "default_seconds": 300,
+    "maximum_seconds": 3600,
+    "effective_deadline": "min(call_started_at + requested_timeout, immutable session_expires_at)",
+    "finite_positive_number_only": true,
+    "preparation_queue_dispatch_wait_included": true,
+    "existing_requests_not_extended": true
+  },
+  "lease": {
+    "explicit_profile_integer_seconds": [
+      1,
+      90
+    ],
+    "legacy_initial_default_seconds": 30,
+    "legacy_explicit_override_seconds": [
+      1,
+      60
+    ],
+    "same_owner_generation_legacy_selection_retained": true,
+    "legacy_handoff_resets_selection": true,
+    "explicit_profile_selection_retained_on_handoff": true,
+    "capped_by_original_session_expiry": true,
+    "automatic_renewal_timer": false
+  },
+  "strict_protocol3_roles_and_permissions_unchanged": true,
+  "code_validation": {
+    "combined_dots_lifecycle_architecture_passed": 603,
+    "combined_seconds": 19.497,
+    "combined_failed": 0,
+    "combined_skipped": 0,
+    "timeout_checkpoint_overlapping_original_regression_passed": 809,
+    "independent_source_audit_passed": 268,
+    "independent_greater_than_300_second_success_case": "passed according to source audit; not a real long-running native research claim",
+    "ruff_compile_diff": "passed",
+    "mypy": "unavailable in specified environment"
+  },
+  "prior_public_ci": {
+    "commit": "66d7f95d7832a4c4fe201705675d24c9deaa5bb6",
+    "run_url": "https://github.com/Haloukaidi/argus-dots/actions/runs/37112301683",
+    "all_four_checks": "success",
+    "historical2_3_0_failure_preserved": "CI-FIX-2.3.1.json"
+  },
+  "limits": [
+    "original default300 and earlier hard-idle/stop remain effective unless an authorized host explicitly chooses a permitted new budget",
+    "no extension or replay of expired/cancelled requests",
+    "no new persistent-host,OS isolation or measured model/token/cost claim",
+    "configuration tests do not establish completed real research goals",
+    "new published exact commit fullCI pending",
+    "macOS/Windows/WSL installation not rerun"
+  ],
+  "counts_overlap_and_are_not_cumulative": true
+}

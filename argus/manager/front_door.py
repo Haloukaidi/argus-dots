@@ -352,6 +352,7 @@ def _ensure_manager_runner(chat_state: dict[str, Any], mem: Any) -> Any:
         if binding is not None:
             ns.dots_transport = binding.transport
             ns.dots_execution_profile = binding.execution_profile
+            ns.dots_request_timeout_seconds = binding.request_timeout_seconds
         runner = build_life_runner(ns)
         acp_scope = f"manager:{chat_state.get('session_id') or workspace_key}"
         backends: list[Any] = []

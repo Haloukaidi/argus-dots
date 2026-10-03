@@ -18,6 +18,7 @@ from typing import Any, Iterator
 from ..core.dots_profile import SupervisedDotsProfile, SupervisedDotsTransport
 from .dots_admission import BoundedDotsRoleHost, BoundedRoleFileDotsTransport, _project
 from .dots_backend import DotsBridgeError, DotsRequest
+from .dots_coordinator import _path
 from .dots_role_host import DotsRoleHost
 
 
@@ -83,7 +84,7 @@ class SupervisedRoleFileDotsTransport(BoundedRoleFileDotsTransport, SupervisedDo
                 raise DotsBridgeError("host-required: supervised admission is stopped, closed or expired")
             if len(session["requests"]) >= session["max_requests"]:
                 raise DotsBridgeError("host-required: supervised workflow request budget is exhausted")
-            return host._lease(root, session)
+            return {**host._lease(root, session), "session_expires_at": session["expires_at"]}
 
     def assert_binding_current(self) -> None:
         """Immutable identity only; exact enrolled retries do not need a lease."""
@@ -224,34 +225,59 @@ class SupervisedDotsRoleHost(BoundedDotsRoleHost):
         return "supervised-lease-" + session_id + ".json"
 
     def heartbeat(self, session_id: str, *, coordinator_task: str, generation: int,
-                  lease_seconds: int = 30) -> dict[str, Any]:
+                  lease_seconds: int | None = None) -> dict[str, Any]:
         """Explicit active-host participation; never called by constructors."""
-        if type(lease_seconds) is not int or not 1 <= lease_seconds <= 60:
-            raise DotsBridgeError("supervised lease must be between 1 and 60 seconds")
+        configured = self.transport.execution_profile.lease_duration_seconds
+        if lease_seconds is not None:
+            if type(lease_seconds) is not int or not 1 <= lease_seconds <= (configured or 60):
+                raise DotsBridgeError("supervised lease is outside the explicitly selected profile or legacy 1..60 limit")
+            if configured is not None and lease_seconds != configured:
+                raise DotsBridgeError("supervised lease override conflicts with immutable profile duration")
         with self._owned(session_id, coordinator_task, generation) as (root, session):
             now = time.time()
             if session["stopping"] or now >= session["expires_at"]:
                 raise DotsBridgeError("host-required: supervised host session is stopped or expired")
+            previous = None
+            if self.transport._read(root, self._lease_name(session_id)) is not None:
+                previous = self._lease(root, session, allow_expired=True, allow_previous_owner=True)
+            if lease_seconds is None:
+                lease_seconds = configured or 30
+                if (configured is None and previous is not None
+                        and previous["generation"] == generation):
+                    lease_seconds = previous.get("lease_duration_seconds", 30)
             lease = {"version": 4, "session_id": session_id,
                      "coordinator_task": coordinator_task, "generation": generation,
-                     "observed_at": now, "expires_at": min(now + lease_seconds, session["expires_at"])}
+                     "observed_at": now, "expires_at": min(now + lease_seconds, session["expires_at"]),
+                     "lease_duration_seconds": lease_seconds}
             self.transport._write(root, self._lease_name(session_id), lease, replace=True)
             return lease
 
-    def _lease(self, root: int, session: dict[str, Any]) -> dict[str, Any]:
+    def _lease(self, root: int, session: dict[str, Any], *, allow_expired: bool = False,
+               allow_previous_owner: bool = False) -> dict[str, Any]:
         lease = self.transport._read(root, self._lease_name(session["session_id"]))
         keys = {"version", "session_id", "coordinator_task", "generation", "observed_at", "expires_at"}
-        if (not isinstance(lease, dict) or set(lease) != keys
+        configured = self.transport.execution_profile.lease_duration_seconds
+        if (not isinstance(lease, dict) or set(lease) not in (keys, keys | {"lease_duration_seconds"})
                 or type(lease["version"]) is not int or lease["version"] != 4
                 or lease["session_id"] != session["session_id"]
-                or lease["coordinator_task"] != session["coordinator_task"]
-                or type(lease["generation"]) is not int or lease["generation"] != session["generation"]
+                or type(lease["generation"]) is not int
+                or (lease["generation"] != session["generation"]
+                    and not (allow_previous_owner and 1 <= lease["generation"] < session["generation"]))
+                or not isinstance(lease["coordinator_task"], str)
+                or lease["coordinator_task"].rsplit("/", 1)[0] != session["parent_task"]
+                or (lease["generation"] == session["generation"] and lease["coordinator_task"] != session["coordinator_task"])
                 or type(lease["observed_at"]) not in (float, int)
                 or type(lease["expires_at"]) not in (float, int)
+                or ("lease_duration_seconds" in lease and (
+                    type(lease["lease_duration_seconds"]) is not int
+                    or not 1 <= lease["lease_duration_seconds"] <= (configured or 60)
+                    or (configured is not None and lease["lease_duration_seconds"] != configured)))
                 or not session["created_at"] <= lease["observed_at"] <= time.time()
-                or not 0 < lease["expires_at"] - lease["observed_at"] <= 60
-                or not time.time() < lease["expires_at"] <= session["expires_at"]):
+                or not 0 < lease["expires_at"] - lease["observed_at"] <= lease.get("lease_duration_seconds", configured or 60)
+                or not lease["expires_at"] <= session["expires_at"]
+                or (not allow_expired and time.time() >= lease["expires_at"])):
             raise DotsBridgeError("host-required: native host lease is missing, stale or invalid")
+        _path(lease["coordinator_task"])
         return {**lease, "availability": "recent-host-assertion", "native_execution_verified": False}
 
     def next(self, session_id: str, *, coordinator_task: str, generation: int) -> dict[str, Any]:

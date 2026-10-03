@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 
 import pytest
 
@@ -64,6 +65,7 @@ def test_supervised_original_lifecycle_detects_concurrent_state_drift(tmp_path, 
         def __init__(self):
             super().__init__(project)
             self.project_root = str(project)
+            self.session_expires_at = time.time() + 600
             self.execution_profile = SupervisedDotsProfile(
                 model_efforts=(("fixture", ("low", "high", "xhigh")), ("", ("low", "high", "xhigh"))),
                 read_roots=(str(tmp_path),), report_roots=(str(tmp_path),),
@@ -71,7 +73,7 @@ def test_supervised_original_lifecycle_detects_concurrent_state_drift(tmp_path, 
 
         def assert_ready(self, project_root=None):
             assert project_root is None or str(project_root) == self.project_root
-            return {"deterministic_fixture": True}
+            return {"deterministic_fixture": True, "session_expires_at": self.session_expires_at}
 
         def submit(self, request):
             if request.role == "engineer":
