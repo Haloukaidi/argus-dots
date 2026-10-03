@@ -1,4 +1,4 @@
-# 能力矩阵（2.3.2）
+# 能力矩阵（2.3.3）
 
 | 范围 | 实现与证据 | 限制 |
 |---|---|---|
@@ -20,3 +20,5 @@
 历史2.3.1仅改变两个测试fixture及分发版本：通过实际持久回复后的Event同步，保留原typed审批与证据变更拒绝断言。原2.3.0公开CI有3项失败；本版当前定向、并发重复及安装结果见VALIDATION.json，未将旧780/14或609计为2.3.1全库重跑。
 
 2.3.2新增有限host请求预算和显式profile lease。默认请求预算300秒，显式值有限且≤3600；每个请求受原sessionexpiry截断。显式lease1..90秒仅控制续租时长，默认legacy30秒和原1..60秒覆盖保持兼容；续租不延长session或request。不改变权限、strict/v3、不自动后台续租、不重放既有调用。
+
+2.3.3仅修正无命名workflow profiles时的原Manager提示字段。原validator仍拒绝虚构profile或requested stages；已命名profile与保存状态保持。此源码修复不证明任何真实研究任务已完成，新commit完整CI需独立验证。

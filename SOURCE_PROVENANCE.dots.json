@@ -56,10 +56,10 @@
   "retained_generated_assets": "Original tracked frontend runtime bundles and original tracked project resources are preserved.",
   "bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.3.2",
-    "standalone_archive_sha256": "881dba611bae723f0bf6a244b60e75e328e675406c90c099b9f2fca17cd3a33c",
+    "version": "2.3.3",
+    "standalone_archive_sha256": "ebdb90adf02babdfe60f8e79aa38d43d73970973d546f4f37208c2c57ab1a7cf",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 603865
+    "standalone_archive_bytes": 643555
   },
   "post_publication_test_fix": {
     "previous_published_commit": "574877f2bf4c74fed8fe5bb4efe47f017e0a8f8c",
@@ -101,10 +101,10 @@
   },
   "previous_bundled_portable_installer": {
     "directory": "installers/dots-portable",
-    "version": "2.3.1",
-    "standalone_archive_sha256": "337cb00e1e36e8e5ec8507023b7850e7c935056fdf691fd4a0be5f68369a3497",
+    "version": "2.3.2",
+    "standalone_archive_sha256": "881dba611bae723f0bf6a244b60e75e328e675406c90c099b9f2fca17cd3a33c",
     "integrated_repository_needs_reinstallation": false,
-    "standalone_archive_bytes": 590144
+    "standalone_archive_bytes": 603865
   },
   "changed_or_added_from_baseline_recorded_at": "historical2.1.2 source snapshot; current managed list is installers/dots-portable/PAYLOAD_FILES.txt",
   "patch_sha256_scope": "historical2.1.0 source patch, not the current integrated routing/admission or packaging patch",
@@ -156,6 +156,13 @@
       "standalone_archive_sha256": "c25ee9206be74daba90342a8329bb01f6bb02bfcd3ba430384cf768fbdc51452",
       "integrated_repository_needs_reinstallation": false,
       "standalone_archive_bytes": 580921
+    },
+    {
+      "directory": "installers/dots-portable",
+      "version": "2.3.1",
+      "standalone_archive_sha256": "337cb00e1e36e8e5ec8507023b7850e7c935056fdf691fd4a0be5f68369a3497",
+      "integrated_repository_needs_reinstallation": false,
+      "standalone_archive_bytes": 590144
     }
   ],
   "supervised_approximate_update": {
@@ -286,6 +293,61 @@
       "historical CI and native records retained separately",
       "Mypy unavailable in the specified source test environment",
       "new published exact-commit fullCI and cross-platform installations pending"
+    ],
+    "exact_updated_commit_ci": "pending publication; local tests and prior CI do not prove the new commit",
+    "published_commit_ci": {
+      "commit": "f758f5dea63c2dd62499f8f193f4039987769131",
+      "status": "success",
+      "all_four_checks": "success",
+      "run_url": "https://github.com/Haloukaidi/argus-dots/actions/runs/37121497897"
+    }
+  },
+  "manager_profile_prompt_update": {
+    "recorded_at_release": "2.3.3",
+    "source_baseline_commit": "f758f5dea63c2dd62499f8f193f4039987769131",
+    "source_commit": "4365d0f90341d95f75b408f3a8f6841d34f25f91",
+    "source_tree": "895817254a2a75fffd0b7c2ec1f9ab0490be6359",
+    "source_delta": [
+      "argus/manager/_vertical_ops.py",
+      "tests/manager/test_manager.py",
+      "tests/skills/test_workflow_profiles.py"
+    ],
+    "source_files_sha256": {
+      "argus/manager/_vertical_ops.py": "b14c3ffbb0e8a890609a47fc4b7748cd40e6bfcd5cf007087438721c766147fb",
+      "tests/manager/test_manager.py": "07181cd58bdc6ff2d073587e8eb3d488a79adbe0d03d6d5cbd01db6f8be39c5f",
+      "tests/skills/test_workflow_profiles.py": "ffc846afd7f2def9df4ca64de482d03367de9cdf183f03a2ad14f2752b2e734b"
+    },
+    "production_diff_lines": 18,
+    "current_payload_list": "installers/dots-portable/PAYLOAD_FILES.txt",
+    "current_validation": "installers/dots-portable/VALIDATION.json",
+    "source_validation": "installers/dots-portable/MANAGER-PROFILE-VALIDATION.json",
+    "managed_payload_files": 91,
+    "baseline_hashes": 733,
+    "prior88_payload_bytes_unchanged": true,
+    "prior731_baseline_values_unchanged": true,
+    "new_original_test_baselines": [
+      "tests/manager/test_manager.py",
+      "tests/skills/test_workflow_profiles.py"
+    ],
+    "fix": "Leave the active-route profile empty only when no profile is persisted and the selected vertical declares no named profiles; omit/empty guidance replaces a misleading display placeholder",
+    "strict_validator_named_profiles_persisted_state_and_defaults_unchanged": true,
+    "permissions_timeouts_scheduling_and_approvals_unchanged": true,
+    "three_installer_entry_scripts_unchanged": true,
+    "current_checks": {
+      "source_targeted_passed": 993,
+      "independent_changed_modules_passed": 135,
+      "baseline_new_prompt_regressions_failed_before_fix": 4,
+      "installed_source_targeted_passed": 993,
+      "installer_standard_library_passed": 57,
+      "seven_actual_historical_package_verification_cases_passed": 12,
+      "independent_package_migration_guard_cases_passed": 75
+    },
+    "counts_overlap_and_are_not_cumulative": true,
+    "limits": [
+      "targeted offline validation does not establish native research completion",
+      "invalid existing state is not silently rewritten or accepted",
+      "new exact published commit fullCI pending",
+      "cross-platform installer and new onlinebootstrap not rerun"
     ],
     "exact_updated_commit_ci": "pending publication; local tests and prior CI do not prove the new commit"
   }

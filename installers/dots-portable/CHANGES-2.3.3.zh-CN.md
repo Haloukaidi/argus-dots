@@ -1,0 +1,11 @@
+# 2.3.3：无workflow profile时的Manager提示修正
+
+原Manager active-route提示在未保存workflow_profile时展示legacy full，即使所选vertical根本没有命名profiles。模型可能将这个显示占位符回传为真实值，而原validator会正确拒绝。
+
+本版只在未保存profile且vertical未声明任何命名profiles时显示空workflow_profile，并说明省略或留空WORKFLOW_PROFILE/WORKFLOW_STAGES。完整stage序列不是命名profile。已有命名profile显示与行为保持，原validator/defaults不变；非法profile或requested stages仍拒绝，不自动修写已保存状态、不把失败转成成功。
+
+生产变化仅argus/manager/_vertical_ops.py的18行diff，另增加两个原测试模块的16项参数case：fast/grounded无profile提示、非法profile/stages拒绝及合法named profile保持。修复前4项新提示回归失败，修复后定向门禁通过。没有扩大权限或更改超时、调度、审批规则。
+
+portable增加这3个已存在原文件，91payload/733base（原731基准值保留，新增两个测试基准hash）；保留2.3.2完整88文件升级map及全部历史，三个安装执行脚本不变。升级前检查用户改动、保存原件，回滚/卸载恢复完整原状态。
+
+当前结果见MANAGER-PROFILE-VALIDATION.json和VALIDATION.json；历史CI、native与其他回归另存，不相加或视作本版完整重跑。本修复不宣称真实研究成功，不带用户任务内容或运行记录。

@@ -23,12 +23,12 @@ PACKAGE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE))
 import install_dots as current  # noqa: E402
 
-RELEASES = ("dots-portable-2.1.0", "dots-portable-2.1.1", "dots-portable-2.1.2", "dots-portable-2.2.0", "dots-portable-2.3.0", "dots-portable-2.3.1")
+RELEASES = ("dots-portable-2.1.0", "dots-portable-2.1.1", "dots-portable-2.1.2", "dots-portable-2.2.0", "dots-portable-2.3.0", "dots-portable-2.3.1", "dots-portable-2.3.2")
 BASE = "9cfe9129fd90511c3a1865844ec7dfda1b5d1008"
-BASELINE_EXTENSION = ()
+BASELINE_EXTENSION = ("tests/manager/test_manager.py", "tests/skills/test_workflow_profiles.py")
 ORIGINALS_TO_CHECK = (
-    "argus/daemon/_life_worker_run.py", "argus/daemon/state.py",
-    "argus/webapi/diagnostics.py", "tests/conftest.py",
+    "argus/manager/_vertical_ops.py", "tests/manager/test_manager.py",
+    "tests/skills/test_workflow_profiles.py",
 )
 
 

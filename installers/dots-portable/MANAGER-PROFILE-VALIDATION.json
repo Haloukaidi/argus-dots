@@ -1,0 +1,112 @@
+{
+  "release": "dots-portable-2.3.3",
+  "source_baseline_commit": "f758f5dea63c2dd62499f8f193f4039987769131",
+  "source_commit": "4365d0f90341d95f75b408f3a8f6841d34f25f91",
+  "source_tree": "895817254a2a75fffd0b7c2ec1f9ab0490be6359",
+  "source_file_sha256": {
+    "argus/manager/_vertical_ops.py": "b14c3ffbb0e8a890609a47fc4b7748cd40e6bfcd5cf007087438721c766147fb",
+    "tests/manager/test_manager.py": "07181cd58bdc6ff2d073587e8eb3d488a79adbe0d03d6d5cbd01db6f8be39c5f",
+    "tests/skills/test_workflow_profiles.py": "ffc846afd7f2def9df4ca64de482d03367de9cdf183f03a2ad14f2752b2e734b"
+  },
+  "source_change_scope": {
+    "production_file": "argus/manager/_vertical_ops.py",
+    "production_diff_lines": 18,
+    "test_modules": [
+      "tests/manager/test_manager.py",
+      "tests/skills/test_workflow_profiles.py"
+    ],
+    "added_parameter_cases": 16
+  },
+  "fix": "Show an empty active-route workflow_profile and explicit omit-or-empty instruction only when no profile is persisted and the vertical declares no named workflow profiles",
+  "preserved": [
+    "strict workflow profile/stage validators",
+    "named profile values and behavior",
+    "persisted pipeline state",
+    "existing defaults",
+    "timeouts,role permissions,scheduling and approvals"
+  ],
+  "validation": {
+    "source_targeted_passed": 993,
+    "source_targeted_failed": 0,
+    "source_targeted_skipped": 0,
+    "source_targeted_seconds": 25.934,
+    "source_scope": [
+      "tests/apps/test_cli_parser.py",
+      "tests/apps/test_cli_verticals.py",
+      "tests/manager/test_budget_config_file.py",
+      "tests/manager/test_completion_rejection_reason.py",
+      "tests/manager/test_control_state.py",
+      "tests/manager/test_decision_requirement_lines.py",
+      "tests/manager/test_deterministic_stage_advance.py",
+      "tests/manager/test_directive.py",
+      "tests/manager/test_dispatch.py",
+      "tests/manager/test_domain_author.py",
+      "tests/manager/test_domain_intake.py",
+      "tests/manager/test_domain_tidy.py",
+      "tests/manager/test_experiment_scale_assessment.py",
+      "tests/manager/test_front_door_cached_vertical.py",
+      "tests/manager/test_front_door_classify_fresh.py",
+      "tests/manager/test_front_door_failure_state.py",
+      "tests/manager/test_front_door_reuse.py",
+      "tests/manager/test_front_door_streaming.py",
+      "tests/manager/test_front_door_workspace.py",
+      "tests/manager/test_handoff_contention.py",
+      "tests/manager/test_live_view.py",
+      "tests/manager/test_manager.py",
+      "tests/manager/test_manager_locks_portable.py",
+      "tests/manager/test_manager_new_domain.py",
+      "tests/manager/test_manager_session.py",
+      "tests/manager/test_manager_session_capacity.py",
+      "tests/manager/test_manager_session_reset.py",
+      "tests/manager/test_model_capability_mismatch.py",
+      "tests/manager/test_nested_worktree_replay.py",
+      "tests/manager/test_observation_fidelity.py",
+      "tests/manager/test_pipeline_boundary.py",
+      "tests/manager/test_pipeline_lock_reentrancy.py",
+      "tests/manager/test_pipeline_yield.py",
+      "tests/manager/test_plan_challenge.py",
+      "tests/manager/test_prompt_rewrite.py",
+      "tests/manager/test_reviewed_facts.py",
+      "tests/manager/test_routing_failure_diagnostics.py",
+      "tests/manager/test_self_context.py",
+      "tests/manager/test_session_handoff_evidence.py",
+      "tests/manager/test_session_rename_on_replacement.py",
+      "tests/manager/test_session_titles.py",
+      "tests/manager/test_skill_tidy.py",
+      "tests/manager/test_stage_complete_nonfinal_deadlock.py",
+      "tests/manager/test_stage_complete_target_contract.py",
+      "tests/manager/test_stage_decider.py",
+      "tests/manager/test_stale_stage_transition.py",
+      "tests/manager/test_status_intent_safe_fail.py",
+      "tests/manager/test_structured_backend_success.py",
+      "tests/manager/test_supervision_failures.py",
+      "tests/manager/test_supervision_runtime.py",
+      "tests/manager/test_team_dispatch_characterization.py",
+      "tests/roles/test_manager_prompt_date.py",
+      "tests/skills/test_vertical_routing_paths.py",
+      "tests/skills/test_workflow_profiles.py",
+      "tests/test_agent_cli_backend.py",
+      "tests/test_dots_runtime_routing.py",
+      "tests/test_workflow_dots_model_defaults.py"
+    ],
+    "independent_source_modules_passed": 135,
+    "independent_source_scope": [
+      "tests/manager/test_manager.py",
+      "tests/skills/test_workflow_profiles.py"
+    ],
+    "baseline_new_prompt_regressions_failed_before_fix": 4,
+    "full_repository_suite": false
+  },
+  "prior_public_ci": {
+    "commit": "f758f5dea63c2dd62499f8f193f4039987769131",
+    "run_url": "https://github.com/Haloukaidi/argus-dots/actions/runs/37121497897",
+    "all_four_checks": "success"
+  },
+  "limits": [
+    "targeted offline tests do not establish completed native research",
+    "existing invalid stored state is not silently rewritten or accepted",
+    "new published exact commit fullCI pending",
+    "cross-platform installer not rerun"
+  ],
+  "counts_overlap_and_are_not_cumulative": true
+}

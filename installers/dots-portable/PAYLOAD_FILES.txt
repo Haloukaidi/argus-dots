@@ -31,6 +31,7 @@ argus/core/role_tool_bridge.py
 argus/core/runtime_backend.py
 argus/daemon/_life_worker_run.py
 argus/daemon/state.py
+argus/manager/_vertical_ops.py
 argus/manager/config_intent.py
 argus/manager/front_door.py
 argus/manager/runtime_config.py
@@ -63,6 +64,8 @@ frontend/web/src/test/dotsUsagePresentation.test.tsx
 tests/apps/test_cli_parser.py
 tests/conftest.py
 tests/core/test_reviewer_artifact_locators.py
+tests/manager/test_manager.py
+tests/skills/test_workflow_profiles.py
 tests/test_architecture_invariants.py
 tests/test_dots_admission.py
 tests/test_dots_backend.py
